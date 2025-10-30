@@ -1,0 +1,195 @@
+{
+  "login": {
+    "title": "Connectez-vous à votre compte",
+    "email": "Adresse e-mail",
+    "emailPlaceholder": "Entrez votre adresse e-mail",
+    "password": "Mot de passe",
+    "passwordPlaceholder": "Entrez votre mot de passe",
+    "signIn": "Se connecter",
+    "remember": "Souviens-toi de moi",
+    "forgot": "Mot de passe oublié ?",
+    "or": "OU",
+    "noAccount": "Vous n'avez pas de compte ?",
+    "signUp": "Inscrivez-vous",
+    "invalidCredentials": "Identifiants invalides"
+  },
+  "signup": {
+    "subtitle": "Créez votre compte",
+    "name": "Nom complet",
+    "namePlaceholder": "Entrez votre nom complet",
+    "email": "Adresse e-mail",
+    "emailPlaceholder": "Entrez votre adresse e-mail",
+    "password": "Mot de passe",
+    "passwordPlaceholder": "Créez un mot de passe",
+    "signUp": "S'inscrire",
+    "or": "OU",
+    "haveAccount": "Vous avez déjà un compte ?",
+    "login": "Se connecter",
+    "error": "Échec de l'inscription"
+  },
+  "home": {
+    "title": "Farisly IA",
+    "description": "Bienvenue sur Farisly IA — votre assistant intelligent pour des décisions plus intelligentes, des résultats plus rapides et une automatisation sans effort.",
+    "signIn": "Se connecter",
+    "getStarted": "Commencer",
+    "footer": "Tous droits réservés."
+  },
+  "forgotPassword": {
+    "subtitle": "Entrez votre e-mail pour réinitialiser votre mot de passe",
+    "email": "Adresse e-mail",
+    "emailPlaceholder": "Entrez votre adresse e-mail",
+    "sendResetLink": "Envoyer le lien de réinitialisation",
+    "successMessage": "Lien de réinitialisation du mot de passe envoyé à {email}"
+  },
+  "resetPassword": {
+    "subtitle": "Définir un nouveau mot de passe pour votre compte",
+    "newPassword": "Nouveau mot de passe",
+    "newPasswordPlaceholder": "Entrez le nouveau mot de passe",
+    "confirmPassword": "Confirmer le mot de passe",
+    "confirmPasswordPlaceholder": "Confirmez votre nouveau mot de passe",
+    "resetPassword": "Réinitialiser le mot de passe",
+    "passwordsNotMatch": "Les mots de passe ne correspondent pas",
+    "successMessage": "Mot de passe réinitialisé avec succès !"
+  },
+  "dashboard": {
+    "headerTitle": "Tableau de bord",
+    "headerSubtitle": "Bon retour ! Gérez votre application Farisly AI ici.",
+    "extensionTitle": "Installer l'extension du navigateur",
+    "extensionSubtitle": "Commencez avec Farisly AI",
+    "extensionDescription": "Installez notre extension de navigateur pour utiliser vos réponses enregistrées et automatiser votre flux de travail.",
+    "extensionButton": "Installer l'extension",
+    "stats": {
+      "savedReplies": "Réponses enregistrées",
+      "activeTemplates": "Modèles actifs",
+      "thisMonth": "Ce mois-ci"
+    },
+    "recentActivity": {
+      "title": "Activité récente",
+      "itemTitle": "Réponse utilisée dans une conversation",
+      "itemTime": "Il y a 2 heures"
+    }
+  },
+  "panel": {
+    "loading": "Chargement des paramètres...",
+    "headerTitle": "Panneau de configuration",
+    "headerSubtitle": "Gérez les paramètres de votre extension Farisly AI",
+    "saveSettings": "Enregistrer les paramètres",
+    "noChanges": "Aucun changement",
+    "common": {
+      "add": "Ajouter",
+      "edit": "Modifier",
+      "cancel": "Annuler"
+    },
+    "extensionActivation": {
+      "title": "Activation de l'extension",
+      "enableOnAllSites": "Activer sur tous les sites",
+      "enableOnAllSitesDescription": "Afficher l'extension sur tous les sites web",
+      "allowedSites": "Mots-clés des sites autorisés",
+      "keywordPlaceholder": "Tapez un mot-clé et appuyez sur Entrée...",
+      "keywordDescription": "Entrez les mots-clés qui doivent être présents dans l'URL (ex: \"fiverr\", \"upwork\")"
+    },
+    "aiAgent": {
+      "title": "Paramètres de l'agent IA",
+      "useNameSignature": "Utiliser la signature de nom",
+      "useNameSignatureDescription": "Ajouter votre nom à la fin des messages",
+      "agentName": "Nom de l'agent",
+      "agentNamePlaceholder": "Votre nom",
+      "useLineSpacing": "Utiliser l'espacement des lignes",
+      "useLineSpacingDescription": "Ajouter des sauts de paragraphe pour une meilleure lisibilité",
+      "useToneSettings": "Utiliser les paramètres de ton",
+      "useToneSettingsDescription": "Appliquer les préférences de ton aux réponses générées",
+      "agentTone": "Ton de l'agent",
+      "toneOptions": {
+        "friendly": "Amical",
+        "professional": "Professionnel",
+        "casual": "Décontracté",
+        "formal": "Formel"
+      },
+      "useOpenAI": "Utiliser OpenAI",
+      "useOpenAIDescription": "Activer la génération de réponses alimentée par l'IA",
+      "openaiKey": "Clé API OpenAI",
+      "openaiKeyPlaceholder": "sk-proj-..."
+    },
+    "instructions": {
+      "title": "Instructions personnalisées",
+      "addInstruction": "Ajouter une instruction",
+      "searchPlaceholder": "Rechercher des instructions...",
+      "textareaPlaceholder": "Entrez votre instruction...",
+      "created": "Créé"
+    },
+    "quickReplies": {
+      "title": "Réponses rapides",
+      "addReply": "Ajouter une réponse",
+      "searchPlaceholder": "Rechercher des réponses rapides...",
+      "titlePlaceholder": "Titre",
+      "contentPlaceholder": "Contenu du message..."
+    },
+    "panelSettings": {
+      "title": "Paramètres du panneau",
+      "panelMinimized": "Panneau réduit par défaut",
+      "panelMinimizedDescription": "Commencer avec le panneau réduit"
+    },
+    "importExport": {
+      "title": "Import/Export",
+      "instructions": "Instructions",
+      "quickReplies": "Réponses rapides",
+      "import": "Importer",
+      "export": "Exporter"
+    }
+  },
+  "profile": {
+    "headerTitle": "Profil",
+    "headerSubtitle": "Gérez les informations de votre compte",
+    "userName": "Jean Dupont",
+    "memberStatus": "Membre Premium",
+    "editProfile": "Modifier le profil",
+    "userEmail": "jean.dupont@exemple.com",
+    "memberSince": "Membre depuis janvier 2024",
+    "accountDetails": "Détails du compte",
+    "firstName": "Prénom",
+    "firstNameValue": "Jean",
+    "lastName": "Nom de famille",
+    "lastNameValue": "Dupont",
+    "emailAddress": "Adresse e-mail",
+    "bio": "Biographie",
+    "bioPlaceholder": "Parlez-nous de vous...",
+    "saveChanges": "Enregistrer les modifications",
+    "dangerZone": "Zone de danger",
+    "dangerZoneWarning": "Une fois votre compte supprimé, il n'y a pas de retour en arrière. Veuillez en être certain.",
+    "deleteAccount": "Supprimer le compte"
+  },
+  "support": {
+    "headerTitle": "Support",
+    "headerSubtitle": "Obtenez de l'aide et trouvez des réponses à vos questions",
+    "emailSupport": {
+      "title": "Support par email",
+      "description": "Contactez notre équipe de support par email",
+      "button": "Nous contacter"
+    },
+    "liveChat": {
+      "title": "Chat en direct",
+      "description": "Discutez avec notre équipe de support en temps réel",
+      "button": "Démarrer le chat"
+    },
+    "documentation": {
+      "title": "Documentation",
+      "items": {
+        "gettingStarted": "Guide de démarrage",
+        "creatingReplies": "Créer des réponses enregistrées",
+        "installingExtension": "Installation de l'extension",
+        "managingAccount": "Gérer votre compte",
+        "apiDocs": "Documentation API"
+      }
+    }
+  },
+  "sidebar": {
+    "dashboard": "Tableau de bord",
+    "savedReplies": "Réponses enregistrées",
+    "support": "Support",
+    "panel": "Panneau",
+    "profile": "Profil",
+    "logout": "Déconnexion",
+    "expandSidebar": "Développer la barre latérale",
+    "collapseSidebar": "Réduire la barre latérale"
+  }
+}

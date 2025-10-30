@@ -1,0 +1,195 @@
+{
+  "login": {
+    "title": "Sign in to your account",
+    "email": "Email Address",
+    "emailPlaceholder": "Enter your email address",
+    "password": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "signIn": "Sign In",
+    "remember": "Remember me",
+    "forgot": "Forgot password?",
+    "or": "OR",
+    "noAccount": "You don't have an account?",
+    "signUp": "Sign Up",
+    "invalidCredentials": "Invalid credentials"
+  },
+  "signup": {
+    "subtitle": "Create your account",
+    "name": "Full Name",
+    "namePlaceholder": "Enter your full name",
+    "email": "Email Address",
+    "emailPlaceholder": "you@example.com",
+    "password": "Password",
+    "passwordPlaceholder": "Create a password",
+    "signUp": "Sign Up",
+    "or": "or",
+    "haveAccount": "Already have an account?",
+    "login": "Log in",
+    "error": "Signup failed"
+  },
+  "forgotPassword": {
+    "subtitle": "Enter your email to reset your password",
+    "email": "Email Address",
+    "emailPlaceholder": "you@example.com",
+    "sendResetLink": "Send Reset Link",
+    "successMessage": "Password reset link sent to {email}"
+  },
+  "resetPassword": {
+    "subtitle": "Set a new password for your account",
+    "newPassword": "New Password",
+    "newPasswordPlaceholder": "Enter new password",
+    "confirmPassword": "Confirm Password",
+    "confirmPasswordPlaceholder": "Confirm your new password",
+    "resetPassword": "Reset Password",
+    "passwordsNotMatch": "Passwords do not match",
+    "successMessage": "Password reset successfully!"
+  },
+  "home": {
+    "title": "Farisly AI",
+    "description": "Welcome to Farisly AI — your intelligent assistant for smarter decisions, faster results, and effortless automation.",
+    "signIn": "Sign In",
+    "getStarted": "Get Started",
+    "footer": "All rights reserved."
+  },
+  "dashboard": {
+    "headerTitle": "Dashboard",
+    "headerSubtitle": "Welcome back! Manage your Farisly AI app from here.",
+    "extensionTitle": "Install Browser Extension",
+    "extensionSubtitle": "Get started with Farisly AI",
+    "extensionDescription": "Install our browser extension to start using saved replies and automate your workflow.",
+    "extensionButton": "Install Extension",
+    "stats": {
+      "savedReplies": "Total Saved Replies",
+      "activeTemplates": "Active Templates",
+      "thisMonth": "This Month"
+    },
+    "recentActivity": {
+      "title": "Recent Activity",
+      "itemTitle": "Reply used in conversation",
+      "itemTime": "2 hours ago"
+    }
+  },
+  "panel": {
+    "loading": "Loading settings...",
+    "headerTitle": "Settings Panel",
+    "headerSubtitle": "Manage your Farisly AI extension settings",
+    "saveSettings": "Save Settings",
+    "noChanges": "No Changes",
+    "common": {
+      "add": "Add",
+      "edit": "Edit",
+      "cancel": "Cancel"
+    },
+    "extensionActivation": {
+      "title": "Extension Activation",
+      "enableOnAllSites": "Enable on all sites",
+      "enableOnAllSitesDescription": "Show extension on all websites",
+      "allowedSites": "Allowed Sites Keywords",
+      "keywordPlaceholder": "Type keyword and press Enter...",
+      "keywordDescription": "Enter keywords that should be present in the URL (e.g., \"fiverr\", \"upwork\")"
+    },
+    "aiAgent": {
+      "title": "AI Agent Settings",
+      "useNameSignature": "Use name signature",
+      "useNameSignatureDescription": "Add your name at the end of messages",
+      "agentName": "Agent Name",
+      "agentNamePlaceholder": "Your name",
+      "useLineSpacing": "Use line spacing",
+      "useLineSpacingDescription": "Add proper paragraph breaks for readability",
+      "useToneSettings": "Use tone settings",
+      "useToneSettingsDescription": "Apply tone preferences to generated responses",
+      "agentTone": "Agent Tone",
+      "toneOptions": {
+        "friendly": "Friendly",
+        "professional": "Professional",
+        "casual": "Casual",
+        "formal": "Formal"
+      },
+      "useOpenAI": "Use OpenAI",
+      "useOpenAIDescription": "Enable AI-powered response generation",
+      "openaiKey": "OpenAI API Key",
+      "openaiKeyPlaceholder": "sk-proj-..."
+    },
+    "instructions": {
+      "title": "Custom Instructions",
+      "addInstruction": "Add Instruction",
+      "searchPlaceholder": "Search instructions...",
+      "textareaPlaceholder": "Enter your instruction...",
+      "created": "Created"
+    },
+    "quickReplies": {
+      "title": "Quick Replies",
+      "addReply": "Add Reply",
+      "searchPlaceholder": "Search quick replies...",
+      "titlePlaceholder": "Title",
+      "contentPlaceholder": "Message content..."
+    },
+    "panelSettings": {
+      "title": "Panel Settings",
+      "panelMinimized": "Panel minimized by default",
+      "panelMinimizedDescription": "Start with the panel minimized"
+    },
+    "importExport": {
+      "title": "Import/Export",
+      "instructions": "Instructions",
+      "quickReplies": "Quick Replies",
+      "import": "Import",
+      "export": "Export"
+    }
+  },
+  "profile": {
+    "headerTitle": "Profile",
+    "headerSubtitle": "Manage your account information",
+    "userName": "John Doe",
+    "memberStatus": "Premium Member",
+    "editProfile": "Edit Profile",
+    "userEmail": "john.doe@example.com",
+    "memberSince": "Member since January 2024",
+    "accountDetails": "Account Details",
+    "firstName": "First Name",
+    "firstNameValue": "John",
+    "lastName": "Last Name",
+    "lastNameValue": "Doe",
+    "emailAddress": "Email Address",
+    "bio": "Bio",
+    "bioPlaceholder": "Tell us about yourself...",
+    "saveChanges": "Save Changes",
+    "dangerZone": "Danger Zone",
+    "dangerZoneWarning": "Once you delete your account, there is no going back. Please be certain.",
+    "deleteAccount": "Delete Account"
+  },
+  "support": {
+    "headerTitle": "Support",
+    "headerSubtitle": "Get help and find answers to your questions",
+    "emailSupport": {
+      "title": "Email Support",
+      "description": "Get in touch with our support team via email",
+      "button": "Contact us"
+    },
+    "liveChat": {
+      "title": "Live Chat",
+      "description": "Chat with our support team in real-time",
+      "button": "Start chat"
+    },
+    "documentation": {
+      "title": "Documentation",
+      "items": {
+        "gettingStarted": "Getting Started Guide",
+        "creatingReplies": "Creating Saved Replies",
+        "installingExtension": "Installing the Extension",
+        "managingAccount": "Managing Your Account",
+        "apiDocs": "API Documentation"
+      }
+    }
+  },
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "savedReplies": "Saved Replies",
+    "support": "Support",
+    "panel": "Panel",
+    "profile": "Profile",
+    "logout": "Logout",
+    "expandSidebar": "Expand sidebar",
+    "collapseSidebar": "Collapse sidebar"
+  }
+}
