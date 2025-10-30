@@ -118,6 +118,6 @@ async function callOpenAIAPI(prompt, context, OPENAI_API_KEY) {
 // Load settings on startup
 chrome.runtime.onStartup.addListener(async () => {
     const result = await chrome.storage.local.get(['farisly_api_key', 'farisly_settings']);
-    apiKey = result.farisly_api_key || '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';
+    OPENAI_API_KEY = result.farisly_api_key || OPENAI_API_KEY;
     settings = result.farisly_settings || { savedReplies: [], aiInstructions: '' };
 });
