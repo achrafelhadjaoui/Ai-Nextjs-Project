@@ -29,7 +29,7 @@ interface NavItem {
 }
 
 export default function AdminSidebar() {
-  const { isCollapsed, toggleSidebar } = useSidebar();
+  const { isCollapsed, toggleSidebar, isMobileMenuOpen, setIsMobileMenuOpen, isMobile } = useSidebar();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const pathname = usePathname();
   const { t } = useI18n();
@@ -105,12 +105,29 @@ export default function AdminSidebar() {
   };
 
   return (
-    <aside
-      className={clsx(
-        'fixed left-0 top-0 h-screen bg-[#0a0a0a] border-r border-gray-800 transition-all duration-300 ease-in-out flex flex-col z-40',
-        isCollapsed ? 'w-20' : 'w-64'
+    <>
+      {/* Mobile overlay */}
+      {isMobile && isMobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-30 md:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
       )}
-    >
+
+      <aside
+        className={clsx(
+          'fixed left-0 top-0 h-screen bg-[#0a0a0a] border-r border-gray-800 transition-all duration-300 ease-in-out flex flex-col z-40',
+          {
+            // Desktop behavior
+            'md:w-20': isCollapsed && !isMobile,
+            'md:w-64': !isCollapsed && !isMobile,
+            // Mobile behavior
+            'w-64': isMobile,
+            '-translate-x-full': isMobile && !isMobileMenuOpen,
+            'translate-x-0': isMobile && isMobileMenuOpen,
+          }
+        )}
+      >
       {/* Logo Section */}
       <div className="h-16 flex items-center justify-center border-b border-gray-800 px-4 bg-[#111111]">
         {!isCollapsed ? (
@@ -217,18 +234,21 @@ export default function AdminSidebar() {
         </button>
       </div>
 
-      {/* Collapse Toggle Button */}
-      <button
-        onClick={toggleSidebar}
-        className="absolute -right-3 top-8 w-6 h-6 bg-[#111111] border border-gray-800 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-gray-800 transition-colors shadow-lg"
-        aria-label={isCollapsed ? t('sidebar.expandSidebar') : t('sidebar.collapseSidebar')}
-      >
-        {isCollapsed ? (
-          <ChevronRight className="w-4 h-4" />
-        ) : (
-          <ChevronLeft className="w-4 h-4" />
-        )}
-      </button>
+      {/* Collapse Toggle Button - Hidden on Mobile */}
+      {!isMobile && (
+        <button
+          onClick={toggleSidebar}
+          className="absolute -right-3 top-8 w-6 h-6 bg-[#111111] border border-gray-800 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-gray-800 transition-colors shadow-lg"
+          aria-label={isCollapsed ? t('sidebar.expandSidebar') : t('sidebar.collapseSidebar')}
+        >
+          {isCollapsed ? (
+            <ChevronRight className="w-4 h-4" />
+          ) : (
+            <ChevronLeft className="w-4 h-4" />
+          )}
+        </button>
+      )}
     </aside>
+    </>
   );
 }

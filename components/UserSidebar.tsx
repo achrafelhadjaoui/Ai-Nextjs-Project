@@ -170,7 +170,7 @@ interface NavItem {
 }
 
 export default function UserSidebar() {
-  const { isCollapsed, toggleSidebar } = useSidebar();
+  const { isCollapsed, toggleSidebar, isMobileMenuOpen, setIsMobileMenuOpen, isMobile } = useSidebar();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const pathname = usePathname();
   const { t } = useI18n();
@@ -216,12 +216,29 @@ export default function UserSidebar() {
   ];
 
   return (
-    <aside
-      className={clsx(
-        'fixed left-0 top-0 h-screen bg-gradient-to-b from-[#111111] to-[#0a0a0a] border-r border-blue-500/20 transition-all duration-300 ease-in-out flex flex-col z-40',
-        isCollapsed ? 'w-20' : 'w-64'
+    <>
+      {/* Mobile overlay */}
+      {isMobile && isMobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-30 md:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
       )}
-    >
+
+      <aside
+        className={clsx(
+          'fixed left-0 top-0 h-screen bg-gradient-to-b from-[#111111] to-[#0a0a0a] border-r border-blue-500/20 transition-all duration-300 ease-in-out flex flex-col z-40',
+          {
+            // Desktop behavior
+            'md:w-20': isCollapsed && !isMobile,
+            'md:w-64': !isCollapsed && !isMobile,
+            // Mobile behavior
+            'w-64': isMobile,
+            '-translate-x-full': isMobile && !isMobileMenuOpen,
+            'translate-x-0': isMobile && isMobileMenuOpen,
+          }
+        )}
+      >
       {/* Logo Section */}
       <div className="h-16 flex items-center justify-center border-b border-blue-500/20 px-4 bg-[#111111]">
         {!isCollapsed ? (
@@ -315,18 +332,21 @@ export default function UserSidebar() {
         </button>
       </div>
 
-      {/* Collapse Toggle Button */}
-      <button
-        onClick={toggleSidebar}
-        className="absolute -right-3 top-8 w-6 h-6 bg-[#111111] border border-blue-500/30 rounded-full flex items-center justify-center text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
-        aria-label={isCollapsed ? t('sidebar.expandSidebar') : t('sidebar.collapseSidebar')}
-      >
-        {isCollapsed ? (
-          <ChevronRight className="w-4 h-4" />
-        ) : (
-          <ChevronLeft className="w-4 h-4" />
-        )}
-      </button>
+      {/* Collapse Toggle Button - Hidden on Mobile */}
+      {!isMobile && (
+        <button
+          onClick={toggleSidebar}
+          className="absolute -right-3 top-8 w-6 h-6 bg-[#111111] border border-blue-500/30 rounded-full flex items-center justify-center text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
+          aria-label={isCollapsed ? t('sidebar.expandSidebar') : t('sidebar.collapseSidebar')}
+        >
+          {isCollapsed ? (
+            <ChevronRight className="w-4 h-4" />
+          ) : (
+            <ChevronLeft className="w-4 h-4" />
+          )}
+        </button>
+      )}
     </aside>
+    </>
   );
 }
