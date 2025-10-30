@@ -418,6 +418,7 @@ import { Users, BarChart, Settings, Trash2, SquarePen, UserPlus } from 'lucide-r
 import { getUsers, deleteUser } from '@/lib/api/admin';
 import { useAuth } from '@/lib/hooks/useAuth';
 import UserEditModal from '@/components/admin/UserEditModal';
+import AddUserModal from '@/components/admin/AddUserModal';
 
 export default function AdminDashboardPage() {
   const [users, setUsers] = useState<any[]>([]);
@@ -425,6 +426,7 @@ export default function AdminDashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const router = useRouter();
   const { user, loading: authLoading, isAdmin } = useAuth();
 
@@ -494,9 +496,12 @@ export default function AdminDashboardPage() {
   };
 
   const handleAddUser = () => {
-    // Navigate to add user page
-    console.log('Add new user');
-    // router.push('/dashboard/admin/users/new');
+    setIsAddModalOpen(true);
+  };
+
+  const handleUserAdded = () => {
+    // Refresh the users list after adding
+    fetchUsers();
   };
 
   const handleUserUpdated = () => {
@@ -670,6 +675,13 @@ export default function AdminDashboardPage() {
           </div>
         </div>
       </DashboardLayout>
+
+      {/* Add User Modal */}
+      <AddUserModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onUserAdded={handleUserAdded}
+      />
 
       {/* User Edit Modal */}
       <UserEditModal

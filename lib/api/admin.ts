@@ -106,3 +106,30 @@ export async function updateUser(id: string, updates: Record<string, any>) {
     return { success: false, message: error.message || "Failed to update user" };
   }
 }
+
+// ➕ Create a new user
+export async function createUser(userData: {
+  name: string;
+  email: string;
+  password: string;
+  role?: string;
+  isVerified?: boolean;
+}) {
+  try {
+    const res = await fetch("/api/admin/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(userData),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.message || "Failed to create user");
+    }
+
+    return await res.json();
+  } catch (error: any) {
+    console.error("💥 Error creating user:", error);
+    return { success: false, message: error.message || "Failed to create user" };
+  }
+}
