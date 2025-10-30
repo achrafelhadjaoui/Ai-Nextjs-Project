@@ -160,6 +160,7 @@ import {
 import clsx from 'clsx';
 import { useI18n } from '@/providers/i18n-provider';
 import { logoutUser } from '@/lib/api/logout';
+import { useSidebar } from '@/contexts/SidebarContext';
 
 interface NavItem {
   name: string;
@@ -169,54 +170,50 @@ interface NavItem {
 }
 
 export default function UserSidebar() {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const { isCollapsed, toggleSidebar } = useSidebar();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const pathname = usePathname();
   const { t } = useI18n();
 
   // User-specific navigation items
   const userNavItems: NavItem[] = [
-    { 
-      name: t('sidebar.dashboard'), 
-      href: '/dashboard', 
+    {
+      name: t('sidebar.dashboard'),
+      href: '/dashboard',
       icon: LayoutDashboard,
       description: 'Your workspace'
     },
-    { 
-      name: t('sidebar.savedReplies'), 
-      href: '/saved-replies', 
+    {
+      name: t('sidebar.savedReplies'),
+      href: '/saved-replies',
       icon: MessageSquare,
       description: 'Quick responses'
     },
-    { 
-      name: 'AI Assistant', 
-      href: '/assistant', 
+    {
+      name: 'AI Assistant',
+      href: '/assistant',
       icon: Bot,
       description: 'Smart help'
     },
-    { 
-      name: 'Templates', 
-      href: '/templates', 
+    {
+      name: 'Templates',
+      href: '/templates',
       icon: Zap,
       description: 'Ready to use'
     },
-    { 
-      name: t('sidebar.support'), 
-      href: '/support', 
+    {
+      name: t('sidebar.support'),
+      href: '/support',
       icon: HelpCircle,
       description: 'Get help'
     },
-    { 
-      name: t('sidebar.panel'), 
-      href: '/panel', 
+    {
+      name: t('sidebar.panel'),
+      href: '/panel',
       icon: Settings,
       description: 'Settings'
     },
   ];
-
-  const toggleSidebar = () => {
-    setIsCollapsed(!isCollapsed);
-  };
 
   return (
     <aside

@@ -19,6 +19,7 @@ import {
 import clsx from 'clsx';
 import { useI18n } from '@/providers/i18n-provider';
 import { logoutUser } from '@/lib/api/logout';
+import { useSidebar } from '@/contexts/SidebarContext';
 
 interface NavItem {
   name: string;
@@ -28,7 +29,7 @@ interface NavItem {
 }
 
 export default function AdminSidebar() {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const { isCollapsed, toggleSidebar } = useSidebar();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const pathname = usePathname();
   const { t } = useI18n();
@@ -78,10 +79,6 @@ export default function AdminSidebar() {
       color: 'purple'
     },
   ];
-
-  const toggleSidebar = () => {
-    setIsCollapsed(!isCollapsed);
-  };
 
   const getColorClasses = (color: string, isActive: boolean) => {
     const colors = {

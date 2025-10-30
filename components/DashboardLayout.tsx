@@ -254,14 +254,16 @@ import AdminSidebar from './AdminSidebar';
 import { Languages, X } from 'lucide-react';
 import LanguageSwitcher from './LanguageSwitcher';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { SidebarProvider, useSidebar } from '@/contexts/SidebarContext';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
-export default function DashboardLayout({ children }: DashboardLayoutProps) {
+function DashboardLayoutContent({ children }: DashboardLayoutProps) {
   const [isLanguageSwitcherOpen, setIsLanguageSwitcherOpen] = useState(false);
   const { user, loading } = useAuth();
+  const { isCollapsed } = useSidebar();
 
   const toggleLanguageSwitcher = () => {
     setIsLanguageSwitcherOpen(!isLanguageSwitcherOpen);
@@ -279,7 +281,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     <div className="min-h-screen bg-[#0a0a0a] relative">
       {/* Conditionally render the appropriate sidebar */}
       {user?.role === 'admin' ? <AdminSidebar /> : <UserSidebar />}
-      
+
       {/* Language Switcher Toggle Button */}
       <div className="fixed top-4 right-4 z-50">
         <button
@@ -301,10 +303,24 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           <LanguageSwitcher onClose={() => setIsLanguageSwitcherOpen(false)} />
         </div>
       )}
-      
-      <main className="ml-64 transition-all duration-300 ease-in-out">
+
+      {/* Fluid main content area that adapts to sidebar width */}
+      <main
+        className="transition-all duration-300 ease-in-out"
+        style={{
+          marginLeft: isCollapsed ? '5rem' : '16rem' // 80px : 256px (w-20 : w-64)
+        }}
+      >
         {children}
       </main>
     </div>
+  );
+}
+
+export default function DashboardLayout({ children }: DashboardLayoutProps) {
+  return (
+    <SidebarProvider>
+      <DashboardLayoutContent>{children}</DashboardLayoutContent>
+    </SidebarProvider>
   );
 }
