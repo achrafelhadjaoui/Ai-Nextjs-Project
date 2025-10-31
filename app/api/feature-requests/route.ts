@@ -1,25 +1,9 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/connect";
 import FeatureRequest from "@/lib/models/FeatureRequest";
-import { cookies } from "next/headers";
-import { verifyToken } from "@/utils/jwt";
+import { requireAuth, authErrorResponse } from "@/lib/auth/auth-utils";
 
-// Helper function to verify authenticated user
-async function verifyUser() {
-  const token = cookies().get("token")?.value;
-  if (!token) {
-    return { isAuthenticated: false, error: "No token provided" };
-  }
-
-  const decoded = verifyToken(token) as any;
-  if (!decoded) {
-    return { isAuthenticated: false, error: "Invalid token" };
-  }
-
-  return { isAuthenticated: true, decoded };
-}
-
-// GET - Fetch all feature requests
+// GET - Fetch all feature requests (public - no auth required)
 export async function GET() {
   try {
     await connectDB();
@@ -41,17 +25,11 @@ export async function GET() {
   }
 }
 
-// POST - Create a new feature request
+// POST - Create a new feature request (requires authentication)
 export async function POST(request: Request) {
   try {
-    // Verify user is authenticated
-    const { isAuthenticated, decoded, error } = await verifyUser();
-    if (!isAuthenticated) {
-      return NextResponse.json(
-        { success: false, message: error },
-        { status: 401 }
-      );
-    }
+    // Verify user is authenticated using centralized auth helper
+    const user = await requireAuth();
 
     // Parse request body
     const body = await request.json();
@@ -84,13 +62,13 @@ export async function POST(request: Request) {
     // Connect to DB
     await connectDB();
 
-    // Create new feature request
+    // Create new feature request using session user data
     const newFeatureRequest = await FeatureRequest.create({
       title,
       description,
-      userId: decoded.userId,
-      userName: decoded.name,
-      userEmail: decoded.email,
+      userId: user.id,
+      userName: user.name || 'Unknown',
+      userEmail: user.email || '',
       status: 'pending',
       votes: 0,
       votedBy: []
@@ -106,6 +84,11 @@ export async function POST(request: Request) {
     );
   } catch (error: any) {
     console.error("💥 Error creating feature request:", error);
+
+    if (error.message?.includes("Unauthorized")) {
+      return authErrorResponse(error.message);
+    }
+
     return NextResponse.json(
       { success: false, message: error.message || "Server error while creating feature request" },
       { status: 500 }

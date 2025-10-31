@@ -26,8 +26,11 @@ export default function AdminFeatureRequestsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({
-    status: '',
+  const [editForm, setEditForm] = useState<{
+    status: 'pending' | 'in-progress' | 'completed' | 'rejected';
+    adminResponse: string;
+  }>({
+    status: 'pending',
     adminResponse: ''
   });
   const [isUpdating, setIsUpdating] = useState(false);
@@ -61,7 +64,7 @@ export default function AdminFeatureRequestsPage() {
 
   const handleCancelEdit = () => {
     setEditingId(null);
-    setEditForm({ status: '', adminResponse: '' });
+    setEditForm({ status: 'pending', adminResponse: '' });
   };
 
   const handleUpdate = async (id: string) => {
@@ -71,11 +74,11 @@ export default function AdminFeatureRequestsPage() {
       if (result.success) {
         setFeatureRequests((prev) =>
           prev.map((req) =>
-            req._id === id ? { ...req, ...editForm, updatedAt: new Date().toISOString() } : req
+            req._id === id ? { ...req, status: editForm.status, adminResponse: editForm.adminResponse, updatedAt: new Date().toISOString() } : req
           )
         );
         setEditingId(null);
-        setEditForm({ status: '', adminResponse: '' });
+        setEditForm({ status: 'pending', adminResponse: '' });
       }
     } catch (error) {
       console.error('Error updating feature request:', error);
@@ -140,22 +143,22 @@ export default function AdminFeatureRequestsPage() {
 
   return (
     <DashboardLayout>
-      <div className="p-4 md:p-8">
+      <div className="p-4 md:p-6 lg:p-8">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-6 md:mb-8">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
-              <Lightbulb className="w-6 h-6 text-white" />
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
+              <Lightbulb className="w-5 h-5 md:w-6 md:h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-white">Feature Requests Management</h1>
-              <p className="text-gray-400">Manage and respond to user feature requests</p>
+              <h1 className="text-2xl md:text-3xl font-bold text-white">Feature Requests Management</h1>
+              <p className="text-sm md:text-base text-gray-400">Manage and respond to user feature requests</p>
             </div>
           </div>
         </div>
 
         {/* Action Bar */}
-        <div className="mb-6 flex flex-col md:flex-row gap-4">
+        <div className="mb-6 flex flex-col md:flex-row lg:flex-row gap-3 md:gap-4">
           {/* Search */}
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -186,26 +189,26 @@ export default function AdminFeatureRequestsPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-[#111111] border border-gray-800 rounded-lg p-4">
-            <div className="text-gray-400 text-sm mb-1">Total Requests</div>
-            <div className="text-2xl font-bold text-white">{featureRequests.length}</div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
+          <div className="bg-[#111111] border border-gray-800 rounded-lg p-3 md:p-4">
+            <div className="text-gray-400 text-xs md:text-sm mb-1">Total Requests</div>
+            <div className="text-xl md:text-2xl font-bold text-white">{featureRequests.length}</div>
           </div>
-          <div className="bg-[#111111] border border-gray-800 rounded-lg p-4">
-            <div className="text-gray-400 text-sm mb-1">Pending</div>
-            <div className="text-2xl font-bold text-yellow-400">
+          <div className="bg-[#111111] border border-gray-800 rounded-lg p-3 md:p-4">
+            <div className="text-gray-400 text-xs md:text-sm mb-1">Pending</div>
+            <div className="text-xl md:text-2xl font-bold text-yellow-400">
               {featureRequests.filter((r) => r.status === 'pending').length}
             </div>
           </div>
-          <div className="bg-[#111111] border border-gray-800 rounded-lg p-4">
-            <div className="text-gray-400 text-sm mb-1">In Progress</div>
-            <div className="text-2xl font-bold text-blue-400">
+          <div className="bg-[#111111] border border-gray-800 rounded-lg p-3 md:p-4">
+            <div className="text-gray-400 text-xs md:text-sm mb-1">In Progress</div>
+            <div className="text-xl md:text-2xl font-bold text-blue-400">
               {featureRequests.filter((r) => r.status === 'in-progress').length}
             </div>
           </div>
-          <div className="bg-[#111111] border border-gray-800 rounded-lg p-4">
-            <div className="text-gray-400 text-sm mb-1">Completed</div>
-            <div className="text-2xl font-bold text-green-400">
+          <div className="bg-[#111111] border border-gray-800 rounded-lg p-3 md:p-4">
+            <div className="text-gray-400 text-xs md:text-sm mb-1">Completed</div>
+            <div className="text-xl md:text-2xl font-bold text-green-400">
               {featureRequests.filter((r) => r.status === 'completed').length}
             </div>
           </div>

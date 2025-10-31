@@ -1,24 +1,8 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/connect";
 import FeatureRequest from "@/lib/models/FeatureRequest";
-import { cookies } from "next/headers";
-import { verifyToken } from "@/utils/jwt";
+import { requireAdmin, authErrorResponse } from "@/lib/auth/auth-utils";
 import mongoose from "mongoose";
-
-// Helper function to verify admin
-async function verifyAdmin() {
-  const token = cookies().get("token")?.value;
-  if (!token) {
-    return { isAdmin: false, error: "No token provided" };
-  }
-
-  const decoded = verifyToken(token) as any;
-  if (!decoded || decoded.role !== "admin") {
-    return { isAdmin: false, error: "Unauthorized access" };
-  }
-
-  return { isAdmin: true, decoded };
-}
 
 // PUT - Update feature request (admin only)
 export async function PUT(
@@ -26,14 +10,8 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Verify admin
-    const { isAdmin, error } = await verifyAdmin();
-    if (!isAdmin) {
-      return NextResponse.json(
-        { success: false, message: error },
-        { status: 403 }
-      );
-    }
+    // Verify admin using centralized auth helper
+    await requireAdmin();
 
     const { id } = params;
 
@@ -85,6 +63,15 @@ export async function PUT(
     );
   } catch (error: any) {
     console.error("💥 Error updating feature request:", error);
+
+    if (error.message?.includes("Unauthorized")) {
+      return authErrorResponse(error.message);
+    }
+
+    if (error.message?.includes("Forbidden")) {
+      return authErrorResponse(error.message, 403);
+    }
+
     return NextResponse.json(
       { success: false, message: error.message || "Server error while updating feature request" },
       { status: 500 }
@@ -98,14 +85,8 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Verify admin
-    const { isAdmin, error } = await verifyAdmin();
-    if (!isAdmin) {
-      return NextResponse.json(
-        { success: false, message: error },
-        { status: 403 }
-      );
-    }
+    // Verify admin using centralized auth helper
+    await requireAdmin();
 
     const { id } = params;
 
@@ -138,6 +119,15 @@ export async function DELETE(
     );
   } catch (error: any) {
     console.error("💥 Error deleting feature request:", error);
+
+    if (error.message?.includes("Unauthorized")) {
+      return authErrorResponse(error.message);
+    }
+
+    if (error.message?.includes("Forbidden")) {
+      return authErrorResponse(error.message, 403);
+    }
+
     return NextResponse.json(
       { success: false, message: error.message || "Server error while deleting feature request" },
       { status: 500 }

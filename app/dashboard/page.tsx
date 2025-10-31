@@ -105,11 +105,15 @@ import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Download, ArrowRight } from 'lucide-react';
 import { useI18n } from '@/providers/i18n-provider';
-import { AdminRedirect } from '@/components/AdminRedirect';
+import { useSessionMonitor } from '@/lib/hooks/useSessionMonitor';
 
 export default function DashboardPage() {
   const { t } = useI18n();
   const router = useRouter();
+
+  // Monitor session for role changes and deletions
+  useSessionMonitor();
+
   console.log('Translations:', t);
 
   // Redirect to onboarding if not completed
@@ -122,9 +126,6 @@ export default function DashboardPage() {
 
   return (
     <>
-      {/* Redirect admin users to admin dashboard */}
-      <AdminRedirect />
-
       <DashboardLayout>
         <div className="p-8">
         {/* Header */}

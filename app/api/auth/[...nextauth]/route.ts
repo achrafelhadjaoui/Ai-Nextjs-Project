@@ -1,132 +1,125 @@
-import NextAuth, { AuthOptions, Session } from "next-auth";
+import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { connectDB } from "@/lib/db/connect";
 import User from "@/lib/models/User";
-import bcrypt from "bcryptjs";
-import { JWT } from "next-auth/jwt";
+import { comparePassword } from "@/utils/hash";
 
-export const authOptions: AuthOptions = {
+export const authOptions = {
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
-    CredentialsProvider({
-      name: "Credentials",
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
-      },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          throw new Error("Email and password are required");
-        }
-
-        await connectDB();
-
-        const user = await User.findOne({ email: credentials.email });
-
-        if (!user) {
-          throw new Error("No user found with this email");
-        }
-
-        if (!user.isVerified) {
-          throw new Error("Please verify your email before logging in");
-        }
-
-        if (!user.password) {
-          throw new Error("This account uses Google sign-in. Please sign in with Google.");
-        }
-
-        const isPasswordValid = await bcrypt.compare(
-          credentials.password,
-          user.password
-        );
-
-        if (!isPasswordValid) {
-          throw new Error("Invalid password");
-        }
-
+      profile(profile) {
         return {
-          id: user._id.toString(),
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          image: user.image || null,
+          id: profile.sub,
+          name: profile.name,
+          email: profile.email,
+          image: profile.picture,
+          role: "user",
         };
       },
     }),
-  ],
-  session: {
-    strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
-  },
-  callbacks: {
-    async signIn({ user, account, profile }) {
-      if (account?.provider === "google") {
+    CredentialsProvider({
+      name: "credentials",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" }
+      },
+      async authorize(credentials) {
         try {
-          console.log("[NextAuth] Google sign-in attempt:", { email: user.email });
-
-          await connectDB();
-          console.log("[NextAuth] Database connected");
-
-          const existingUser = await User.findOne({ email: user.email });
-          console.log("[NextAuth] Existing user found:", !!existingUser);
-
-          if (existingUser) {
-            // Update existing user with Google info if not already set
-            if (!existingUser.googleId) {
-              existingUser.googleId = account.providerAccountId;
-              existingUser.image = user.image;
-              existingUser.isVerified = true;
-              await existingUser.save();
-              console.log("[NextAuth] Updated existing user with Google info");
-            }
-            // Update user ID for JWT
-            user.id = existingUser._id.toString();
-            (user as any).role = existingUser.role;
-          } else {
-            // Create new user for Google OAuth
-            console.log("[NextAuth] Creating new user for Google OAuth");
-            const newUser = await User.create({
-              name: user.name,
-              email: user.email,
-              googleId: account.providerAccountId,
-              image: user.image,
-              isVerified: true,
-              role: "user",
-            });
-
-            console.log("[NextAuth] New user created:", newUser._id.toString());
-
-            // Update user ID for JWT
-            user.id = newUser._id.toString();
-            (user as any).role = newUser.role;
+          if (!credentials?.email || !credentials?.password) {
+            throw new Error("Email and password are required");
           }
 
-          console.log("[NextAuth] Google sign-in successful");
-          return true;
+          await connectDB();
+
+          // Find user
+          const user = await User.findOne({ email: credentials.email });
+          if (!user) {
+            throw new Error("Invalid credentials");
+          }
+
+          // Check if user has a password (OAuth users might not)
+          if (!user.password) {
+            throw new Error("Please use Google sign-in for this account");
+          }
+
+          // Compare passwords
+          const isValid = await comparePassword(credentials.password, user.password);
+          if (!isValid) {
+            throw new Error("Invalid credentials");
+          }
+
+          // Check if email is verified
+          if (!user.isVerified) {
+            throw new Error("Please verify your email before logging in");
+          }
+
+          // Return user object (will be stored in JWT token)
+          return {
+            id: user._id.toString(),
+            email: user.email,
+            name: user.name,
+            role: user.role || "user",
+            isVerified: user.isVerified,
+          };
         } catch (error: any) {
-          console.error("[NextAuth] Error during Google sign-in:", error);
-          console.error("[NextAuth] Error details:", {
-            message: error.message,
-            stack: error.stack,
-            name: error.name,
-          });
-          return false;
+          console.error("Credentials auth error:", error);
+          throw new Error(error.message || "Authentication failed");
         }
       }
-      return true;
+    })
+  ],
+  callbacks: {
+    async signIn({ user, account, profile }) {
+      try {
+        console.log("🔐 SignIn callback:", {
+          email: user.email,
+          provider: account?.provider
+        });
+
+        // Handle Google OAuth
+        if (account?.provider === "google") {
+          await connectDB();
+
+          const existingUser = await User.findOne({ email: user.email });
+
+          if (existingUser) {
+            if (!existingUser.googleId) {
+              existingUser.googleId = profile?.sub;
+              if (profile?.picture) existingUser.image = profile.picture;
+              await existingUser.save();
+            }
+            
+            if (!existingUser.isVerified) {
+              existingUser.isVerified = true;
+              await existingUser.save();
+            }
+          } else {
+            await User.create({
+              name: user.name,
+              email: user.email,
+              googleId: profile?.sub,
+              image: profile?.picture,
+              role: "user",
+              isVerified: true,
+            });
+          }
+        }
+
+        return true;
+      } catch (error) {
+        console.error("SignIn callback error:", error);
+        return false;
+      }
     },
-    async jwt({ token, user, account }: { token: JWT; user: any; account: any }) {
+    
+    async jwt({ token, user, account, trigger, session }) {
       // Initial sign in
       if (user) {
-        token.id = user.id;
-        token.role = user.role || "user";
-        token.image = user.image;
+        token.userId = user.id;
         token.email = user.email;
-        token.name = user.name;
       }
 
       // ALWAYS fetch fresh user data from database to get latest role
@@ -135,38 +128,67 @@ export const authOptions: AuthOptions = {
         try {
           await connectDB();
           const dbUser = await User.findOne({ email: token.email });
+
           if (dbUser) {
-            token.id = dbUser._id.toString();
+            token.userId = dbUser._id.toString();
             token.role = dbUser.role; // Always get fresh role from DB
-            token.image = dbUser.image;
+            token.isVerified = dbUser.isVerified;
             token.name = dbUser.name;
+            token.image = dbUser.image;
+
+            console.log("🔄 JWT callback - Fresh user data:", {
+              email: token.email,
+              role: token.role,
+              userId: token.userId
+            });
+          } else {
+            // User was deleted from database - invalidate their session
+            console.warn("⚠️ User deleted from database, invalidating session:", token.email);
+            return null; // Return null to invalidate the token
           }
         } catch (error) {
-          console.error("Error fetching user in JWT callback:", error);
+          console.error("❌ Error fetching user in JWT callback:", error);
         }
       }
 
+      // Update session when user updates their profile
+      if (trigger === "update" && session) {
+        token = { ...token, ...session };
+      }
+      
       return token;
     },
-    async session({ session, token }: { session: Session; token: JWT }) {
-      if (session.user) {
-        (session.user as any).id = token.id;
-        (session.user as any).role = token.role;
+    
+    async session({ session, token }) {
+      if (token) {
+        session.user.id = token.userId as string;
+        session.user.role = token.role as string;
+        session.user.isVerified = token.isVerified as boolean;
         session.user.name = token.name as string;
         session.user.email = token.email as string;
         session.user.image = token.image as string;
+        
+        console.log("📋 Session callback - User session:", {
+          email: session.user.email,
+          role: session.user.role,
+          id: session.user.id
+        });
       }
+      
       return session;
     },
   },
   pages: {
     signIn: "/auth/login",
-    error: "/auth/login",
+    error: "/auth/error",
   },
-  secret: process.env.NEXTAUTH_SECRET,
+  session: {
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+    updateAge: 5 * 60, // Refresh session every 5 minutes to check for role changes
+  },
   debug: process.env.NODE_ENV === "development",
 };
 
 const handler = NextAuth(authOptions);
-
 export { handler as GET, handler as POST };

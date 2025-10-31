@@ -1,24 +1,8 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/connect";
 import FeatureRequest from "@/lib/models/FeatureRequest";
-import { cookies } from "next/headers";
-import { verifyToken } from "@/utils/jwt";
+import { requireAuth, authErrorResponse } from "@/lib/auth/auth-utils";
 import mongoose from "mongoose";
-
-// Helper function to verify authenticated user
-async function verifyUser() {
-  const token = cookies().get("token")?.value;
-  if (!token) {
-    return { isAuthenticated: false, error: "No token provided" };
-  }
-
-  const decoded = verifyToken(token) as any;
-  if (!decoded) {
-    return { isAuthenticated: false, error: "Invalid token" };
-  }
-
-  return { isAuthenticated: true, decoded };
-}
 
 // POST - Toggle vote on a feature request
 export async function POST(
@@ -26,14 +10,8 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Verify user is authenticated
-    const { isAuthenticated, decoded, error } = await verifyUser();
-    if (!isAuthenticated) {
-      return NextResponse.json(
-        { success: false, message: error },
-        { status: 401 }
-      );
-    }
+    // Verify user is authenticated using centralized auth helper
+    const user = await requireAuth();
 
     const { id } = params;
 
@@ -57,7 +35,7 @@ export async function POST(
       );
     }
 
-    const userId = new mongoose.Types.ObjectId(decoded.userId);
+    const userId = new mongoose.Types.ObjectId(user.id);
     const hasVoted = featureRequest.votedBy.some((voterId) =>
       voterId.equals(userId)
     );
@@ -89,6 +67,11 @@ export async function POST(
     );
   } catch (error: any) {
     console.error("💥 Error toggling vote:", error);
+
+    if (error.message?.includes("Unauthorized")) {
+      return authErrorResponse(error.message);
+    }
+
     return NextResponse.json(
       { success: false, message: error.message || "Server error while toggling vote" },
       { status: 500 }

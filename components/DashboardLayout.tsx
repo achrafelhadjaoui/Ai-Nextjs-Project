@@ -263,10 +263,17 @@ interface DashboardLayoutProps {
 function DashboardLayoutContent({ children }: DashboardLayoutProps) {
   const [isLanguageSwitcherOpen, setIsLanguageSwitcherOpen] = useState(false);
   const { user, loading } = useAuth();
-  const { isCollapsed, isMobile, toggleMobileMenu } = useSidebar();
+  const { isCollapsed, isMobile, isTablet, isDesktop, toggleMobileMenu } = useSidebar();
 
   const toggleLanguageSwitcher = () => {
     setIsLanguageSwitcherOpen(!isLanguageSwitcherOpen);
+  };
+
+  // Calculate sidebar width based on device type
+  const getSidebarMargin = () => {
+    if (isMobile) return '0'; // Mobile: no margin
+    if (isTablet) return isCollapsed ? '5rem' : '14rem'; // Tablet: slightly narrower
+    return isCollapsed ? '5rem' : '16rem'; // Desktop: full width
   };
 
   if (loading) {
@@ -282,11 +289,11 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
       {/* Conditionally render the appropriate sidebar */}
       {user?.role === 'admin' ? <AdminSidebar /> : <UserSidebar />}
 
-      {/* Mobile Menu Button */}
-      {isMobile && (
+      {/* Mobile/Tablet Menu Button */}
+      {(isMobile || isTablet) && (
         <button
           onClick={toggleMobileMenu}
-          className="fixed top-4 left-4 z-50 p-2 bg-gray-800 rounded-lg border border-gray-700 hover:bg-gray-700 transition-all duration-200 md:hidden"
+          className="fixed top-4 left-4 z-50 p-2 bg-gray-800 rounded-lg border border-gray-700 hover:bg-gray-700 transition-all duration-200 lg:hidden"
           title="Toggle Menu"
         >
           <Menu className="w-6 h-6 text-white" />
@@ -315,12 +322,12 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
         </div>
       )}
 
-      {/* Fluid main content area that adapts to sidebar width */}
+      {/* Fluid main content area that adapts to sidebar width and device type */}
       <main
         className="transition-all duration-300 ease-in-out min-h-screen"
         style={{
-          marginLeft: isMobile ? '0' : (isCollapsed ? '5rem' : '16rem'), // Mobile: no margin, Desktop: adaptive
-          paddingTop: isMobile ? '4rem' : '0' // Add top padding on mobile for menu button
+          marginLeft: getSidebarMargin(),
+          paddingTop: (isMobile || isTablet) ? '4rem' : '0' // Add top padding on mobile/tablet for menu button
         }}
       >
         {children}

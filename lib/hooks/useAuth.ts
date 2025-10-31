@@ -49,38 +49,71 @@
 
 
 
+// 'use client';
+
+// import { useState, useEffect } from 'react';
+
+// export function useAuth() {
+//   const [user, setUser] = useState<{ role: string } | null>(null);
+//   const [loading, setLoading] = useState(true);
+
+//   useEffect(() => {
+//     const fetchUser = async () => {
+//       try {
+//         const res = await fetch('/api/auth/me', { cache: 'no-store' });
+//         if (!res.ok) throw new Error('Unauthorized');
+
+//         const data = await res.json();
+//         console.log('[useAuth] User data:', data.user);
+//         setUser(data.user);
+//       } catch (error) {
+//         console.error('[useAuth] Error fetching user:', error);
+//         setUser(null);
+//       } finally {
+//         setLoading(false);
+//       }
+//     };
+
+//     fetchUser();
+//   }, []);
+
+//   return {
+//     user,
+//     loading,
+//     isAuthenticated: !!user,
+//     isAdmin: user?.role === 'admin',
+//   };
+// }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// lib/hooks/useAuth.ts
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useSession } from "next-auth/react";
 
 export function useAuth() {
-  const [user, setUser] = useState<{ role: string } | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const res = await fetch('/api/auth/me', { cache: 'no-store' });
-        if (!res.ok) throw new Error('Unauthorized');
-
-        const data = await res.json();
-        console.log('[useAuth] User data:', data.user);
-        setUser(data.user);
-      } catch (error) {
-        console.error('[useAuth] Error fetching user:', error);
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUser();
-  }, []);
-
+  const { data: session, status, update } = useSession();
+  
   return {
-    user,
-    loading,
-    isAuthenticated: !!user,
-    isAdmin: user?.role === 'admin',
+    user: session?.user || null,
+    loading: status === "loading",
+    isAuthenticated: !!session?.user,
+    isAdmin: session?.user?.role === "admin",
+    isVerified: session?.user?.isVerified || false,
+    updateSession: update,
   };
 }

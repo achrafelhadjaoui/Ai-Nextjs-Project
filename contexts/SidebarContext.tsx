@@ -10,6 +10,8 @@ interface SidebarContextType {
   setIsMobileMenuOpen: (open: boolean) => void;
   toggleMobileMenu: () => void;
   isMobile: boolean;
+  isTablet: boolean;
+  isDesktop: boolean;
 }
 
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
@@ -18,17 +20,25 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isTablet, setIsTablet] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
 
-  // Check if device is mobile
+  // Check device type based on screen size
+  // Mobile: < 768px
+  // Tablet: 768px - 1024px
+  // Desktop: > 1024px
   useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
+    const checkDeviceType = () => {
+      const width = window.innerWidth;
+      setIsMobile(width < 768);
+      setIsTablet(width >= 768 && width < 1024);
+      setIsDesktop(width >= 1024);
     };
 
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
+    checkDeviceType();
+    window.addEventListener('resize', checkDeviceType);
 
-    return () => window.removeEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkDeviceType);
   }, []);
 
   const toggleSidebar = () => {
@@ -48,7 +58,9 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
         isMobileMenuOpen,
         setIsMobileMenuOpen,
         toggleMobileMenu,
-        isMobile
+        isMobile,
+        isTablet,
+        isDesktop
       }}
     >
       {children}
