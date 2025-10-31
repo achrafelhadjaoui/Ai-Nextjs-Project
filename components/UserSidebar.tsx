@@ -156,6 +156,7 @@ import {
   ChevronRight,
   Bot,
   Zap,
+  Lightbulb,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useI18n } from '@/providers/i18n-provider';
@@ -200,6 +201,12 @@ export default function UserSidebar() {
       href: '/templates',
       icon: Zap,
       description: 'Ready to use'
+    },
+    {
+      name: 'Feature Requests',
+      href: '/feature-requests',
+      icon: Lightbulb,
+      description: 'Suggest features'
     },
     {
       name: t('sidebar.support'),

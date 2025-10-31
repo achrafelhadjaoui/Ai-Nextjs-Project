@@ -15,6 +15,7 @@ import {
   Shield,
   Database,
   Activity,
+  Lightbulb,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useI18n } from '@/providers/i18n-provider';
@@ -47,6 +48,12 @@ export default function AdminSidebar() {
       href: '/admin/users',
       icon: Users,
       color: 'blue'
+    },
+    {
+      name: 'Feature Requests',
+      href: '/admin/feature-requests',
+      icon: Lightbulb,
+      color: 'purple'
     },
     {
       name: 'Analytics',
