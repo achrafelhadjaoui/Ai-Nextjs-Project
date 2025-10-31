@@ -397,6 +397,7 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useI18n } from '@/providers/i18n-provider';
+import { useFeatures } from '@/providers/feature-provider';
 import { logoutUser } from '@/lib/api/logout';
 import { useSidebar } from '@/contexts/SidebarContext';
 import { useLogout } from '@/lib/hooks/useLogout';
@@ -406,6 +407,7 @@ interface NavItem {
   href: string;
   icon: React.ElementType;
   description?: string;
+  featureKey?: string; // Optional feature key for feature toggle
 }
 
 export default function UserSidebar() {
@@ -414,6 +416,7 @@ export default function UserSidebar() {
   const pathname = usePathname();
   const { t } = useI18n();
   const { logout } = useLogout();
+  const { hasFeatureAccess } = useFeatures();
 
   // User-specific navigation items
   const userNavItems: NavItem[] = [
@@ -445,7 +448,8 @@ export default function UserSidebar() {
       name: 'Feature Requests',
       href: '/feature-requests',
       icon: Lightbulb,
-      description: 'Suggest features'
+      description: 'Suggest features',
+      featureKey: 'feature-requests'
     },
     {
       name: t('sidebar.support'),
@@ -460,6 +464,14 @@ export default function UserSidebar() {
       description: 'Settings'
     },
   ];
+
+  // Filter nav items based on feature access
+  const visibleNavItems = userNavItems.filter((item) => {
+    // If no featureKey, always show
+    if (!item.featureKey) return true;
+    // Check if user has access to the feature
+    return hasFeatureAccess(item.featureKey);
+  });
 
   return (
     <>
@@ -509,7 +521,7 @@ export default function UserSidebar() {
 
       {/* Main Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1">
-        {userNavItems.map((item) => {
+        {visibleNavItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
           

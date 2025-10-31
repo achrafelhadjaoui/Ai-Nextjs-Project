@@ -61,16 +61,19 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { I18nProvider } from "@/providers/i18n-provider";
 import SessionProviderWrapper from "@/providers/session-provider";
+import { SettingsProvider } from "@/providers/settings-provider";
+import { FeatureProvider } from "@/providers/feature-provider";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { getServerSession } from "next-auth";
 import { authOptions } from "./api/auth/[...nextauth]/route";
 
-const inter = Inter({ 
+const inter = Inter({
   subsets: ["latin"],
   variable: '--font-inter',
 });
 
+// Metadata will be dynamic based on settings
 export const metadata: Metadata = {
   title: "Farisly AI - Dashboard",
   description: "Manage your Farisly AI app settings and saved replies",
@@ -88,20 +91,24 @@ export default async function RootLayout({
     <html lang="en" className="dark">
       <body className={`${inter.variable} font-sans antialiased bg-[#0a0a0a] text-white`}>
         <SessionProviderWrapper session={session}>
-          <I18nProvider>
-            {children}
-            <ToastContainer
-              position="top-right"
-              autoClose={3000}
-              hideProgressBar={false}
-              newestOnTop={false}
-              closeOnClick
-              pauseOnFocusLoss
-              draggable
-              pauseOnHover
-              theme="dark"
-            />
-          </I18nProvider>
+          <SettingsProvider>
+            <FeatureProvider>
+              <I18nProvider>
+                {children}
+                <ToastContainer
+                  position="top-right"
+                  autoClose={3000}
+                  hideProgressBar={false}
+                  newestOnTop={false}
+                  closeOnClick
+                  pauseOnFocusLoss
+                  draggable
+                  pauseOnHover
+                  theme="dark"
+                />
+              </I18nProvider>
+            </FeatureProvider>
+          </SettingsProvider>
         </SessionProviderWrapper>
       </body>
     </html>

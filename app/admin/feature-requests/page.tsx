@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
+import FeatureGuard from '@/components/FeatureGuard';
 import { Lightbulb, ThumbsUp, Search, Filter, Edit3, Trash2, MessageSquare, Clock, CheckCircle2, XCircle, Loader2, Save, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getFeatureRequests, updateFeatureRequest, deleteFeatureRequest } from '@/lib/api/featureRequests';
@@ -142,7 +143,8 @@ export default function AdminFeatureRequestsPage() {
   };
 
   return (
-    <DashboardLayout>
+    <FeatureGuard featureKey="feature-requests">
+      <DashboardLayout>
       <div className="p-4 md:p-6 lg:p-8">
         {/* Header */}
         <div className="mb-6 md:mb-8">
@@ -412,5 +414,6 @@ export default function AdminFeatureRequestsPage() {
         </AnimatePresence>
       </div>
     </DashboardLayout>
+    </FeatureGuard>
   );
 }

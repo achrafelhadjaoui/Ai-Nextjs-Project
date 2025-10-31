@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "init-settings": "ts-node --project tsconfig.json scripts/init-settings.ts"
   },
   "dependencies": {
     "@auth/mongodb-adapter": "^3.11.1",

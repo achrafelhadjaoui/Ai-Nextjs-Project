@@ -384,16 +384,21 @@ import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import SocialLogin from "@/components/auth/SocialLogin";
 import AuthLayout from "@/app/auth/layout";
 import { useI18n } from "@/providers/i18n-provider";
+import { useSettings } from "@/providers/settings-provider";
 import { toast } from "react-toastify";
 
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { t } = useI18n();
+  const { get } = useSettings();
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+
+  // Get app name from settings
+  const appName = get('app.name', 'Farisly AI');
 
   // Check for OAuth errors or success
   useEffect(() => {
@@ -475,7 +480,7 @@ export default function LoginPage() {
   return (
     <AuthLayout>
       <div className="text-center mb-6">
-        <h1 className="text-4xl font-bold text-white mb-2">Farisly AI</h1>
+        <h1 className="text-4xl font-bold text-white mb-2">{appName}</h1>
         <p className="text-gray-400">{t('login.title')}</p>
       </div>
 

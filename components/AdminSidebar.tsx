@@ -299,9 +299,11 @@ import {
   Database,
   Activity,
   Lightbulb,
+  Layers,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useI18n } from '@/providers/i18n-provider';
+import { useFeatures } from '@/providers/feature-provider';
 import { logoutUser } from '@/lib/api/logout';
 import { useSidebar } from '@/contexts/SidebarContext';
 import { useLogout } from '@/lib/hooks/useLogout';
@@ -311,6 +313,7 @@ interface NavItem {
   href: string;
   icon: React.ElementType;
   color?: string;
+  featureKey?: string; // Optional feature key for feature toggle
 }
 
 export default function AdminSidebar() {
@@ -319,6 +322,7 @@ export default function AdminSidebar() {
   const pathname = usePathname();
   const { t } = useI18n();
   const { logout } = useLogout();
+  const { hasFeatureAccess } = useFeatures();
 
   // Admin-specific navigation items with matching colors from dashboard
   const adminNavItems: NavItem[] = [
@@ -338,7 +342,14 @@ export default function AdminSidebar() {
       name: 'Feature Requests',
       href: '/admin/feature-requests',
       icon: Lightbulb,
-      color: 'purple'
+      color: 'purple',
+      featureKey: 'feature-requests'
+    },
+    {
+      name: 'Features',
+      href: '/admin/features',
+      icon: Layers,
+      color: 'cyan'
     },
     {
       name: 'Analytics',
@@ -372,6 +383,14 @@ export default function AdminSidebar() {
     },
   ];
 
+  // Filter nav items based on feature access
+  const visibleNavItems = adminNavItems.filter((item) => {
+    // If no featureKey, always show
+    if (!item.featureKey) return true;
+    // Check if user has access to the feature
+    return hasFeatureAccess(item.featureKey);
+  });
+
   const getColorClasses = (color: string, isActive: boolean) => {
     const colors = {
       blue: isActive
@@ -392,6 +411,9 @@ export default function AdminSidebar() {
       indigo: isActive
         ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'
         : 'hover:bg-indigo-500/10 hover:text-indigo-300',
+      cyan: isActive
+        ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
+        : 'hover:bg-cyan-500/10 hover:text-cyan-300',
     };
     return colors[color as keyof typeof colors] || colors.blue;
   };
@@ -444,7 +466,7 @@ export default function AdminSidebar() {
 
       {/* Main Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {adminNavItems.map((item) => {
+        {visibleNavItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
 
