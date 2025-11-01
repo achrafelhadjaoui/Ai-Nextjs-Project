@@ -67,20 +67,18 @@ async function syncExtensionConfig() {
       const result = await chrome.storage.local.get('settings');
       const currentSettings = result.settings || {};
 
-      // IMPORTANT: Completely replace site permission settings from server
-      // This ensures changes from admin are properly reflected
+      // Merge server config with local settings
       const updatedSettings = {
         ...currentSettings,
-        enableOnAllSites: Boolean(data.settings.enableOnAllSites),
-        allowedSites: Array.isArray(data.settings.allowedSites) ? data.settings.allowedSites : []
+        enableOnAllSites: data.settings.enableOnAllSites,
+        allowedSites: data.settings.allowedSites || []
       };
 
       await chrome.storage.local.set({ settings: updatedSettings });
 
-      console.log('✅ Extension config synced from server:', {
+      console.log('✅ Extension config synced:', {
         enableOnAllSites: updatedSettings.enableOnAllSites,
-        allowedSites: updatedSettings.allowedSites,
-        timestamp: new Date().toISOString()
+        allowedSites: updatedSettings.allowedSites
       });
 
       // Notify all tabs to reload if necessary
@@ -287,8 +285,6 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 
   if (alarm.name === 'syncData') {
     await syncDataWithServer();
-  } else if (alarm.name === 'syncConfig') {
-    await syncExtensionConfig();
   }
 });
 
@@ -331,34 +327,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           sendResponse({ success: true });
           break;
 
-        case 'SYNC_CONFIG':
-          const configSynced = await syncExtensionConfig();
-          sendResponse({ success: configSynced });
-          break;
-
         case 'GET_SETTINGS':
-          const result = await chrome.storage.local.get('settings');
-          // Ensure we always return valid settings with defaults
-          const validSettings = result.settings || {
-            enableOnAllSites: false,
-            allowedSites: [],
-            useOpenAI: true,
-            openaiKey: '',
-            agentName: '',
-            agentTone: 'friendly',
-            useLineSpacing: true,
-            panelMinimized: false,
-            aiInstructions: [],
-            quickReplies: []
-          };
-
-          // Log for debugging
-          console.log('📋 GET_SETTINGS returning:', {
-            enableOnAllSites: validSettings.enableOnAllSites,
-            allowedSites: validSettings.allowedSites
-          });
-
-          sendResponse({ success: true, settings: validSettings });
+          const settings = await chrome.storage.local.get('settings');
+          sendResponse({ success: true, settings: settings.settings });
           break;
 
         case 'UPDATE_SETTINGS':
@@ -436,20 +407,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   // Return true to indicate we'll send response asynchronously
   return true;
-});
-
-/**
- * Handle extension icon click
- */
-chrome.action.onClicked.addListener(async (tab) => {
-  console.log('🖱️ Extension icon clicked on tab:', tab.id);
-
-  // Send message to content script to toggle the panel
-  try {
-    await chrome.tabs.sendMessage(tab.id, { type: 'TOGGLE_PANEL' });
-  } catch (error) {
-    console.error('Error sending toggle message:', error);
-  }
 });
 
 /**

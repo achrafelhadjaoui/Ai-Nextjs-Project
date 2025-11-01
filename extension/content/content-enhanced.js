@@ -188,31 +188,25 @@ class FarislyAI {
         this.iconContainer.appendChild(this.closeIconBtn);
         document.body.appendChild(this.iconContainer);
 
-        // Icon hover effects
-        this.icon.addEventListener('mouseenter', () => {
+        // Icon hover effects - always respond to hover
+        this.iconContainer.addEventListener('pointerenter', () => {
+            // Always apply hover effects (don't check isIconDragging)
             this.icon.style.transform = 'scale(1.1)';
             this.icon.style.boxShadow = '0 12px 32px rgba(102, 126, 234, 0.6), 0 6px 16px rgba(0, 0, 0, 0.4)';
             this.closeIconBtn.style.display = 'flex';
         });
 
-        this.iconContainer.addEventListener('mouseleave', () => {
-            if (!this.isIconDragging) {
-                this.icon.style.transform = 'scale(1)';
-                this.icon.style.boxShadow = '0 8px 24px rgba(102, 126, 234, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3)';
-                this.closeIconBtn.style.display = 'none';
-            }
+        this.iconContainer.addEventListener('pointerleave', () => {
+            // Always reset hover effects
+            this.icon.style.transform = 'scale(1)';
+            this.icon.style.boxShadow = '0 8px 24px rgba(102, 126, 234, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3)';
+            this.closeIconBtn.style.display = 'none';
         });
 
-        // Icon click to toggle panel
-        this.icon.addEventListener('click', (e) => {
-            if (!this.isIconDragging) {
-                this.togglePanel();
-            }
-        });
-
-        // Close icon button
-        this.closeIconBtn.addEventListener('click', (e) => {
+        // Close icon button - use pointerdown for instant response
+        this.closeIconBtn.addEventListener('pointerdown', (e) => {
             e.stopPropagation();
+            e.preventDefault();
             this.hideIcon();
         });
 
@@ -223,49 +217,50 @@ class FarislyAI {
     }
 
     /**
-     * Setup icon dragging functionality
+     * Setup icon dragging functionality using professional DragManager
      */
     setupIconDragging() {
-        this.icon.addEventListener('mousedown', (e) => {
-            this.isIconDragging = true;
-            this.icon.style.cursor = 'grabbing';
+        this.dragManager = new DragManager(this.icon, {
+            threshold: 3,
 
-            const rect = this.iconContainer.getBoundingClientRect();
-            this.iconDragOffset = {
-                x: e.clientX - rect.left,
-                y: e.clientY - rect.top
-            };
+            onDragStart: () => {
+                this.isIconDragging = true;
+                this.icon.style.cursor = 'grabbing';
+                console.log('🎯 Drag started');
+            },
 
-            e.preventDefault();
-        });
-
-        document.addEventListener('mousemove', (e) => {
-            if (this.isIconDragging) {
-                const newX = e.clientX - this.iconDragOffset.x;
-                const newY = e.clientY - this.iconDragOffset.y;
-
-                // Keep within viewport
+            onDrag: (state) => {
+                // Clamp to viewport
                 const maxX = window.innerWidth - this.iconContainer.offsetWidth;
                 const maxY = window.innerHeight - this.iconContainer.offsetHeight;
 
-                const clampedX = Math.max(0, Math.min(newX, maxX));
-                const clampedY = Math.max(0, Math.min(newY, maxY));
+                const clampedX = Math.max(0, Math.min(state.currentX, maxX));
+                const clampedY = Math.max(0, Math.min(state.currentY, maxY));
 
+                // Update position
                 this.iconContainer.style.left = `${clampedX}px`;
                 this.iconContainer.style.top = `${clampedY}px`;
                 this.iconContainer.style.right = 'auto';
+                this.iconContainer.style.bottom = 'auto';
 
-                // Move panel with icon
+                // Move panel with icon if visible
                 if (this.isVisible && this.panel) {
                     this.updatePanelPosition(clampedX, clampedY);
                 }
-            }
-        });
+            },
 
-        document.addEventListener('mouseup', () => {
-            if (this.isIconDragging) {
+            onDragEnd: () => {
                 this.isIconDragging = false;
                 this.icon.style.cursor = 'grab';
+                console.log('🎯 Drag ended');
+            },
+
+            onClick: (e) => {
+                // Don't click if target is close button
+                if (e.target === this.closeIconBtn) return;
+
+                console.log('👆 Icon clicked - toggling panel');
+                this.togglePanel();
             }
         });
     }
@@ -274,18 +269,51 @@ class FarislyAI {
      * Update panel position relative to icon
      */
     updatePanelPosition(iconX, iconY) {
-        const panelX = iconX + 70; // Position panel to the right of icon
-        const panelY = iconY;
+        const iconWidth = this.iconContainer.offsetWidth;
+        const iconHeight = this.iconContainer.offsetHeight;
+        const panelWidth = this.panel.offsetWidth;
+        const panelHeight = this.panel.offsetHeight;
 
-        const maxX = window.innerWidth - this.panel.offsetWidth - 20;
-        const maxY = window.innerHeight - this.panel.offsetHeight - 20;
+        const padding = 10;
+        let panelX, panelY;
 
-        const clampedX = Math.max(20, Math.min(panelX, maxX));
-        const clampedY = Math.max(20, Math.min(panelY, maxY));
+        // Determine best position for panel based on available space
+        const spaceRight = window.innerWidth - (iconX + iconWidth);
+        const spaceLeft = iconX;
+        const spaceBelow = window.innerHeight - (iconY + iconHeight);
+        const spaceAbove = iconY;
+
+        // Prefer right side, but adjust based on space
+        if (spaceRight >= panelWidth + padding) {
+            // Place to the right of icon
+            panelX = iconX + iconWidth + padding;
+            panelY = iconY;
+        } else if (spaceLeft >= panelWidth + padding) {
+            // Place to the left of icon
+            panelX = iconX - panelWidth - padding;
+            panelY = iconY;
+        } else {
+            // Not enough horizontal space, try vertical
+            if (spaceBelow >= panelHeight + padding) {
+                panelX = iconX;
+                panelY = iconY + iconHeight + padding;
+            } else {
+                panelX = iconX;
+                panelY = iconY - panelHeight - padding;
+            }
+        }
+
+        // Clamp to viewport bounds
+        const maxX = window.innerWidth - panelWidth - 10;
+        const maxY = window.innerHeight - panelHeight - 10;
+
+        const clampedX = Math.max(10, Math.min(panelX, maxX));
+        const clampedY = Math.max(10, Math.min(panelY, maxY));
 
         this.panel.style.left = `${clampedX}px`;
         this.panel.style.top = `${clampedY}px`;
         this.panel.style.right = 'auto';
+        this.panel.style.bottom = 'auto';
     }
 
     /**
@@ -373,10 +401,14 @@ class FarislyAI {
             </div>
         `;
 
+        // Initially hide the panel using CSS class
+        this.panel.classList.add('hidden');
+        this.panel.style.opacity = '0';
+
         document.body.appendChild(this.panel);
         this.showTab('compose');
 
-        console.log('📋 Panel created');
+        console.log('📋 Panel created (hidden initially)');
     }
 
     /**
@@ -386,6 +418,10 @@ class FarislyAI {
         // Panel dragging
         const header = this.panel.querySelector('#panel-header');
         header.addEventListener('mousedown', (e) => {
+            // Don't start dragging if clicking on buttons
+            if (e.target.closest('.farisly-panel-btn')) return;
+
+            e.preventDefault(); // Prevent text selection
             this.isDragging = true;
             this.panel.classList.add('dragging');
 
@@ -398,6 +434,8 @@ class FarislyAI {
 
         document.addEventListener('mousemove', (e) => {
             if (this.isDragging) {
+                e.preventDefault(); // Prevent text selection while dragging
+
                 const newX = e.clientX - this.dragOffset.x;
                 const newY = e.clientY - this.dragOffset.y;
 
@@ -420,10 +458,26 @@ class FarislyAI {
             }
         });
 
-        // Minimize button
+        // Minimize button - collapse to header only
         this.panel.querySelector('#minimize-btn').addEventListener('click', () => {
             this.isMinimized = !this.isMinimized;
             this.panel.classList.toggle('minimized', this.isMinimized);
+
+            const content = this.panel.querySelector('.farisly-panel-content');
+            const tabNav = this.panel.querySelector('.farisly-tab-nav');
+            const minimizeBtn = this.panel.querySelector('#minimize-btn');
+
+            if (this.isMinimized) {
+                content.style.display = 'none';
+                tabNav.style.display = 'none';
+                minimizeBtn.innerHTML = '□'; // Restore icon
+                minimizeBtn.title = 'Restore';
+            } else {
+                content.style.display = 'block';
+                tabNav.style.display = 'flex';
+                minimizeBtn.innerHTML = '−'; // Minimize icon
+                minimizeBtn.title = 'Minimize';
+            }
         });
 
         // Close button
@@ -653,21 +707,35 @@ class FarislyAI {
      * Toggle panel visibility
      */
     togglePanel() {
+        console.log('🔄 togglePanel called, current state:', this.isVisible);
         this.isVisible = !this.isVisible;
 
         if (this.isVisible) {
-            this.panel.style.display = 'flex';
-            setTimeout(() => {
-                this.panel.style.opacity = '1';
-            }, 10);
+            console.log('📂 Opening panel...');
 
-            // Position panel near icon
+            // Position panel near icon BEFORE showing
             const iconRect = this.iconContainer.getBoundingClientRect();
             this.updatePanelPosition(iconRect.left, iconRect.top);
+
+            // Remove hidden class, add visible class
+            this.panel.classList.remove('hidden');
+            this.panel.classList.add('visible');
+
+            // Trigger opacity transition
+            requestAnimationFrame(() => {
+                this.panel.style.opacity = '1';
+            });
+
+            console.log('✅ Panel opened');
         } else {
+            console.log('📁 Closing panel...');
             this.panel.style.opacity = '0';
+
             setTimeout(() => {
-                this.panel.style.display = 'none';
+                // Remove visible class, add hidden class
+                this.panel.classList.remove('visible');
+                this.panel.classList.add('hidden');
+                console.log('✅ Panel closed');
             }, 300);
         }
     }
@@ -955,13 +1023,24 @@ class FarislyAI {
      * Disable extension (when not allowed on site)
      */
     disable() {
+        // Cleanup drag manager
+        if (this.dragManager) {
+            this.dragManager.destroy();
+            this.dragManager = null;
+        }
+
+        // Remove DOM elements
         if (this.iconContainer) {
             this.iconContainer.remove();
+            this.iconContainer = null;
         }
         if (this.panel) {
             this.panel.remove();
+            this.panel = null;
         }
+
         this.isEnabled = false;
+        console.log('🔌 Extension disabled and cleaned up');
     }
 }
 

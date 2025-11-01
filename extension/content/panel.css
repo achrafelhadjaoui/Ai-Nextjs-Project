@@ -22,12 +22,22 @@
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05) !important;
   z-index: 2147483647 !important;
   overflow: hidden !important;
-  display: flex !important;
+  /* Removed display: flex - will be controlled by JavaScript */
   flex-direction: column !important;
   font-size: 14px !important;
   line-height: 1.5 !important;
   color: #ffffff !important;
   transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1), opacity 0.3s ease !important;
+}
+
+/* When panel is visible */
+#farisly-ai-panel.visible {
+  display: flex !important;
+}
+
+/* When panel is hidden */
+#farisly-ai-panel.hidden {
+  display: none !important;
 }
 
 #farisly-ai-panel.minimized {
@@ -403,10 +413,36 @@
     width: calc(100vw - 32px) !important;
     right: 16px !important;
     top: 16px !important;
+    max-height: calc(100vh - 32px) !important;
   }
 
   .farisly-ai-actions {
     grid-template-columns: 1fr !important;
+  }
+
+  .farisly-tab-nav {
+    overflow-x: auto !important;
+  }
+
+  .farisly-panel-content {
+    max-height: calc(100vh - 200px) !important;
+  }
+}
+
+@media (max-width: 480px) {
+  #farisly-ai-panel {
+    width: calc(100vw - 16px) !important;
+    right: 8px !important;
+    top: 8px !important;
+  }
+
+  .farisly-panel-title {
+    font-size: 14px !important;
+  }
+
+  .farisly-tab-btn {
+    padding: 8px 12px !important;
+    font-size: 12px !important;
   }
 }
 
