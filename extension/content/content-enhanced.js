@@ -440,7 +440,7 @@ class FarislyAI {
         });
 
         // Listen for messages from background
-        chrome.runtime.onMessage.addListener((request) => {
+        chrome.runtime.onMessage.addListener(async (request) => {
             if (request.type === 'TOGGLE_PANEL') {
                 // If icon is hidden, show it first
                 const isIconHidden = this.iconContainer.style.display === 'none';
@@ -456,6 +456,20 @@ class FarislyAI {
                 }
             } else if (request.type === 'DATA_SYNCED') {
                 this.loadSettings();
+            } else if (request.type === 'CONFIG_UPDATED') {
+                // Re-check if site is still allowed
+                console.log('🔄 Config updated, re-checking site permission...');
+                const isAllowed = await this.checkSiteAllowed();
+
+                if (!isAllowed && this.isEnabled) {
+                    // Site is no longer allowed, disable extension
+                    console.log('⛔ Site no longer allowed, disabling extension');
+                    this.disable();
+                } else if (isAllowed && !this.isEnabled) {
+                    // Site is now allowed, re-initialize
+                    console.log('✅ Site now allowed, re-initializing extension');
+                    window.location.reload(); // Reload to re-initialize properly
+                }
             } else if (request.type === 'DISABLE_EXTENSION') {
                 this.disable();
             }

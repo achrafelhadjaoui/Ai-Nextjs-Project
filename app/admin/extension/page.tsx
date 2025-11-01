@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
-import { Globe, Plus, Trash2, Save, RefreshCw, CheckCircle, XCircle, Settings } from 'lucide-react';
+import { Globe, Plus, Trash2, Save, RefreshCw, CheckCircle, X, Settings } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useSessionMonitor } from '@/lib/hooks/useSessionMonitor';
 
@@ -170,6 +170,7 @@ export default function AdminExtensionPage() {
               className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
                 settings.enableOnAllSites ? 'bg-green-500' : 'bg-gray-600'
               }`}
+              aria-label={settings.enableOnAllSites ? 'Disable extension on all sites' : 'Enable extension on all sites'}
             >
               <span
                 className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
@@ -200,53 +201,53 @@ export default function AdminExtensionPage() {
             Specify which websites the extension should work on. Users will only see the extension on these sites.
           </p>
 
-          {/* Add New Site */}
-          <div className="flex gap-3 mb-6">
-            <input
-              type="text"
-              value={newSite}
-              onChange={(e) => setNewSite(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleAddSite()}
-              placeholder="e.g., fiverr.com, upwork.com, freelancer.com"
-              className="flex-1 px-4 py-3 bg-[#0a0a0a] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-700"
-            />
-            <button
-              onClick={handleAddSite}
-              className="px-6 py-3 bg-white text-black rounded-lg font-medium hover:bg-gray-100 transition-colors flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Add Site
-            </button>
-          </div>
-
-          {/* Website List */}
-          {settings.allowedSites.length === 0 ? (
-            <div className="text-center py-12 text-gray-400">
-              <Globe className="w-12 h-12 mx-auto mb-4 opacity-30" />
-              <p>No websites added yet</p>
-              <p className="text-sm mt-2">Add websites above to restrict where the extension works</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {settings.allowedSites.map((site, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between p-4 bg-[#0a0a0a] border border-gray-800 rounded-lg hover:border-gray-700 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="w-5 h-5 text-green-400" />
-                    <span className="text-white font-medium">{site}</span>
+          {/* Chips Input */}
+          <div className="mb-6">
+            <div className="min-h-[100px] px-4 py-3 bg-[#0a0a0a] border border-gray-800 rounded-lg focus-within:border-gray-700 transition-colors">
+              {/* Chips Display */}
+              <div className="flex flex-wrap gap-2 mb-3">
+                {settings.allowedSites.length === 0 ? (
+                  <div className="text-gray-500 text-sm py-1">
+                    No websites added yet. Type a website and press Enter...
                   </div>
-                  <button
-                    onClick={() => handleRemoveSite(site)}
-                    className="p-2 hover:bg-red-500/10 rounded-lg transition-colors group"
-                  >
-                    <Trash2 className="w-4 h-4 text-gray-400 group-hover:text-red-400" />
-                  </button>
-                </div>
-              ))}
+                ) : (
+                  settings.allowedSites.map((site, index) => (
+                    <div
+                      key={index}
+                      className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-500/20 border border-blue-500/30 rounded-full text-blue-300 text-sm font-medium group hover:bg-blue-500/30 transition-colors"
+                    >
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      <span>{site}</span>
+                      <button
+                        onClick={() => handleRemoveSite(site)}
+                        className="ml-1 hover:bg-red-500/20 rounded-full p-0.5 transition-colors"
+                        title="Remove"
+                        aria-label={`Remove ${site}`}
+                      >
+                        <X className="w-4 h-4 text-blue-300 hover:text-red-400" />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Input Field */}
+              <input
+                type="text"
+                value={newSite}
+                onChange={(e) => setNewSite(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddSite();
+                  }
+                }}
+                placeholder="Type website and press Enter (e.g., fiverr.com)"
+                className="w-full bg-transparent text-white placeholder-gray-500 focus:outline-none"
+              />
             </div>
-          )}
+            <p className="text-xs text-gray-500 mt-2">Press Enter to add websites. Click × to remove.</p>
+          </div>
 
           {/* Common Websites Suggestions */}
           <div className="mt-6 pt-6 border-t border-gray-800">

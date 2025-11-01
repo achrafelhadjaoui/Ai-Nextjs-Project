@@ -67,18 +67,20 @@ async function syncExtensionConfig() {
       const result = await chrome.storage.local.get('settings');
       const currentSettings = result.settings || {};
 
-      // Merge server config with local settings
+      // IMPORTANT: Completely replace site permission settings from server
+      // This ensures changes from admin are properly reflected
       const updatedSettings = {
         ...currentSettings,
-        enableOnAllSites: data.settings.enableOnAllSites,
-        allowedSites: data.settings.allowedSites || []
+        enableOnAllSites: Boolean(data.settings.enableOnAllSites),
+        allowedSites: Array.isArray(data.settings.allowedSites) ? data.settings.allowedSites : []
       };
 
       await chrome.storage.local.set({ settings: updatedSettings });
 
-      console.log('✅ Extension config synced:', {
+      console.log('✅ Extension config synced from server:', {
         enableOnAllSites: updatedSettings.enableOnAllSites,
-        allowedSites: updatedSettings.allowedSites
+        allowedSites: updatedSettings.allowedSites,
+        timestamp: new Date().toISOString()
       });
 
       // Notify all tabs to reload if necessary
@@ -335,8 +337,28 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           break;
 
         case 'GET_SETTINGS':
-          const settings = await chrome.storage.local.get('settings');
-          sendResponse({ success: true, settings: settings.settings });
+          const result = await chrome.storage.local.get('settings');
+          // Ensure we always return valid settings with defaults
+          const validSettings = result.settings || {
+            enableOnAllSites: false,
+            allowedSites: [],
+            useOpenAI: true,
+            openaiKey: '',
+            agentName: '',
+            agentTone: 'friendly',
+            useLineSpacing: true,
+            panelMinimized: false,
+            aiInstructions: [],
+            quickReplies: []
+          };
+
+          // Log for debugging
+          console.log('📋 GET_SETTINGS returning:', {
+            enableOnAllSites: validSettings.enableOnAllSites,
+            allowedSites: validSettings.allowedSites
+          });
+
+          sendResponse({ success: true, settings: validSettings });
           break;
 
         case 'UPDATE_SETTINGS':

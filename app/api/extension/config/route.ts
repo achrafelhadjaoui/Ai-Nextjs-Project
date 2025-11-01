@@ -15,10 +15,17 @@ export async function GET(request: NextRequest) {
     const enableAllSites = await AppSetting.findOne({ key: 'extension_enable_all_sites' });
     const allowedSites = await AppSetting.findOne({ key: 'extension_allowed_sites' });
 
+    console.log('[Extension Config] Database values:', {
+      enableAllSites: enableAllSites?.value,
+      allowedSites: allowedSites?.value
+    });
+
     const settings = {
       enableOnAllSites: enableAllSites?.value === 'true' || enableAllSites?.value === true || false,
       allowedSites: Array.isArray(allowedSites?.value) ? allowedSites.value : []
     };
+
+    console.log('[Extension Config] Returning settings:', settings);
 
     return NextResponse.json({
       success: true,
