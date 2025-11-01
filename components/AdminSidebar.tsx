@@ -300,6 +300,8 @@ import {
   Activity,
   Lightbulb,
   Layers,
+  HelpCircle,
+  Puzzle,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useI18n } from '@/providers/i18n-provider';
@@ -352,6 +354,12 @@ export default function AdminSidebar() {
       color: 'cyan'
     },
     {
+      name: 'Support Tickets',
+      href: '/admin/support',
+      icon: HelpCircle,
+      color: 'pink'
+    },
+    {
       name: 'Analytics',
       href: '/admin/analytics',
       icon: BarChart,
@@ -374,6 +382,12 @@ export default function AdminSidebar() {
       href: '/admin/security',
       icon: Shield,
       color: 'red'
+    },
+    {
+      name: 'Extension',
+      href: '/admin/extension',
+      icon: Puzzle,
+      color: 'orange'
     },
     {
       name: 'Settings',
@@ -414,6 +428,12 @@ export default function AdminSidebar() {
       cyan: isActive
         ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
         : 'hover:bg-cyan-500/10 hover:text-cyan-300',
+      pink: isActive
+        ? 'bg-pink-500/20 text-pink-400 border border-pink-500/30'
+        : 'hover:bg-pink-500/10 hover:text-pink-300',
+      orange: isActive
+        ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
+        : 'hover:bg-orange-500/10 hover:text-orange-300',
     };
     return colors[color as keyof typeof colors] || colors.blue;
   };

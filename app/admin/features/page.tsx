@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import DashboardLayout from "@/components/DashboardLayout";
 import { toast } from "react-toastify";
 import {
   Plus,
@@ -199,38 +200,43 @@ export default function FeatureManagementPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-      </div>
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-screen">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+        </div>
+      </DashboardLayout>
     );
   }
 
   if (!initialized) {
     return (
-      <div className="p-6 max-w-4xl mx-auto">
-        <div className="bg-[#111111] rounded-lg border border-gray-800 p-8 text-center">
-          <div className="mb-6">
-            <Settings className="w-16 h-16 text-blue-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-white mb-2">
-              Initialize Feature Management
-            </h2>
-            <p className="text-gray-400">
-              Set up default features to get started with feature management.
-            </p>
+      <DashboardLayout>
+        <div className="p-6 max-w-4xl mx-auto">
+          <div className="bg-[#111111] rounded-lg border border-gray-800 p-8 text-center">
+            <div className="mb-6">
+              <Settings className="w-16 h-16 text-blue-500 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold text-white mb-2">
+                Initialize Feature Management
+              </h2>
+              <p className="text-gray-400">
+                Set up default features to get started with feature management.
+              </p>
+            </div>
+            <button
+              onClick={handleInitialize}
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+            >
+              Initialize Default Features
+            </button>
           </div>
-          <button
-            onClick={handleInitialize}
-            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-          >
-            Initialize Default Features
-          </button>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <DashboardLayout>
+      <div className="p-6 max-w-7xl mx-auto">
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-white mb-2">
@@ -421,5 +427,6 @@ export default function FeatureManagementPage() {
         </div>
       </div>
     </div>
+    </DashboardLayout>
   );
 }

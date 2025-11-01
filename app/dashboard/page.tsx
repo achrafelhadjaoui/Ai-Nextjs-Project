@@ -105,10 +105,12 @@ import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Download, ArrowRight } from 'lucide-react';
 import { useI18n } from '@/providers/i18n-provider';
+import { useSettings } from '@/providers/settings-provider';
 import { useSessionMonitor } from '@/lib/hooks/useSessionMonitor';
 
 export default function DashboardPage() {
   const { t } = useI18n();
+  const { get } = useSettings();
   const router = useRouter();
 
   // Monitor session for role changes and deletions
@@ -130,8 +132,12 @@ export default function DashboardPage() {
         <div className="p-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">{t('dashboard.headerTitle')}</h1>
-          <p className="text-gray-400">{t('dashboard.headerSubtitle')}</p>
+          <h1 className="text-3xl font-bold text-white mb-2">
+            {get('content.dashboard_title', t('dashboard.headerTitle'))}
+          </h1>
+          <p className="text-gray-400">
+            {get('content.dashboard_subtitle', t('dashboard.headerSubtitle'))}
+          </p>
         </div>
 
         {/* Extension Install Card */}
@@ -143,13 +149,19 @@ export default function DashboardPage() {
                   <Download className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-white">{t('dashboard.extensionTitle')}</h3>
-                  <p className="text-sm text-gray-400">{t('dashboard.extensionSubtitle')}</p>
+                  <h3 className="text-lg font-semibold text-white">
+                    {get('content.extension_title', t('dashboard.extensionTitle'))}
+                  </h3>
+                  <p className="text-sm text-gray-400">
+                    {get('content.extension_subtitle', t('dashboard.extensionSubtitle'))}
+                  </p>
                 </div>
               </div>
-              <p className="text-gray-400 text-sm mb-4">{t('dashboard.extensionDescription')}</p>
+              <p className="text-gray-400 text-sm mb-4">
+                {get('content.extension_description', t('dashboard.extensionDescription'))}
+              </p>
               <button className="inline-flex items-center gap-2 px-4 py-2 bg-white text-black rounded-lg font-medium text-sm hover:bg-gray-100 transition-colors">
-                {t('dashboard.extensionButton')}
+                {get('content.extension_button', t('dashboard.extensionButton'))}
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>

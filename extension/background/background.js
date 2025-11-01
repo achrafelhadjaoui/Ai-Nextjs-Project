@@ -1,123 +1,479 @@
-// Background script for Farisly Ai extension
-console.log('Background script loaded');
+/**
+ * Farisly AI - Background Service Worker
+ * Handles authentication, messaging, alarms, and cross-component communication
+ */
 
-// Store API key and settings
-let OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-let settings = {
-    savedReplies: [],
-    aiInstructions: ''
+// Configuration
+const API_URL = 'http://localhost:3000'; // Change to production URL when deploying
+const SYNC_INTERVAL = 30; // minutes
+
+// State management
+let authState = {
+  isAuthenticated: false,
+  user: null,
+  token: null,
+  expiresAt: null
 };
 
-chrome.runtime.onInstalled.addListener((details) => {
-    console.log('Farisly Ai extension installed:', details.reason);
-    
-    if (details.reason === 'install') {
-        chrome.storage.local.set({
-            'farisly_ai_installed': true,
-            'farisly_ai_version': '1.0.0'
-        });
-    }
+/**
+ * Initialize extension on install
+ */
+chrome.runtime.onInstalled.addListener(async (details) => {
+  console.log('🚀 Farisly AI Extension installed/updated', details.reason);
+
+  if (details.reason === 'install') {
+    // First time install - fetch settings from server
+    await syncExtensionConfig();
+
+    // Open onboarding page
+    chrome.tabs.create({ url: `${API_URL}/onboarding` });
+  }
+
+  if (details.reason === 'update') {
+    // Extension updated - refresh config
+    await syncExtensionConfig();
+  }
+
+  // Set up periodic sync alarms
+  chrome.alarms.create('syncData', { periodInMinutes: SYNC_INTERVAL });
+  chrome.alarms.create('syncConfig', { periodInMinutes: 5 }); // Sync config every 5 minutes
+
+  // Load auth state from storage
+  await loadAuthState();
 });
 
-// Listen for messages from content scripts and popup
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    console.log('Message received:', request);
-    
-    if (request.action === 'getTabInfo') {
-        sendResponse({
-            url: sender.tab?.url || 'unknown',
-            title: sender.tab?.title || 'unknown'
-        });
-    }
-    
-    if (request.action === 'callOpenAI') {
-        handleOpenAICall(request.prompt, request.context, sendResponse);
-        return true; // Keep message channel open for async response
-    }
-    
-    if (request.action === 'getSettings') {
-        sendResponse(settings);
-    }
-    
-    if (request.action === 'updateSettings') {
-        settings = { ...settings, ...request.settings };
-        chrome.storage.local.set({ farisly_settings: settings });
-        sendResponse({ success: true });
-    }
-    
-    if (request.action === 'getApiKey') {
-        sendResponse({ OPENAI_API_KEY: OPENAI_API_KEY });
-    }
-    
-    if (request.action === 'setApiKey') {
-        OPENAI_API_KEY = request.apiKey;
-        chrome.storage.local.set({ farisly_api_key: OPENAI_API_KEY });
-        sendResponse({ success: true });
-    }
-    
-    return true;
-});
-
-async function handleOpenAICall(prompt, context, sendResponse) {
-    try {
-        if (!OPENAI_API_KEY) {
-            // Try to get API key from storage
-            const result = await chrome.storage.local.get(['farisly_api_key']);
-            OPENAI_API_KEY = result.farisly_api_key || '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';
-        }
-
-        const response = await callOpenAIAPI(prompt, context, OPENAI_API_KEY);
-        sendResponse({ success: true, response: response });
-        
-    } catch (error) {
-        console.error('OpenAI API error:', error);
-        sendResponse({ 
-            error: error.message || 'Failed to call OpenAI API' 
-        });
-    }
-}
-
-async function callOpenAIAPI(prompt, context, OPENAI_API_KEY) {
-    const messages = [];
-    
-    if (context) {
-        messages.push({
-            role: 'system',
-            content: `Context: ${context}`
-        });
-    }
-    
-    messages.push({
-        role: 'user',
-        content: prompt
-    });
-    
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${OPENAI_API_KEY}`
-        },
-        body: JSON.stringify({
-            model: 'gpt-3.5-turbo',
-            messages: messages,
-            max_tokens: 1000,
-            temperature: 0.7
-        })
-    });
-    
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error?.message || `HTTP ${response.status}`);
-    }
-    
-    const data = await response.json();
-    return data.choices[0].message.content;
-}
-
-// Load settings on startup
+/**
+ * Handle extension startup
+ */
 chrome.runtime.onStartup.addListener(async () => {
-    const result = await chrome.storage.local.get(['farisly_api_key', 'farisly_settings']);
-    OPENAI_API_KEY = result.farisly_api_key || OPENAI_API_KEY;
-    settings = result.farisly_settings || { savedReplies: [], aiInstructions: '' };
+  console.log('🔄 Extension started');
+  await loadAuthState();
+  await syncExtensionConfig(); // Sync config first
+  await syncDataWithServer();
 });
+
+/**
+ * Sync extension configuration from server
+ */
+async function syncExtensionConfig() {
+  try {
+    console.log('🔄 Syncing extension config from server...');
+
+    const response = await fetch(`${API_URL}/api/extension/config`);
+    const data = await response.json();
+
+    if (data.success && data.settings) {
+      // Get current settings
+      const result = await chrome.storage.local.get('settings');
+      const currentSettings = result.settings || {};
+
+      // Merge server config with local settings
+      const updatedSettings = {
+        ...currentSettings,
+        enableOnAllSites: data.settings.enableOnAllSites,
+        allowedSites: data.settings.allowedSites || []
+      };
+
+      await chrome.storage.local.set({ settings: updatedSettings });
+
+      console.log('✅ Extension config synced:', {
+        enableOnAllSites: updatedSettings.enableOnAllSites,
+        allowedSites: updatedSettings.allowedSites
+      });
+
+      // Notify all tabs to reload if necessary
+      broadcastMessage({
+        type: 'CONFIG_UPDATED',
+        data: {
+          enableOnAllSites: updatedSettings.enableOnAllSites,
+          allowedSites: updatedSettings.allowedSites
+        }
+      });
+
+      return true;
+    } else {
+      console.error('Failed to sync config:', data.message);
+      return false;
+    }
+  } catch (error) {
+    console.error('❌ Error syncing extension config:', error);
+    // Set default safe config on error
+    const result = await chrome.storage.local.get('settings');
+    if (!result.settings) {
+      await chrome.storage.local.set({
+        settings: {
+          enableOnAllSites: false,
+          allowedSites: [],
+          useOpenAI: true,
+          openaiKey: '',
+          agentName: '',
+          agentTone: 'friendly',
+          useLineSpacing: true,
+          panelMinimized: false,
+          aiInstructions: [],
+          quickReplies: []
+        }
+      });
+    }
+    return false;
+  }
+}
+
+/**
+ * Load authentication state from storage
+ */
+async function loadAuthState() {
+  try {
+    const result = await chrome.storage.local.get(['authToken', 'user', 'tokenExpiry']);
+
+    if (result.authToken && result.tokenExpiry) {
+      const now = Date.now();
+      if (now < result.tokenExpiry) {
+        authState = {
+          isAuthenticated: true,
+          user: result.user,
+          token: result.authToken,
+          expiresAt: result.tokenExpiry
+        };
+        console.log('✅ Auth state loaded:', authState.user?.email);
+      } else {
+        console.log('⚠️  Token expired, clearing auth');
+        await clearAuthState();
+      }
+    }
+  } catch (error) {
+    console.error('❌ Error loading auth state:', error);
+  }
+}
+
+/**
+ * Save authentication state to storage
+ */
+async function saveAuthState(user, token, expiresIn = 86400000) {
+  const expiresAt = Date.now() + expiresIn;
+
+  authState = {
+    isAuthenticated: true,
+    user,
+    token,
+    expiresAt
+  };
+
+  await chrome.storage.local.set({
+    authToken: token,
+    user: user,
+    tokenExpiry: expiresAt
+  });
+
+  console.log('✅ Auth state saved for:', user.email);
+}
+
+/**
+ * Clear authentication state
+ */
+async function clearAuthState() {
+  authState = {
+    isAuthenticated: false,
+    user: null,
+    token: null,
+    expiresAt: null
+  };
+
+  await chrome.storage.local.remove(['authToken', 'user', 'tokenExpiry']);
+  console.log('🔒 Auth state cleared');
+}
+
+/**
+ * Verify user still exists in database
+ */
+async function verifyUserExists() {
+  if (!authState.isAuthenticated || !authState.token) {
+    return false;
+  }
+
+  try {
+    const response = await fetch(`${API_URL}/api/auth/me`, {
+      headers: {
+        'Authorization': `Bearer ${authState.token}`
+      }
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data.success && data.user) {
+        // Update user data
+        authState.user = data.user;
+        await chrome.storage.local.set({ user: data.user });
+        return true;
+      }
+    }
+
+    // User doesn't exist or token invalid
+    console.log('⚠️  User verification failed');
+    await clearAuthState();
+    return false;
+  } catch (error) {
+    console.error('❌ Error verifying user:', error);
+    return false;
+  }
+}
+
+/**
+ * Sync data with server
+ */
+async function syncDataWithServer() {
+  if (!authState.isAuthenticated || !authState.user) {
+    console.log('⏭️  Skipping sync - not authenticated');
+    return;
+  }
+
+  try {
+    console.log('🔄 Syncing data with server...');
+
+    // Fetch saved replies from database
+    const repliesResponse = await fetch(
+      `${API_URL}/api/extension/saved-replies?userId=${authState.user.id}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${authState.token}`
+        }
+      }
+    );
+
+    if (repliesResponse.ok) {
+      const repliesData = await repliesResponse.json();
+      if (repliesData.success) {
+        // Update local storage
+        const settings = await chrome.storage.local.get('settings');
+        const updatedSettings = {
+          ...settings.settings,
+          quickReplies: repliesData.data || []
+        };
+
+        await chrome.storage.local.set({ settings: updatedSettings });
+        console.log(`✅ Synced ${repliesData.data?.length || 0} saved replies`);
+
+        // Notify all tabs about the update
+        broadcastMessage({
+          type: 'DATA_SYNCED',
+          data: { quickReplies: repliesData.data }
+        });
+      }
+    }
+  } catch (error) {
+    console.error('❌ Sync error:', error);
+  }
+}
+
+/**
+ * Broadcast message to all tabs
+ */
+async function broadcastMessage(message) {
+  const tabs = await chrome.tabs.query({});
+  tabs.forEach(tab => {
+    chrome.tabs.sendMessage(tab.id, message).catch(() => {
+      // Ignore errors for tabs that don't have content script
+    });
+  });
+}
+
+/**
+ * Handle alarms (periodic tasks)
+ */
+chrome.alarms.onAlarm.addListener(async (alarm) => {
+  console.log('⏰ Alarm triggered:', alarm.name);
+
+  if (alarm.name === 'syncData') {
+    await syncDataWithServer();
+  } else if (alarm.name === 'syncConfig') {
+    await syncExtensionConfig();
+  }
+});
+
+/**
+ * Handle messages from content scripts and popup
+ */
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  console.log('📨 Message received:', request.type, 'from', sender.tab ? 'content' : 'popup');
+
+  // Handle async responses
+  (async () => {
+    try {
+      switch (request.type) {
+        case 'GET_AUTH_STATE':
+          // Verify user still exists
+          if (authState.isAuthenticated) {
+            const exists = await verifyUserExists();
+            if (!exists) {
+              sendResponse({ success: false, message: 'User no longer exists' });
+              return;
+            }
+          }
+          sendResponse({ success: true, authState });
+          break;
+
+        case 'LOGIN':
+          const { user, token, expiresIn } = request.payload;
+          await saveAuthState(user, token, expiresIn);
+          await syncDataWithServer();
+          sendResponse({ success: true });
+          break;
+
+        case 'LOGOUT':
+          await clearAuthState();
+          sendResponse({ success: true });
+          break;
+
+        case 'SYNC_NOW':
+          await syncDataWithServer();
+          sendResponse({ success: true });
+          break;
+
+        case 'SYNC_CONFIG':
+          const configSynced = await syncExtensionConfig();
+          sendResponse({ success: configSynced });
+          break;
+
+        case 'GET_SETTINGS':
+          const settings = await chrome.storage.local.get('settings');
+          sendResponse({ success: true, settings: settings.settings });
+          break;
+
+        case 'UPDATE_SETTINGS':
+          await chrome.storage.local.set({ settings: request.payload });
+          broadcastMessage({ type: 'SETTINGS_UPDATED', data: request.payload });
+          sendResponse({ success: true });
+          break;
+
+        case 'TRACK_REPLY_USAGE':
+          // Track usage in database
+          if (authState.isAuthenticated && request.payload.replyId) {
+            await fetch(`${API_URL}/api/extension/saved-replies`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authState.token}`
+              },
+              body: JSON.stringify({
+                replyId: request.payload.replyId,
+                userId: authState.user.id
+              })
+            });
+          }
+          sendResponse({ success: true });
+          break;
+
+        case 'AI_COMPOSE':
+          // Forward to AI API
+          const composeResponse = await fetch(`${API_URL}/api/ai/compose`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': authState.token ? `Bearer ${authState.token}` : ''
+            },
+            body: JSON.stringify(request.payload)
+          });
+
+          const composeData = await composeResponse.json();
+          sendResponse(composeData);
+          break;
+
+        case 'AI_REPLY':
+          // Forward to AI Reply API
+          const replyResponse = await fetch(`${API_URL}/api/ai/reply`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': authState.token ? `Bearer ${authState.token}` : ''
+            },
+            body: JSON.stringify(request.payload)
+          });
+
+          const replyData = await replyResponse.json();
+          sendResponse(replyData);
+          break;
+
+        case 'OPEN_DASHBOARD':
+          chrome.tabs.create({ url: `${API_URL}/dashboard` });
+          sendResponse({ success: true });
+          break;
+
+        case 'OPEN_LOGIN':
+          chrome.tabs.create({ url: `${API_URL}/auth/login` });
+          sendResponse({ success: true });
+          break;
+
+        default:
+          sendResponse({ success: false, message: 'Unknown message type' });
+      }
+    } catch (error) {
+      console.error('❌ Error handling message:', error);
+      sendResponse({ success: false, message: error.message });
+    }
+  })();
+
+  // Return true to indicate we'll send response asynchronously
+  return true;
+});
+
+/**
+ * Handle extension icon click
+ */
+chrome.action.onClicked.addListener(async (tab) => {
+  console.log('🖱️ Extension icon clicked on tab:', tab.id);
+
+  // Send message to content script to toggle the panel
+  try {
+    await chrome.tabs.sendMessage(tab.id, { type: 'TOGGLE_PANEL' });
+  } catch (error) {
+    console.error('Error sending toggle message:', error);
+  }
+});
+
+/**
+ * Handle keyboard commands
+ */
+chrome.commands.onCommand.addListener(async (command) => {
+  console.log('⌨️  Command triggered:', command);
+
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+  if (command === 'toggle-panel') {
+    chrome.tabs.sendMessage(tab.id, { type: 'TOGGLE_PANEL' });
+  } else if (command === 'quick-reply') {
+    chrome.tabs.sendMessage(tab.id, { type: 'OPEN_QUICK_REPLIES' });
+  }
+});
+
+/**
+ * Handle tab updates
+ */
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status === 'complete' && tab.url) {
+    // Check if site is allowed
+    chrome.storage.local.get('settings').then(result => {
+      const settings = result.settings || {};
+
+      if (!settings.enableOnAllSites) {
+        const allowed = settings.allowedSites?.some(keyword =>
+          tab.url.toLowerCase().includes(keyword.toLowerCase())
+        );
+
+        if (!allowed) {
+          // Disable extension on this page
+          chrome.tabs.sendMessage(tabId, { type: 'DISABLE_EXTENSION' });
+        }
+      }
+    });
+  }
+});
+
+/**
+ * Handle extension icon click
+ */
+chrome.action.onClicked.addListener(async (tab) => {
+  // Toggle panel on the active tab
+  chrome.tabs.sendMessage(tab.id, { type: 'TOGGLE_PANEL' });
+});
+
+console.log('🎯 Farisly AI Background Service Worker initialized');

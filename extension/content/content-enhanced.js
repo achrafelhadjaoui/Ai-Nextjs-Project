@@ -1,732 +1,961 @@
-// Enhanced Farisly AI content script with working tab switching
-console.log('Enhanced Farisly AI content script loaded');
+/**
+ * Farisly AI Enhanced Content Script
+ * Features:
+ * - Draggable icon that moves with panel
+ * - Closable icon (can hide completely)
+ * - Works only on admin-specified websites
+ * - Applies features directly to page content (no redirects)
+ * - Text selection detection for grammar fix, rewrite, etc.
+ */
 
-class EnhancedFarislyAI {
+console.log('🚀 Farisly AI Enhanced Content Script Loaded');
+
+class FarislyAI {
     constructor() {
-        console.log('EnhancedFarislyAI constructor called');
         this.isVisible = false;
         this.isMinimized = false;
         this.isDragging = false;
+        this.isIconDragging = false;
         this.dragOffset = { x: 0, y: 0 };
+        this.iconDragOffset = { x: 0, y: 0 };
         this.currentTab = 'compose';
-        this.savedReplies = [];
-        this.aiInstructions = '';
-        this.currentTextInput = null;
+        this.settings = null;
+        this.selectedText = '';
+        this.selectedElement = null;
+        this.isEnabled = false;
         this.init();
     }
 
     async init() {
-        console.log('EnhancedFarislyAI init called');
-        this.createIcon();
-        this.createPanel();
-        this.setupEventListeners();
+        console.log('🔧 Initializing Farisly AI...');
+        console.log('Current URL:', window.location.href);
+
+        // Check if extension should work on this site
+        const isAllowed = await this.checkSiteAllowed();
+        console.log('Is site allowed?', isAllowed);
+
+        if (!isAllowed) {
+            console.log('⏭️  Extension not allowed on this site');
+            console.log('👉 Please add this site in Admin Extension Settings or enable "All Sites"');
+            return;
+        }
+
+        this.isEnabled = true;
+        console.log('Loading settings...');
         await this.loadSettings();
-        console.log('EnhancedFarislyAI initialization completed');
+
+        console.log('Creating icon...');
+        this.createIcon();
+
+        console.log('Creating panel...');
+        this.createPanel();
+
+        console.log('Setting up event listeners...');
+        this.setupEventListeners();
+        this.setupTextSelectionDetection();
+
+        console.log('✅ Farisly AI initialized successfully');
     }
 
+    /**
+     * Check if extension is allowed on current website
+     */
+    async checkSiteAllowed() {
+        try {
+            const currentUrl = window.location.href;
+            const currentDomain = window.location.hostname;
+
+            console.log('Checking site permission for:', currentDomain);
+
+            // Get settings from background
+            const response = await chrome.runtime.sendMessage({ type: 'GET_SETTINGS' });
+
+            console.log('Settings response:', response);
+
+            if (!response.success) {
+                console.log('Failed to get settings from background');
+                return false;
+            }
+
+            const settings = response.settings;
+
+            console.log('Extension settings:', {
+                enableOnAllSites: settings.enableOnAllSites,
+                allowedSites: settings.allowedSites
+            });
+
+            // If enabled on all sites
+            if (settings.enableOnAllSites) {
+                console.log('✅ Extension enabled on all sites');
+                return true;
+            }
+
+            // Check if current domain is in allowed list
+            if (settings.allowedSites && Array.isArray(settings.allowedSites)) {
+                const isAllowed = settings.allowedSites.some(site =>
+                    currentUrl.toLowerCase().includes(site.toLowerCase()) ||
+                    currentDomain.toLowerCase().includes(site.toLowerCase())
+                );
+
+                if (isAllowed) {
+                    console.log('✅ Site found in allowed list');
+                } else {
+                    console.log('❌ Site not in allowed list:', settings.allowedSites);
+                }
+
+                return isAllowed;
+            }
+
+            console.log('❌ No allowed sites configured');
+            return false;
+        } catch (error) {
+            console.error('❌ Error checking site permission:', error);
+            return false; // Default to disabled on error
+        }
+    }
+
+    /**
+     * Load settings from storage
+     */
+    async loadSettings() {
+        try {
+            const response = await chrome.runtime.sendMessage({ type: 'GET_SETTINGS' });
+            if (response.success) {
+                this.settings = response.settings;
+                console.log('⚙️  Settings loaded:', this.settings);
+            }
+        } catch (error) {
+            console.error('Error loading settings:', error);
+        }
+    }
+
+    /**
+     * Create floating icon (draggable and closable)
+     */
     createIcon() {
-        console.log('Creating icon...');
+        this.iconContainer = document.createElement('div');
+        this.iconContainer.id = 'farisly-ai-icon-container';
+        this.iconContainer.style.cssText = `
+            position: fixed !important;
+            top: 20px !important;
+            right: 20px !important;
+            z-index: 2147483647 !important;
+            display: flex !important;
+            align-items: flex-start !important;
+            gap: 8px !important;
+        `;
+
         this.icon = document.createElement('div');
         this.icon.id = 'farisly-ai-icon';
         this.icon.innerHTML = '🤖';
         this.icon.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            width: 50px;
-            height: 50px;
-            background: #2d2d2d;
-            border: 2px solid #444;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            cursor: pointer;
-            z-index: 10000;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-            transition: all 0.3s ease;
-            user-select: none;
+            width: 56px !important;
+            height: 56px !important;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+            border: 2px solid rgba(255, 255, 255, 0.1) !important;
+            border-radius: 50% !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            font-size: 28px !important;
+            cursor: grab !important;
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+            transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1) !important;
+            user-select: none !important;
         `;
-        document.body.appendChild(this.icon);
-        console.log('Icon created and appended');
+
+        // Close button for icon
+        this.closeIconBtn = document.createElement('button');
+        this.closeIconBtn.innerHTML = '×';
+        this.closeIconBtn.style.cssText = `
+            width: 24px !important;
+            height: 24px !important;
+            background: rgba(255, 59, 48, 0.9) !important;
+            border: none !important;
+            border-radius: 50% !important;
+            color: white !important;
+            font-size: 18px !important;
+            font-weight: bold !important;
+            cursor: pointer !important;
+            display: none !important;
+            align-items: center !important;
+            justify-content: center !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+            transition: all 0.2s ease !important;
+        `;
+
+        this.iconContainer.appendChild(this.icon);
+        this.iconContainer.appendChild(this.closeIconBtn);
+        document.body.appendChild(this.iconContainer);
+
+        // Icon hover effects
+        this.icon.addEventListener('mouseenter', () => {
+            this.icon.style.transform = 'scale(1.1)';
+            this.icon.style.boxShadow = '0 12px 32px rgba(102, 126, 234, 0.6), 0 6px 16px rgba(0, 0, 0, 0.4)';
+            this.closeIconBtn.style.display = 'flex';
+        });
+
+        this.iconContainer.addEventListener('mouseleave', () => {
+            if (!this.isIconDragging) {
+                this.icon.style.transform = 'scale(1)';
+                this.icon.style.boxShadow = '0 8px 24px rgba(102, 126, 234, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3)';
+                this.closeIconBtn.style.display = 'none';
+            }
+        });
+
+        // Icon click to toggle panel
+        this.icon.addEventListener('click', (e) => {
+            if (!this.isIconDragging) {
+                this.togglePanel();
+            }
+        });
+
+        // Close icon button
+        this.closeIconBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.hideIcon();
+        });
+
+        // Make icon draggable
+        this.setupIconDragging();
+
+        console.log('✨ Icon created');
     }
 
+    /**
+     * Setup icon dragging functionality
+     */
+    setupIconDragging() {
+        this.icon.addEventListener('mousedown', (e) => {
+            this.isIconDragging = true;
+            this.icon.style.cursor = 'grabbing';
+
+            const rect = this.iconContainer.getBoundingClientRect();
+            this.iconDragOffset = {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (this.isIconDragging) {
+                const newX = e.clientX - this.iconDragOffset.x;
+                const newY = e.clientY - this.iconDragOffset.y;
+
+                // Keep within viewport
+                const maxX = window.innerWidth - this.iconContainer.offsetWidth;
+                const maxY = window.innerHeight - this.iconContainer.offsetHeight;
+
+                const clampedX = Math.max(0, Math.min(newX, maxX));
+                const clampedY = Math.max(0, Math.min(newY, maxY));
+
+                this.iconContainer.style.left = `${clampedX}px`;
+                this.iconContainer.style.top = `${clampedY}px`;
+                this.iconContainer.style.right = 'auto';
+
+                // Move panel with icon
+                if (this.isVisible && this.panel) {
+                    this.updatePanelPosition(clampedX, clampedY);
+                }
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (this.isIconDragging) {
+                this.isIconDragging = false;
+                this.icon.style.cursor = 'grab';
+            }
+        });
+    }
+
+    /**
+     * Update panel position relative to icon
+     */
+    updatePanelPosition(iconX, iconY) {
+        const panelX = iconX + 70; // Position panel to the right of icon
+        const panelY = iconY;
+
+        const maxX = window.innerWidth - this.panel.offsetWidth - 20;
+        const maxY = window.innerHeight - this.panel.offsetHeight - 20;
+
+        const clampedX = Math.max(20, Math.min(panelX, maxX));
+        const clampedY = Math.max(20, Math.min(panelY, maxY));
+
+        this.panel.style.left = `${clampedX}px`;
+        this.panel.style.top = `${clampedY}px`;
+        this.panel.style.right = 'auto';
+    }
+
+    /**
+     * Hide icon completely
+     */
+    hideIcon() {
+        this.iconContainer.style.transition = 'all 0.3s ease';
+        this.iconContainer.style.transform = 'scale(0)';
+        this.iconContainer.style.opacity = '0';
+
+        setTimeout(() => {
+            this.iconContainer.style.display = 'none';
+        }, 300);
+
+        // Close panel if open
+        if (this.isVisible) {
+            this.togglePanel();
+        }
+
+        // Save state
+        chrome.storage.local.set({ iconHidden: true });
+
+        // Show toast to restore
+        this.showToast('Icon hidden. Click the Farisly AI extension icon to show again', 'info');
+    }
+
+    /**
+     * Show icon
+     */
+    showIcon() {
+        this.iconContainer.style.display = 'flex';
+        this.iconContainer.style.transition = 'all 0.3s ease';
+
+        // Trigger reflow
+        this.iconContainer.offsetHeight;
+
+        this.iconContainer.style.transform = 'scale(1)';
+        this.iconContainer.style.opacity = '1';
+
+        // Save state
+        chrome.storage.local.set({ iconHidden: false });
+    }
+
+    /**
+     * Toggle icon visibility
+     */
+    toggleIcon() {
+        const isHidden = this.iconContainer.style.display === 'none';
+
+        if (isHidden) {
+            this.showIcon();
+        } else {
+            this.hideIcon();
+        }
+    }
+
+    /**
+     * Create floating panel
+     */
     createPanel() {
-        console.log('Creating panel...');
         this.panel = document.createElement('div');
         this.panel.id = 'farisly-ai-panel';
-        this.panel.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 80px;
-            background: #1a1a1a;
-            border-radius: 12px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-            display: none;
-            z-index: 10001;
-            min-width: 400px;
-            max-width: 500px;
-            border: 1px solid #333;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        `;
+        this.panel.className = 'farisly-ai-panel';
 
         this.panel.innerHTML = `
-            <div style="display: flex; flex-direction: column; gap: 0;">
-                <!-- App Name Header (Draggable) -->
-                <div id="app-header" style="
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    padding: 12px 16px;
-                    background: #1a1a1a;
-                    border-bottom: 1px solid #333;
-                    cursor: move;
-                    user-select: none;
-                ">
-                    <div style="
-                        color: white;
-                        font-weight: 600;
-                        font-size: 14px;
-                        display: flex;
-                        align-items: center;
-                        gap: 8px;
-                    ">
-                        🤖 Farisly AI
-                    </div>
-                    <button id="minimize-btn" style="
-                        width: 24px;
-                        height: 24px;
-                        background: #333;
-                        color: white;
-                        border: none;
-                        border-radius: 50%;
-                        cursor: pointer;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        font-size: 14px;
-                        transition: all 0.2s ease;
-                    ">−</button>
+            <div class="farisly-panel-header" id="panel-header">
+                <div class="farisly-panel-title">
+                    <span>🤖</span>
+                    <span>Farisly AI</span>
                 </div>
-
-                <!-- Tab Menu -->
-                <div style="display: flex; gap: 12px; align-items: center; padding: 12px 16px; background: #1a1a1a; border-bottom: 1px solid #333;">
-                    <button id="tab-compose" class="tab-btn active" style="
-                        flex: 1;
-                        padding: 10px 12px;
-                        background: #6366f1;
-                        color: white;
-                        border: none;
-                        border-radius: 8px;
-                        cursor: pointer;
-                        font-weight: 400;
-                        font-size: 13px;
-                        transition: all 0.2s ease;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        gap: 6px;
-                    ">✏️ Compose</button>
-                    
-                    <button id="tab-quick" class="tab-btn" style="
-                        flex: 1;
-                        padding: 10px 12px;
-                        background: #333;
-                        color: white;
-                        border: none;
-                        border-radius: 8px;
-                        cursor: pointer;
-                        font-weight: 400;
-                        font-size: 13px;
-                        transition: all 0.2s ease;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        gap: 6px;
-                        white-space: nowrap;
-                    ">💾 Quick Replies</button>
-                    
-                    <button id="tab-ai" class="tab-btn" style="
-                        flex: 1;
-                        padding: 10px 12px;
-                        background: #333;
-                        color: white;
-                        border: none;
-                        border-radius: 8px;
-                        cursor: pointer;
-                        font-weight: 400;
-                        font-size: 13px;
-                        transition: all 0.2s ease;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        gap: 6px;
-                    ">🤖 AI Reply</button>
+                <div class="farisly-panel-actions">
+                    <button class="farisly-panel-btn" id="minimize-btn" title="Minimize">−</button>
+                    <button class="farisly-panel-btn" id="close-btn" title="Close">×</button>
                 </div>
+            </div>
 
-                <!-- Content Area -->
-                <div style="min-height: 200px; padding: 16px;">
-                    <!-- Compose Options -->
-                    <div id="content-compose" class="tab-content" style="display: block;">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                            <button class="compose-option" data-action="fix-grammar" style="
-                                padding: 10px 12px;
-                                background: #2d2d2d;
-                                color: white;
-                                border: 1px solid #444;
-                                border-radius: 6px;
-                                cursor: pointer;
-                                text-align: left;
-                                transition: all 0.2s ease;
-                                font-size: 13px;
-                                font-weight: 400;
-                            ">🔧 Fix Grammar</button>
-                            
-                            <button class="compose-option" data-action="expand" style="
-                                padding: 10px 12px;
-                                background: #2d2d2d;
-                                color: white;
-                                border: 1px solid #444;
-                                border-radius: 6px;
-                                cursor: pointer;
-                                text-align: left;
-                                transition: all 0.2s ease;
-                                font-size: 13px;
-                                font-weight: 400;
-                            ">📝 Expand</button>
-                            
-                            <button class="compose-option" data-action="elaborate" style="
-                                padding: 10px 12px;
-                                background: #2d2d2d;
-                                color: white;
-                                border: 1px solid #444;
-                                border-radius: 6px;
-                                cursor: pointer;
-                                text-align: left;
-                                transition: all 0.2s ease;
-                                font-size: 13px;
-                                font-weight: 400;
-                            ">💭 Elaborate</button>
-                            
-                            <button class="compose-option" data-action="summarize" style="
-                                padding: 10px 12px;
-                                background: #2d2d2d;
-                                color: white;
-                                border: 1px solid #444;
-                                border-radius: 6px;
-                                cursor: pointer;
-                                text-align: left;
-                                transition: all 0.2s ease;
-                                font-size: 13px;
-                                font-weight: 400;
-                            ">📋 Summarize</button>
-                            
-                            <button class="compose-option" data-action="professional" style="
-                                padding: 10px 12px;
-                                background: #2d2d2d;
-                                color: white;
-                                border: 1px solid #444;
-                                border-radius: 6px;
-                                cursor: pointer;
-                                text-align: left;
-                                transition: all 0.2s ease;
-                                font-size: 13px;
-                                font-weight: 400;
-                            ">👔 Professional</button>
-                            
-                            <button class="compose-option" data-action="friendly" style="
-                                padding: 10px 12px;
-                                background: #2d2d2d;
-                                color: white;
-                                border: 1px solid #444;
-                                border-radius: 6px;
-                                cursor: pointer;
-                                text-align: left;
-                                transition: all 0.2s ease;
-                                font-size: 13px;
-                                font-weight: 400;
-                            ">😊 Friendly</button>
-                        </div>
-                    </div>
+            <div class="farisly-tab-nav">
+                <button class="farisly-tab-btn active" data-tab="compose">✏️ Compose</button>
+                <button class="farisly-tab-btn" data-tab="quick-replies">💾 Quick Replies</button>
+                <button class="farisly-tab-btn" data-tab="ai-reply">🤖 AI Reply</button>
+            </div>
 
-                    <!-- Quick Replies -->
-                    <div id="content-quick" class="tab-content" style="display: none;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                            <h4 style="color: white; margin: 0; font-size: 14px;">Quick Replies</h4>
-                            <button id="refresh-quick-replies" style="
-                                background: #333;
-                                color: white;
-                                border: none;
-                                border-radius: 4px;
-                                padding: 4px 8px;
-                                cursor: pointer;
-                                font-size: 12px;
-                                transition: all 0.2s ease;
-                            ">🔄 Refresh</button>
-                        </div>
-                        <div id="quick-replies-list" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                            <!-- Quick replies will be loaded here -->
-                        </div>
-                    </div>
-
-                    <!-- AI Reply -->
-                    <div id="content-ai" class="tab-content" style="display: none;">
-                        <div style="margin-bottom: 12px;">
-                            <label style="color: white; font-size: 13px; margin-bottom: 6px; display: block;">
-                                Optional: Add context or question
-                            </label>
-                            <textarea id="ai-context-input" placeholder="Enter additional context or question (optional)..." style="
-                                width: 100%;
-                                height: 60px;
-                                padding: 8px;
-                                background: #2d2d2d;
-                                color: white;
-                                border: 1px solid #444;
-                                border-radius: 6px;
-                                resize: vertical;
-                                font-size: 13px;
-                                font-family: inherit;
-                            "></textarea>
-                        </div>
-                        <button id="generate-ai-reply" style="
-                            width: 100%;
-                            padding: 12px;
-                            background: #6366f1;
-                            color: white;
-                            border: none;
-                            border-radius: 8px;
-                            cursor: pointer;
-                            font-size: 14px;
-                            font-weight: 500;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            gap: 8px;
-                            transition: all 0.2s ease;
-                        ">🤖 Generate AI Reply</button>
-                    </div>
-                </div>
+            <div class="farisly-panel-content" id="panel-content">
+                <!-- Content will be loaded dynamically -->
             </div>
         `;
 
         document.body.appendChild(this.panel);
-        console.log('Panel created and appended');
+        this.showTab('compose');
+
+        console.log('📋 Panel created');
     }
 
+    /**
+     * Setup event listeners
+     */
     setupEventListeners() {
-        console.log('Setting up event listeners...');
-        
-        // Icon click
-        this.icon.addEventListener('click', () => {
-            console.log('Icon clicked!');
-            this.togglePanel();
+        // Panel dragging
+        const header = this.panel.querySelector('#panel-header');
+        header.addEventListener('mousedown', (e) => {
+            this.isDragging = true;
+            this.panel.classList.add('dragging');
+
+            const rect = this.panel.getBoundingClientRect();
+            this.dragOffset = {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
         });
-
-        // Minimize button
-        const minimizeBtn = document.getElementById('minimize-btn');
-        if (minimizeBtn) {
-            minimizeBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.toggleMinimize();
-            });
-        }
-
-        // Tab buttons - using the working logic from simple version
-        const tabCompose = document.getElementById('tab-compose');
-        const tabQuick = document.getElementById('tab-quick');
-        const tabAi = document.getElementById('tab-ai');
-
-        console.log('Tab buttons found:', { tabCompose, tabQuick, tabAi });
-
-        if (tabCompose) {
-            tabCompose.addEventListener('click', () => {
-                console.log('Compose tab clicked!');
-                this.switchTab('compose');
-            });
-        }
-
-        if (tabQuick) {
-            tabQuick.addEventListener('click', () => {
-                console.log('Quick tab clicked!');
-                this.switchTab('quick');
-            });
-        }
-
-        if (tabAi) {
-            tabAi.addEventListener('click', () => {
-                console.log('AI tab clicked!');
-                this.switchTab('ai');
-            });
-        }
-
-        // Compose options
-        document.addEventListener('click', (e) => {
-            if (e.target && e.target.classList && e.target.classList.contains('compose-option')) {
-                const action = e.target.dataset.action;
-                this.processText(action);
-            }
-        });
-
-        // Quick replies
-        document.addEventListener('click', (e) => {
-            if (e.target && e.target.classList && e.target.classList.contains('quick-reply-item')) {
-                const index = parseInt(e.target.dataset.index);
-                this.insertSavedReply(this.savedReplies[index]);
-            }
-        });
-
-        // AI Reply
-        const generateAIReplyBtn = document.getElementById('generate-ai-reply');
-        if (generateAIReplyBtn) {
-            generateAIReplyBtn.addEventListener('click', () => {
-                this.generateAIReply();
-            });
-        }
-
-        // Refresh Quick Replies
-        const refreshQuickRepliesBtn = document.getElementById('refresh-quick-replies');
-        if (refreshQuickRepliesBtn) {
-            refreshQuickRepliesBtn.addEventListener('click', () => {
-                console.log('Refresh quick replies clicked');
-                this.loadSettings().then(() => {
-                    this.loadQuickReplies();
-                });
-            });
-        }
-
-        // Drag functionality
-        this.setupDragListeners();
-
-        console.log('Event listeners setup completed');
-    }
-
-    setupDragListeners() {
-        console.log('Setting up drag listeners...');
-        // Make app header draggable
-        const appHeader = this.panel.querySelector('#app-header');
-        console.log('App header found:', !!appHeader);
-        
-        if (appHeader) {
-            appHeader.addEventListener('mousedown', (e) => {
-                console.log('App header mousedown event');
-                if (e.target === appHeader || e.target.closest('#app-header')) {
-                    console.log('Starting drag');
-                    this.isDragging = true;
-                    this.dragOffset.x = e.clientX - this.panel.offsetLeft;
-                    this.dragOffset.y = e.clientY - this.panel.offsetTop;
-                    appHeader.style.cursor = 'grabbing';
-                    e.preventDefault(); // Prevent default behavior
-                }
-            });
-        }
 
         document.addEventListener('mousemove', (e) => {
             if (this.isDragging) {
-                console.log('Dragging panel...');
-                const x = e.clientX - this.dragOffset.x;
-                const y = e.clientY - this.dragOffset.y;
-                
-                // Ensure panel never goes off-screen
-                const panelWidth = this.panel.offsetWidth;
-                const panelHeight = this.panel.offsetHeight;
-                const minX = 0;
-                const maxX = window.innerWidth - panelWidth;
-                const minY = 0;
-                const maxY = window.innerHeight - panelHeight;
-                
-                const clampedX = Math.max(minX, Math.min(maxX, x));
-                const clampedY = Math.max(minY, Math.min(maxY, y));
-                
-                this.panel.style.left = clampedX + 'px';
-                this.panel.style.top = clampedY + 'px';
+                const newX = e.clientX - this.dragOffset.x;
+                const newY = e.clientY - this.dragOffset.y;
+
+                const maxX = window.innerWidth - this.panel.offsetWidth;
+                const maxY = window.innerHeight - this.panel.offsetHeight;
+
+                const clampedX = Math.max(0, Math.min(newX, maxX));
+                const clampedY = Math.max(0, Math.min(newY, maxY));
+
+                this.panel.style.left = `${clampedX}px`;
+                this.panel.style.top = `${clampedY}px`;
                 this.panel.style.right = 'auto';
             }
         });
 
         document.addEventListener('mouseup', () => {
             if (this.isDragging) {
-                console.log('Stopping drag');
                 this.isDragging = false;
-                const appHeader = this.panel.querySelector('#app-header');
-                if (appHeader) {
-                    appHeader.style.cursor = 'move';
+                this.panel.classList.remove('dragging');
+            }
+        });
+
+        // Minimize button
+        this.panel.querySelector('#minimize-btn').addEventListener('click', () => {
+            this.isMinimized = !this.isMinimized;
+            this.panel.classList.toggle('minimized', this.isMinimized);
+        });
+
+        // Close button
+        this.panel.querySelector('#close-btn').addEventListener('click', () => {
+            this.togglePanel();
+        });
+
+        // Tab switching
+        this.panel.querySelectorAll('.farisly-tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tab = btn.dataset.tab;
+                this.showTab(tab);
+            });
+        });
+
+        // Listen for messages from background
+        chrome.runtime.onMessage.addListener((request) => {
+            if (request.type === 'TOGGLE_PANEL') {
+                // If icon is hidden, show it first
+                const isIconHidden = this.iconContainer.style.display === 'none';
+                if (isIconHidden) {
+                    this.showIcon();
                 }
+                // Then toggle the panel
+                this.togglePanel();
+            } else if (request.type === 'OPEN_QUICK_REPLIES') {
+                this.showTab('quick-replies');
+                if (!this.isVisible) {
+                    this.togglePanel();
+                }
+            } else if (request.type === 'DATA_SYNCED') {
+                this.loadSettings();
+            } else if (request.type === 'DISABLE_EXTENSION') {
+                this.disable();
             }
         });
     }
 
+    /**
+     * Setup text selection detection for direct page interaction
+     */
+    setupTextSelectionDetection() {
+        document.addEventListener('mouseup', () => {
+            const selection = window.getSelection();
+            const text = selection.toString().trim();
+
+            if (text.length > 0) {
+                this.selectedText = text;
+                this.selectedElement = selection.anchorNode.parentElement;
+                console.log('📝 Text selected:', text.substring(0, 50) + '...');
+
+                // Show quick action menu
+                this.showQuickActionMenu(selection);
+            }
+        });
+
+        // Clear selection when clicking elsewhere
+        document.addEventListener('mousedown', (e) => {
+            if (!e.target.closest('.farisly-quick-menu')) {
+                this.hideQuickActionMenu();
+            }
+        });
+    }
+
+    /**
+     * Show quick action menu for selected text
+     */
+    showQuickActionMenu(selection) {
+        // Remove existing menu
+        this.hideQuickActionMenu();
+
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+
+        this.quickMenu = document.createElement('div');
+        this.quickMenu.className = 'farisly-quick-menu';
+        this.quickMenu.style.cssText = `
+            position: fixed !important;
+            top: ${rect.bottom + 10}px !important;
+            left: ${rect.left}px !important;
+            background: #1a1a1a !important;
+            border: 1px solid #333 !important;
+            border-radius: 8px !important;
+            padding: 8px !important;
+            display: flex !important;
+            gap: 6px !important;
+            z-index: 2147483646 !important;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
+        `;
+
+        const actions = [
+            { icon: '✓', label: 'Fix Grammar', action: 'grammar' },
+            { icon: '📝', label: 'Rewrite', action: 'expand' },
+            { icon: '🌍', label: 'Translate', action: 'translate' },
+            { icon: '📊', label: 'Summarize', action: 'summarize' }
+        ];
+
+        actions.forEach(({ icon, label, action }) => {
+            const btn = document.createElement('button');
+            btn.innerHTML = `${icon}`;
+            btn.title = label;
+            btn.style.cssText = `
+                width: 32px !important;
+                height: 32px !important;
+                background: #2a2a2a !important;
+                border: none !important;
+                border-radius: 6px !important;
+                color: white !important;
+                cursor: pointer !important;
+                font-size: 14px !important;
+                transition: all 0.2s ease !important;
+            `;
+
+            btn.addEventListener('mouseenter', () => {
+                btn.style.background = '#3a3a3a !important';
+            });
+
+            btn.addEventListener('mouseleave', () => {
+                btn.style.background = '#2a2a2a !important';
+            });
+
+            btn.addEventListener('click', () => {
+                this.processSelectedText(action);
+            });
+
+            this.quickMenu.appendChild(btn);
+        });
+
+        document.body.appendChild(this.quickMenu);
+    }
+
+    /**
+     * Hide quick action menu
+     */
+    hideQuickActionMenu() {
+        if (this.quickMenu) {
+            this.quickMenu.remove();
+            this.quickMenu = null;
+        }
+    }
+
+    /**
+     * Process selected text with AI (directly on page)
+     */
+    async processSelectedText(action) {
+        if (!this.selectedText) return;
+
+        this.hideQuickActionMenu();
+        this.showToast('Processing...', 'info');
+
+        try {
+            const response = await chrome.runtime.sendMessage({
+                type: 'AI_COMPOSE',
+                payload: {
+                    text: this.selectedText,
+                    action: action,
+                    apiKey: this.settings?.openaiKey,
+                    userInstructions: this.settings?.aiInstructions?.join('\n')
+                }
+            });
+
+            if (response.success && response.data) {
+                const processedText = response.data.processedText;
+
+                // Replace selected text directly in the page
+                this.replaceSelectedText(processedText);
+
+                this.showToast(`✓ ${action} applied!`, 'success');
+            } else {
+                this.showToast(response.message || 'AI processing failed', 'error');
+            }
+        } catch (error) {
+            console.error('Error processing text:', error);
+            this.showToast('Error processing text', 'error');
+        }
+    }
+
+    /**
+     * Replace selected text in the page
+     */
+    replaceSelectedText(newText) {
+        const selection = window.getSelection();
+        if (!selection.rangeCount) return;
+
+        const range = selection.getRangeAt(0);
+        range.deleteContents();
+
+        // Check if we're in an input/textarea
+        const activeElement = document.activeElement;
+        if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
+            const start = activeElement.selectionStart;
+            const end = activeElement.selectionEnd;
+            const value = activeElement.value;
+
+            activeElement.value = value.substring(0, start) + newText + value.substring(end);
+            activeElement.selectionStart = activeElement.selectionEnd = start + newText.length;
+        } else if (activeElement && activeElement.isContentEditable) {
+            // For contenteditable elements
+            const textNode = document.createTextNode(newText);
+            range.insertNode(textNode);
+            range.setStartAfter(textNode);
+            range.setEndAfter(textNode);
+            selection.removeAllRanges();
+            selection.addRange(range);
+        } else {
+            // For regular text
+            const textNode = document.createTextNode(newText);
+            range.insertNode(textNode);
+        }
+    }
+
+    /**
+     * Toggle panel visibility
+     */
     togglePanel() {
-        console.log('togglePanel called, isVisible:', this.isVisible);
         this.isVisible = !this.isVisible;
-        
+
         if (this.isVisible) {
-            this.panel.style.display = 'block';
-            // Force a reflow to ensure display change takes effect
-            this.panel.offsetHeight;
-            this.panel.style.opacity = '1';
+            this.panel.style.display = 'flex';
+            setTimeout(() => {
+                this.panel.style.opacity = '1';
+            }, 10);
+
+            // Position panel near icon
+            const iconRect = this.iconContainer.getBoundingClientRect();
+            this.updatePanelPosition(iconRect.left, iconRect.top);
         } else {
             this.panel.style.opacity = '0';
-            // Hide after transition completes
             setTimeout(() => {
-                if (!this.isVisible) {
-                    this.panel.style.display = 'none';
-                }
+                this.panel.style.display = 'none';
             }, 300);
         }
-        console.log('Panel display updated, isVisible:', this.isVisible);
     }
 
-    toggleMinimize() {
-        this.isMinimized = !this.isMinimized;
-        if (this.isMinimized) {
-            this.panel.style.display = 'none';
-            this.isVisible = false;
-        } else {
-            this.panel.style.display = 'block';
-            this.isVisible = true;
-        }
-    }
-
-    switchTab(tabName) {
-        console.log('switchTab called with:', tabName);
-        
-        // Update current tab
+    /**
+     * Show specific tab
+     */
+    showTab(tabName) {
         this.currentTab = tabName;
-        
-        // Update tab buttons - using the working logic from simple version
-        const tabButtons = document.querySelectorAll('.tab-btn');
-        console.log('Found tab buttons:', tabButtons.length);
-        
-        tabButtons.forEach(btn => {
-            btn.style.background = '#333';
-            btn.classList.remove('active');
+
+        // Update tab buttons
+        this.panel.querySelectorAll('.farisly-tab-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.tab === tabName);
         });
-        
-        const activeBtn = document.getElementById(`tab-${tabName}`);
-        console.log('Active button found:', activeBtn);
-        
-        if (activeBtn) {
-            activeBtn.style.background = '#6366f1';
-            activeBtn.classList.add('active');
-            console.log('Active button styled');
+
+        // Update content
+        const content = this.panel.querySelector('#panel-content');
+
+        switch(tabName) {
+            case 'compose':
+                this.showComposeTab(content);
+                break;
+            case 'quick-replies':
+                this.showQuickRepliesTab(content);
+                break;
+            case 'ai-reply':
+                this.showAIReplyTab(content);
+                break;
         }
-        
-        // Update content - using the working logic from simple version
-        const contentSections = document.querySelectorAll('.tab-content');
-        console.log('Found content sections:', contentSections.length);
-        
-        contentSections.forEach(section => {
-            section.style.display = 'none';
-        });
-        
-        const activeContent = document.getElementById(`content-${tabName}`);
-        console.log('Active content found:', activeContent);
-        
-        if (activeContent) {
-            activeContent.style.display = 'block';
-            console.log('Active content shown');
-        }
-        
-        // Load quick replies if switching to that tab
-        if (tabName === 'quick') {
-            this.loadQuickReplies();
-        }
-        
-        console.log('switchTab completed for:', tabName);
     }
 
-    loadQuickReplies() {
-        const quickRepliesList = document.getElementById('quick-replies-list');
-        if (!quickRepliesList) {
-            console.log('❌ Quick replies list element not found');
+    /**
+     * Show Compose tab
+     */
+    showComposeTab(content) {
+        content.innerHTML = `
+            <div class="farisly-ai-actions">
+                <button class="farisly-ai-btn" data-action="grammar">✓ Fix Grammar</button>
+                <button class="farisly-ai-btn" data-action="expand">📝 Expand</button>
+                <button class="farisly-ai-btn" data-action="summarize">📊 Summarize</button>
+                <button class="farisly-ai-btn" data-action="translate">🌍 Translate</button>
+                <button class="farisly-ai-btn" data-action="tone">🎭 Change Tone</button>
+                <button class="farisly-ai-btn" data-action="elaborate">📖 Elaborate</button>
+            </div>
+            <textarea class="farisly-textarea" id="compose-input" placeholder="Paste text here or select text on the page..."></textarea>
+            <button class="farisly-btn-primary" id="process-btn">Process Text</button>
+            <div id="result-area" style="margin-top: 12px; display: none;">
+                <div style="color: #999; font-size: 12px; margin-bottom: 6px;">Result:</div>
+                <div style="background: #111; border: 1px solid #2a2a2a; border-radius: 8px; padding: 12px; color: #fff; max-height: 200px; overflow-y: auto;" id="result-text"></div>
+            </div>
+        `;
+
+        let selectedAction = 'grammar';
+
+        content.querySelectorAll('.farisly-ai-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                selectedAction = btn.dataset.action;
+                content.querySelectorAll('.farisly-ai-btn').forEach(b => {
+                    b.style.borderColor = b === btn ? '#667eea' : '#2a2a2a';
+                });
+            });
+        });
+
+        content.querySelector('#process-btn').addEventListener('click', async () => {
+            const text = content.querySelector('#compose-input').value.trim();
+            if (!text) {
+                this.showToast('Please enter text to process', 'error');
+                return;
+            }
+
+            const btn = content.querySelector('#process-btn');
+            btn.disabled = true;
+            btn.textContent = 'Processing...';
+
+            try {
+                const response = await chrome.runtime.sendMessage({
+                    type: 'AI_COMPOSE',
+                    payload: {
+                        text: text,
+                        action: selectedAction,
+                        apiKey: this.settings?.openaiKey,
+                        userInstructions: this.settings?.aiInstructions?.join('\n')
+                    }
+                });
+
+                if (response.success && response.data) {
+                    content.querySelector('#result-area').style.display = 'block';
+                    content.querySelector('#result-text').textContent = response.data.processedText;
+                    this.showToast('✓ Processed successfully!', 'success');
+                } else {
+                    this.showToast(response.message || 'Processing failed', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                this.showToast('Error processing text', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Process Text';
+            }
+        });
+    }
+
+    /**
+     * Show Quick Replies tab
+     */
+    showQuickRepliesTab(content) {
+        const replies = this.settings?.quickReplies || [];
+
+        if (replies.length === 0) {
+            content.innerHTML = `
+                <div class="farisly-empty">
+                    <div class="farisly-empty-icon">💾</div>
+                    <div class="farisly-empty-text">No quick replies yet</div>
+                </div>
+            `;
             return;
         }
 
-        console.log('📝 Loading quick replies with data:', this.savedReplies);
-        console.log('📝 Number of replies to display:', this.savedReplies.length);
+        content.innerHTML = `
+            <div class="farisly-replies-list">
+                ${replies.map(reply => `
+                    <div class="farisly-reply-item" data-reply-id="${reply.key || reply._id}">
+                        <div class="farisly-reply-title">${reply.title}</div>
+                        <div class="farisly-reply-content">${reply.content}</div>
+                        ${reply.category ? `<span class="farisly-reply-category">${reply.category}</span>` : ''}
+                    </div>
+                `).join('')}
+            </div>
+        `;
 
-        // Sort saved replies by title (same as panel)
-        const sortedReplies = [...this.savedReplies].sort((a, b) => 
-            a.title.toLowerCase().localeCompare(b.title.toLowerCase())
-        );
-
-        console.log('Sorted replies:', sortedReplies);
-
-        quickRepliesList.innerHTML = sortedReplies.map((reply, index) => `
-            <button class="quick-reply-item" data-index="${this.savedReplies.indexOf(reply)}" style="
-                padding: 10px 12px;
-                background: #2d2d2d;
-                color: white;
-                border: 1px solid #444;
-                border-radius: 6px;
-                cursor: pointer;
-                text-align: left;
-                transition: all 0.2s ease;
-                font-size: 13px;
-                font-weight: 400;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-            ">${reply.title}</button>
-        `).join('');
-    }
-
-    async loadSettings() {
-        try {
-            console.log('🔄 Loading settings from panel...');
-            console.log('🔄 Current URL:', window.location.href);
-            
-            // Fetch from panel API to get the latest settings
-            const response = await fetch('http://localhost:3000/api/settings');
-            console.log('📡 Response status:', response.status);
-            console.log('📡 Response headers:', response.headers);
-            
-            const data = await response.json();
-            
-            console.log('📊 Raw data from panel API:', data);
-            console.log('📊 Number of saved replies:', data.savedReplies?.length || 0);
-            
-            // Use the settings from the panel
-            this.savedReplies = data.savedReplies || [];
-            this.aiInstructions = data.aiInstructions || '';
-            
-            console.log('Processed settings:', { savedReplies: this.savedReplies, aiInstructions: this.aiInstructions });
-            
-            // If we're currently on the quick replies tab, reload it
-            if (this.currentTab === 'quick') {
-                this.loadQuickReplies();
-            }
-            
-            console.log('Successfully loaded settings from panel:', { savedReplies: this.savedReplies, aiInstructions: this.aiInstructions });
-        } catch (error) {
-            console.error('❌ Could not load settings from panel:', error);
-            console.error('❌ Error type:', error.constructor.name);
-            console.error('❌ Error message:', error.message);
-            console.error('❌ Error stack:', error.stack);
-            
-            // Use default settings if panel is not available
-            this.savedReplies = [
-                {
-                    title: "Thank you message",
-                    content: "Thank you for your message. I'll get back to you as soon as possible."
-                },
-                {
-                    title: "Follow up",
-                    content: "I wanted to follow up on our previous conversation. Do you have any updates?"
+        // Add click handlers
+        content.querySelectorAll('.farisly-reply-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const replyId = item.dataset.replyId;
+                const reply = replies.find(r => (r.key || r._id) === replyId);
+                if (reply) {
+                    this.insertReply(reply);
                 }
-            ];
-            this.aiInstructions = "You are a helpful AI assistant. When replying to messages, be professional, concise, and helpful.";
-            console.log('Using default settings:', { savedReplies: this.savedReplies });
-        }
+            });
+        });
     }
 
-    processText(action) {
-        console.log('Processing text with action:', action);
-        // Implementation for text processing
-    }
+    /**
+     * Insert reply into active input
+     */
+    insertReply(reply) {
+        const activeElement = document.activeElement;
 
-    insertSavedReply(reply) {
-        console.log('Inserting saved reply:', reply);
-        
-        // Find the best text input on the page
-        const targetInput = this.findBestTextInput();
-        if (targetInput) {
-            this.insertText(reply.content, targetInput);
-            console.log('Successfully inserted reply into input');
-        } else {
-            console.log('No suitable text input found');
-        }
-    }
-
-    findBestTextInput() {
-        // Priority order for finding text inputs
-        const selectors = [
-            'textarea[placeholder*="message" i]',
-            'textarea[placeholder*="reply" i]',
-            'textarea[placeholder*="comment" i]',
-            'input[type="text"][placeholder*="message" i]',
-            'input[type="text"][placeholder*="reply" i]',
-            'input[type="text"][placeholder*="comment" i]',
-            'textarea:not([readonly]):not([disabled])',
-            'input[type="text"]:not([readonly]):not([disabled])',
-            'div[contenteditable="true"]',
-            'div[contenteditable="true"][role="textbox"]'
-        ];
-
-        for (const selector of selectors) {
-            const elements = document.querySelectorAll(selector);
-            for (const element of elements) {
-                if (this.isElementVisible(element) && !element.disabled && !element.readOnly) {
-                    return element;
-                }
-            }
-        }
-
-        return null;
-    }
-
-    isElementVisible(element) {
-        const rect = element.getBoundingClientRect();
-        return rect.width > 0 && rect.height > 0 && 
-               rect.top >= 0 && rect.left >= 0 &&
-               rect.bottom <= window.innerHeight && rect.right <= window.innerWidth;
-    }
-
-    insertText(text, targetInput) {
-        if (targetInput.tagName === 'TEXTAREA' || targetInput.tagName === 'INPUT') {
-            // For regular input/textarea elements
-            const startPos = targetInput.selectionStart || 0;
-            const endPos = targetInput.selectionEnd || 0;
-            const currentValue = targetInput.value || '';
-            
-            const newValue = currentValue.slice(0, startPos) + text + currentValue.slice(endPos);
-            targetInput.value = newValue;
-            
-            // Set cursor position after inserted text
-            const newPos = startPos + text.length;
-            targetInput.setSelectionRange(newPos, newPos);
-            
-            // Trigger input event to notify the page
-            targetInput.dispatchEvent(new Event('input', { bubbles: true }));
-            targetInput.dispatchEvent(new Event('change', { bubbles: true }));
-            
-        } else if (targetInput.contentEditable === 'true') {
-            // For contenteditable divs
-            const selection = window.getSelection();
-            if (selection.rangeCount > 0) {
-                const range = selection.getRangeAt(0);
-                range.deleteContents();
-                range.insertNode(document.createTextNode(text));
-                range.collapse(false);
-                selection.removeAllRanges();
-                selection.addRange(range);
+        if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA' || activeElement.isContentEditable)) {
+            if (activeElement.isContentEditable) {
+                document.execCommand('insertText', false, reply.content);
             } else {
-                targetInput.textContent = text;
+                const start = activeElement.selectionStart || 0;
+                const end = activeElement.selectionEnd || 0;
+                const value = activeElement.value || '';
+
+                activeElement.value = value.substring(0, start) + reply.content + value.substring(end);
+                activeElement.selectionStart = activeElement.selectionEnd = start + reply.content.length;
+
+                // Trigger input event
+                activeElement.dispatchEvent(new Event('input', { bubbles: true }));
             }
-            
-            // Trigger input event
-            targetInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+            // Track usage
+            chrome.runtime.sendMessage({
+                type: 'TRACK_REPLY_USAGE',
+                payload: { replyId: reply.key || reply._id }
+            });
+
+            this.showToast('✓ Reply inserted!', 'success');
+            this.togglePanel();
+        } else {
+            this.showToast('Please click on an input field first', 'error');
         }
-        
-        // Focus the input
-        targetInput.focus();
     }
 
-    generateAIReply() {
-        console.log('Generating AI reply');
-        // Implementation for AI reply generation
+    /**
+     * Show AI Reply tab
+     */
+    showAIReplyTab(content) {
+        content.innerHTML = `
+            <textarea class="farisly-textarea" id="ai-context" placeholder="Paste the conversation context here..." style="min-height: 150px;"></textarea>
+            <button class="farisly-btn-primary" id="generate-reply-btn">Generate AI Reply</button>
+            <div id="ai-reply-result" style="margin-top: 12px; display: none;">
+                <div style="color: #999; font-size: 12px; margin-bottom: 6px;">Generated Reply:</div>
+                <div style="background: #111; border: 1px solid #2a2a2a; border-radius: 8px; padding: 12px; color: #fff; max-height: 200px; overflow-y: auto;" id="ai-reply-text"></div>
+                <button class="farisly-btn-primary" id="insert-reply-btn" style="margin-top: 12px;">Insert Reply</button>
+            </div>
+        `;
+
+        let generatedReply = '';
+
+        content.querySelector('#generate-reply-btn').addEventListener('click', async () => {
+            const context = content.querySelector('#ai-context').value.trim();
+            if (!context) {
+                this.showToast('Please enter conversation context', 'error');
+                return;
+            }
+
+            const btn = content.querySelector('#generate-reply-btn');
+            btn.disabled = true;
+            btn.textContent = 'Generating...';
+
+            try {
+                const response = await chrome.runtime.sendMessage({
+                    type: 'AI_REPLY',
+                    payload: {
+                        conversationContext: context,
+                        tone: this.settings?.agentTone || 'friendly',
+                        apiKey: this.settings?.openaiKey,
+                        agentName: this.settings?.agentName,
+                        useLineSpacing: this.settings?.useLineSpacing,
+                        userInstructions: this.settings?.aiInstructions?.join('\n')
+                    }
+                });
+
+                if (response.success && response.data) {
+                    generatedReply = response.data.reply;
+                    content.querySelector('#ai-reply-result').style.display = 'block';
+                    content.querySelector('#ai-reply-text').textContent = generatedReply;
+                    this.showToast('✓ Reply generated!', 'success');
+                } else {
+                    this.showToast(response.message || 'Generation failed', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                this.showToast('Error generating reply', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Generate AI Reply';
+            }
+        });
+
+        content.querySelector('#insert-reply-btn').addEventListener('click', () => {
+            if (generatedReply) {
+                this.insertTextIntoActive(generatedReply);
+                this.togglePanel();
+            }
+        });
+    }
+
+    /**
+     * Insert text into active element
+     */
+    insertTextIntoActive(text) {
+        const activeElement = document.activeElement;
+
+        if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA' || activeElement.isContentEditable)) {
+            if (activeElement.isContentEditable) {
+                document.execCommand('insertText', false, text);
+            } else {
+                const start = activeElement.selectionStart || 0;
+                const end = activeElement.selectionEnd || 0;
+                const value = activeElement.value || '';
+
+                activeElement.value = value.substring(0, start) + text + value.substring(end);
+                activeElement.selectionStart = activeElement.selectionEnd = start + text.length;
+
+                activeElement.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+
+            this.showToast('✓ Text inserted!', 'success');
+        } else {
+            this.showToast('Please click on an input field first', 'error');
+        }
+    }
+
+    /**
+     * Show toast notification
+     */
+    showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = `farisly-toast ${type}`;
+        toast.textContent = message;
+
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            toast.style.animation = 'farisly-slide-out 0.3s ease forwards';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    /**
+     * Disable extension (when not allowed on site)
+     */
+    disable() {
+        if (this.iconContainer) {
+            this.iconContainer.remove();
+        }
+        if (this.panel) {
+            this.panel.remove();
+        }
+        this.isEnabled = false;
     }
 }
 
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-        console.log('DOM loaded, initializing EnhancedFarislyAI');
-        new EnhancedFarislyAI();
+        new FarislyAI();
     });
 } else {
-    console.log('DOM already loaded, initializing EnhancedFarislyAI');
-    new EnhancedFarislyAI();
+    new FarislyAI();
 }

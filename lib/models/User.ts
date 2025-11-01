@@ -1,101 +1,3 @@
-// import mongoose, { Schema, Document, models } from "mongoose";
-
-// export interface IUser extends Document {
-//   name: string;
-//   email: string;
-//   password: string;
-//   createdAt: Date;
-// }
-
-// const UserSchema = new Schema<IUser>({
-//   name: {
-//     type: String,
-//     required: [true, "Name is required"],
-//   },
-//   email: {
-//     type: String,
-//     required: [true, "Email is required"],
-//     unique: true,
-//   },
-//   password: {
-//     type: String,
-//     required: [true, "Password is required"],
-//   },
-//   createdAt: {
-//     type: Date,
-//     default: Date.now,
-//   },
-// });
-
-// export default models.User || mongoose.model<IUser>("User", UserSchema);
-
-
-
-
-// import mongoose, { Schema, Document } from "mongoose";
-
-// export interface IUser extends Document {
-//   name: string;
-//   email: string;
-//   password: string;
-//   resetToken?: string;
-//   resetTokenExpiry?: Date;
-//   createdAt: Date;
-  
-// }
-
-// const UserSchema = new Schema<IUser>({
-//   name: { type: String, required: true },
-//   email: { type: String, required: true, unique: true },
-//   password: { type: String, required: true },
-//   resetToken: { type: String },
-//   resetTokenExpiry: { type: Date },
-//   createdAt: {
-//         type: Date,
-//         default: Date.now,
-//       },
-// });
-
-// export default mongoose.models.User || mongoose.model<IUser>("User", UserSchema);
-
-
-
-
-
-
-// import mongoose, { Schema, Document } from "mongoose";
-
-// export interface IUser extends Document {
-//   name: string;
-//   email: string;
-//   password: string;
-//   isVerified: boolean;
-//   verificationToken?: string;
-//   resetToken?: string;
-//   resetTokenExpiry?: Date;
-//   createdAt: Date;
-// }
-
-// const UserSchema = new Schema<IUser>({
-//   name: { type: String, required: true },
-//   email: { type: String, required: true, unique: true },
-//   password: { type: String, required: true },
-//   isVerified: { type: Boolean, default: false },
-//   verificationToken: { type: String },
-//   resetToken: { type: String },
-//   resetTokenExpiry: { type: Date },
-//   createdAt: { type: Date, default: Date.now },
-// });
-
-// export default mongoose.models.User || mongoose.model<IUser>("User", UserSchema);
-
-
-
-
-
-
-
-
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface IUser extends Document {
@@ -109,7 +11,20 @@ export interface IUser extends Document {
   resetTokenExpiry?: Date;
   googleId?: string; // Google OAuth ID
   image?: string; // Profile picture URL
+  bio?: string; // User biography
+  phone?: string; // Phone number
+  location?: string; // User location
+  company?: string; // Company name
+  website?: string; // Personal/company website
+  timezone?: string; // User timezone
+  language?: string; // Preferred language
+  notifications?: {
+    email: boolean;
+    push: boolean;
+    sms: boolean;
+  };
   createdAt: Date;
+  updatedAt?: Date;
 }
 
 const UserSchema = new Schema<IUser>({
@@ -123,7 +38,20 @@ const UserSchema = new Schema<IUser>({
   resetTokenExpiry: { type: Date },
   googleId: { type: String }, // Google OAuth ID
   image: { type: String }, // Profile picture URL
+  bio: { type: String, maxlength: 500 }, // User biography
+  phone: { type: String },
+  location: { type: String },
+  company: { type: String },
+  website: { type: String },
+  timezone: { type: String, default: 'UTC' },
+  language: { type: String, default: 'en' },
+  notifications: {
+    email: { type: Boolean, default: true },
+    push: { type: Boolean, default: true },
+    sms: { type: Boolean, default: false },
+  },
   createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date },
 });
 
 export default mongoose.models.User || mongoose.model<IUser>("User", UserSchema);

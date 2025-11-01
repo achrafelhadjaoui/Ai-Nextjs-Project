@@ -5,7 +5,7 @@ export interface IAppSetting extends Document {
   key: string;
   value: any;
   type: "string" | "number" | "boolean" | "json" | "html" | "array";
-  category: "general" | "theme" | "email" | "features" | "content" | "seo";
+  category: "general" | "theme" | "email" | "features" | "content" | "seo" | "extension";
   label: string;
   description?: string;
   isPublic: boolean; // Whether this setting can be read by non-admin users
@@ -34,7 +34,7 @@ const AppSettingSchema: Schema<IAppSetting> = new Schema(
     },
     category: {
       type: String,
-      enum: ["general", "theme", "email", "features", "content", "seo"],
+      enum: ["general", "theme", "email", "features", "content", "seo", "extension"],
       default: "general",
       index: true,
     },
