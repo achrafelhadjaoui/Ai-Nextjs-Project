@@ -317,8 +317,59 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           sendResponse({ success: true });
           break;
 
+        case 'SYNC_AUTH_FROM_WEB':
+          // Sync authentication from web dashboard
+          try {
+            console.log('🔄 Syncing auth from web dashboard...');
+            const authResponse = await fetch(`${API_URL}/api/extension/auth/status`, {
+              credentials: 'include', // Include cookies for session auth
+              headers: {
+                'Accept': 'application/json'
+              }
+            });
+
+            console.log('📡 Auth response status:', authResponse.status);
+
+            const authData = await authResponse.json();
+            console.log('📦 Auth response data:', authData);
+
+            if (authData.success && authData.authenticated) {
+              console.log('✅ Authentication successful, saving state...');
+              await saveAuthState(authData.user, authData.token, authData.expiresIn);
+              await syncDataWithServer();
+
+              // Broadcast auth update to all tabs to refresh UI
+              broadcastMessage({
+                type: 'AUTH_UPDATED',
+                data: {
+                  authenticated: true,
+                  user: authData.user
+                }
+              });
+
+              sendResponse({ success: true, user: authData.user });
+            } else {
+              console.warn('⚠️ Not authenticated on web:', authData.message);
+              sendResponse({ success: false, message: authData.message || 'Not authenticated on web' });
+            }
+          } catch (error) {
+            console.error('❌ Error syncing auth from web:', error);
+            sendResponse({ success: false, message: error.message });
+          }
+          break;
+
         case 'LOGOUT':
           await clearAuthState();
+
+          // Broadcast logout to all tabs to refresh UI
+          broadcastMessage({
+            type: 'AUTH_UPDATED',
+            data: {
+              authenticated: false,
+              user: null
+            }
+          });
+
           sendResponse({ success: true });
           break;
 
@@ -336,6 +387,88 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           await chrome.storage.local.set({ settings: request.payload });
           broadcastMessage({ type: 'SETTINGS_UPDATED', data: request.payload });
           sendResponse({ success: true });
+          break;
+
+        case 'GET_SAVED_REPLIES':
+          // Fetch saved replies from database OR return cached data
+          console.log('📨 GET_SAVED_REPLIES request received');
+          console.log('Auth state:', {
+            isAuthenticated: authState.isAuthenticated,
+            hasUser: !!authState.user,
+            userId: authState.user?.id
+          });
+
+          // If not authenticated, return empty array and prompt to log in
+          if (!authState.isAuthenticated || !authState.user) {
+            console.warn('⚠️ Not authenticated - user needs to log in');
+            sendResponse({
+              success: false,
+              message: 'Please sign in to access Quick Replies',
+              needsAuth: true,
+              replies: []
+            });
+            break;
+          }
+
+          try {
+            const url = `${API_URL}/api/extension/saved-replies?userId=${authState.user.id}`;
+            console.log('🔗 Fetching from:', url);
+
+            const repliesResponse = await fetch(url, {
+              headers: {
+                'Authorization': `Bearer ${authState.token}`
+              }
+            });
+
+            console.log('📡 Response status:', repliesResponse.status);
+
+            if (repliesResponse.ok) {
+              const repliesData = await repliesResponse.json();
+              console.log('📦 Response data:', repliesData);
+
+              if (repliesData.success) {
+                console.log(`✅ Got ${repliesData.data?.length || 0} replies from server`);
+
+                // Update local storage cache
+                const settings = await chrome.storage.local.get('settings');
+                const updatedSettings = {
+                  ...settings.settings,
+                  quickReplies: repliesData.data || []
+                };
+                await chrome.storage.local.set({ settings: updatedSettings });
+
+                sendResponse({ success: true, replies: repliesData.data || [] });
+              } else {
+                console.error('❌ API returned error:', repliesData.message);
+                sendResponse({ success: false, message: repliesData.message, replies: [] });
+              }
+            } else if (repliesResponse.status === 401 || repliesResponse.status === 403) {
+              // Unauthorized - clear auth and prompt re-login
+              console.error('❌ Authentication failed - clearing auth state');
+              await clearAuthState();
+              sendResponse({
+                success: false,
+                message: 'Session expired. Please sign in again.',
+                needsAuth: true,
+                replies: []
+              });
+            } else {
+              const errorText = await repliesResponse.text();
+              console.error('❌ HTTP error:', repliesResponse.status, errorText);
+              sendResponse({
+                success: false,
+                message: `Failed to fetch replies (${repliesResponse.status})`,
+                replies: []
+              });
+            }
+          } catch (error) {
+            console.error('❌ Error fetching saved replies:', error);
+            sendResponse({
+              success: false,
+              message: 'Network error. Please check your connection.',
+              replies: []
+            });
+          }
           break;
 
         case 'TRACK_REPLY_USAGE':
@@ -455,4 +588,12 @@ chrome.action.onClicked.addListener(async (tab) => {
   chrome.tabs.sendMessage(tab.id, { type: 'TOGGLE_PANEL' });
 });
 
-console.log('🎯 Farisly AI Background Service Worker initialized');
+// Load auth state immediately when service worker starts
+(async () => {
+  console.log('🎯 Farisly AI Background Service Worker initialized');
+  await loadAuthState();
+  console.log('✅ Auth state loaded on initialization:', {
+    isAuthenticated: authState.isAuthenticated,
+    userEmail: authState.user?.email
+  });
+})();

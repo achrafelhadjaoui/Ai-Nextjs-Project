@@ -41,6 +41,10 @@ class FarislyAI {
         }
 
         this.isEnabled = true;
+
+        console.log('Initializing Quick Replies Manager...');
+        this.quickRepliesManager = new QuickRepliesManager();
+
         console.log('Loading settings...');
         await this.loadSettings();
 
@@ -394,6 +398,7 @@ class FarislyAI {
                 <button class="farisly-tab-btn active" data-tab="compose">✏️ Compose</button>
                 <button class="farisly-tab-btn" data-tab="quick-replies">💾 Quick Replies</button>
                 <button class="farisly-tab-btn" data-tab="ai-reply">🤖 AI Reply</button>
+                <button class="farisly-tab-btn" data-tab="settings">⚙️ Settings</button>
             </div>
 
             <div class="farisly-panel-content" id="panel-content">
@@ -510,6 +515,23 @@ class FarislyAI {
                 }
             } else if (request.type === 'DATA_SYNCED') {
                 this.loadSettings();
+            } else if (request.type === 'AUTH_UPDATED') {
+                // Authentication state changed - refresh current tab
+                console.log('🔄 Auth updated:', request.data);
+                const currentTab = this.currentTab;
+
+                // Refresh the current tab's content
+                if (currentTab === 'quick-replies') {
+                    const content = this.tabContent;
+                    if (content) {
+                        await this.showQuickRepliesTab(content);
+                    }
+                } else if (currentTab === 'settings') {
+                    const content = this.tabContent;
+                    if (content) {
+                        this.showSettingsTab(content);
+                    }
+                }
             } else if (request.type === 'CONFIG_UPDATED') {
                 // Re-check if site is still allowed
                 console.log('🔄 Config updated, re-checking site permission...');
@@ -764,6 +786,9 @@ class FarislyAI {
             case 'ai-reply':
                 this.showAIReplyTab(content);
                 break;
+            case 'settings':
+                this.showSettingsTab(content);
+                break;
         }
     }
 
@@ -841,41 +866,286 @@ class FarislyAI {
     /**
      * Show Quick Replies tab
      */
-    showQuickRepliesTab(content) {
+    async showQuickRepliesTab(content) {
+        // Fetch latest replies from server
+        const loadResult = await this.loadQuickReplies();
+
         const replies = this.settings?.quickReplies || [];
 
-        if (replies.length === 0) {
+        // If needs authentication, show sign-in prompt
+        if (loadResult && loadResult.needsAuth) {
             content.innerHTML = `
-                <div class="farisly-empty">
-                    <div class="farisly-empty-icon">💾</div>
-                    <div class="farisly-empty-text">No quick replies yet</div>
+                <div class="farisly-quick-replies-container">
+                    <div class="farisly-empty">
+                        <div class="farisly-empty-icon">🔒</div>
+                        <div class="farisly-empty-title">Sign In Required</div>
+                        <div class="farisly-empty-text">${this.escapeHtml(loadResult.message || 'Please sign in to access your Quick Replies')}</div>
+                        <button class="farisly-btn-primary" id="goto-settings-btn" style="margin-bottom: 8px;">
+                            Go to Settings
+                        </button>
+                        <button class="farisly-btn-secondary" id="open-dashboard-btn">
+                            Open Dashboard
+                        </button>
+                    </div>
                 </div>
             `;
+
+            // Setup button listeners
+            const gotoSettingsBtn = content.querySelector('#goto-settings-btn');
+            if (gotoSettingsBtn) {
+                gotoSettingsBtn.addEventListener('click', () => {
+                    this.showTab('settings');
+                });
+            }
+
+            const dashboardBtn = content.querySelector('#open-dashboard-btn');
+            if (dashboardBtn) {
+                dashboardBtn.addEventListener('click', () => {
+                    chrome.runtime.sendMessage({ type: 'OPEN_DASHBOARD' });
+                });
+            }
             return;
         }
 
         content.innerHTML = `
-            <div class="farisly-replies-list">
-                ${replies.map(reply => `
-                    <div class="farisly-reply-item" data-reply-id="${reply.key || reply._id}">
-                        <div class="farisly-reply-title">${reply.title}</div>
-                        <div class="farisly-reply-content">${reply.content}</div>
-                        ${reply.category ? `<span class="farisly-reply-category">${reply.category}</span>` : ''}
+            <div class="farisly-quick-replies-container">
+                <!-- Search Bar -->
+                <div class="farisly-search-bar">
+                    <input
+                        type="text"
+                        id="reply-search"
+                        placeholder="🔍 Search replies..."
+                        class="farisly-search-input"
+                    />
+                </div>
+
+                <!-- Category Filter (if categories exist) -->
+                ${this.getCategories(replies).length > 1 ? `
+                    <div class="farisly-category-filter">
+                        <button class="farisly-category-btn active" data-category="all">All</button>
+                        ${this.getCategories(replies).map(cat => `
+                            <button class="farisly-category-btn" data-category="${cat}">${cat}</button>
+                        `).join('')}
                     </div>
-                `).join('')}
+                ` : ''}
+
+                <!-- Replies List -->
+                <div class="farisly-replies-list" id="replies-list">
+                    ${replies.length === 0 ? `
+                        <div class="farisly-empty">
+                            <div class="farisly-empty-icon">💾</div>
+                            <div class="farisly-empty-title">No Quick Replies Yet</div>
+                            <div class="farisly-empty-text">Create quick replies in your dashboard to use them here</div>
+                            <button class="farisly-btn-secondary" id="open-dashboard-btn">
+                                Open Dashboard
+                            </button>
+                        </div>
+                    ` : this.renderReplies(replies)}
+                </div>
+
+                <!-- Detected Input Info -->
+                <div class="farisly-input-detector">
+                    <span id="detected-input-status">🎯 Auto-detecting input field...</span>
+                </div>
             </div>
         `;
 
-        // Add click handlers
-        content.querySelectorAll('.farisly-reply-item').forEach(item => {
-            item.addEventListener('click', () => {
-                const replyId = item.dataset.replyId;
-                const reply = replies.find(r => (r.key || r._id) === replyId);
+        // Setup event listeners
+        this.setupQuickRepliesListeners(content, replies);
+
+        // Show detected input
+        this.updateDetectedInputStatus(content);
+    }
+
+    /**
+     * Get unique categories from replies
+     */
+    getCategories(replies) {
+        const categories = new Set();
+        replies.forEach(r => {
+            if (r.category && r.category !== 'General') {
+                categories.add(r.category);
+            }
+        });
+        return Array.from(categories);
+    }
+
+    /**
+     * Render replies HTML
+     */
+    renderReplies(replies, filter = null) {
+        const filtered = filter ?
+            replies.filter(r =>
+                r.title?.toLowerCase().includes(filter.toLowerCase()) ||
+                r.content?.toLowerCase().includes(filter.toLowerCase())
+            ) : replies;
+
+        if (filtered.length === 0) {
+            return `
+                <div class="farisly-empty">
+                    <div class="farisly-empty-text">No replies match your search</div>
+                </div>
+            `;
+        }
+
+        return filtered.map(reply => `
+            <div class="farisly-reply-card" data-reply-id="${reply._id || reply.key}">
+                <div class="farisly-reply-header">
+                    <div class="farisly-reply-title">${this.escapeHtml(reply.title)}</div>
+                    ${reply.category ? `<span class="farisly-reply-badge">${this.escapeHtml(reply.category)}</span>` : ''}
+                </div>
+                <div class="farisly-reply-content">${this.escapeHtml(reply.content)}</div>
+                <div class="farisly-reply-footer">
+                    ${reply.usageCount ? `<span class="farisly-usage-count">📊 Used ${reply.usageCount}x</span>` : ''}
+                    <span class="farisly-click-hint">Click to insert →</span>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    /**
+     * Setup Quick Replies event listeners
+     */
+    setupQuickRepliesListeners(content, replies) {
+        // Search functionality
+        const searchInput = content.querySelector('#reply-search');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                const filter = e.target.value.trim();
+                const listContainer = content.querySelector('#replies-list');
+                listContainer.innerHTML = this.renderReplies(replies, filter);
+                this.attachReplyClickHandlers(listContainer, replies);
+            });
+        }
+
+        // Category filter
+        content.querySelectorAll('.farisly-category-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                content.querySelectorAll('.farisly-category-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                const category = btn.dataset.category;
+                const filtered = category === 'all' ?
+                    replies :
+                    replies.filter(r => r.category === category);
+
+                const listContainer = content.querySelector('#replies-list');
+                listContainer.innerHTML = this.renderReplies(filtered);
+                this.attachReplyClickHandlers(listContainer, replies);
+            });
+        });
+
+        // Open dashboard button
+        const dashboardBtn = content.querySelector('#open-dashboard-btn');
+        if (dashboardBtn) {
+            dashboardBtn.addEventListener('click', () => {
+                window.open('http://localhost:3000/dashboard', '_blank');
+            });
+        }
+
+        // Reply click handlers
+        this.attachReplyClickHandlers(content, replies);
+    }
+
+    /**
+     * Attach click handlers to reply cards
+     */
+    attachReplyClickHandlers(container, replies) {
+        container.querySelectorAll('.farisly-reply-card').forEach(card => {
+            card.addEventListener('click', async () => {
+                const replyId = card.dataset.replyId;
+                const reply = replies.find(r => (r._id || r.key) === replyId);
+
                 if (reply) {
-                    this.insertReply(reply);
+                    // Use QuickRepliesManager for smart insertion
+                    const result = this.quickRepliesManager.insertText(reply.content);
+
+                    if (result.success) {
+                        this.showToast(`✓ "${reply.title}" inserted!`, 'success');
+
+                        // Track usage
+                        await this.quickRepliesManager.trackUsage(replyId);
+
+                        // Visual feedback
+                        card.classList.add('used');
+                        setTimeout(() => card.classList.remove('used'), 600);
+                    } else {
+                        this.showToast(result.error || 'Failed to insert', 'error');
+                    }
                 }
             });
         });
+    }
+
+    /**
+     * Update detected input field status
+     */
+    updateDetectedInputStatus(content) {
+        const statusEl = content.querySelector('#detected-input-status');
+        if (!statusEl) return;
+
+        const input = this.quickRepliesManager.findBestInput();
+
+        if (input) {
+            const type = input.tagName === 'TEXTAREA' ? 'Textarea' :
+                         input.tagName === 'INPUT' ? `Input (${input.type || 'text'})` :
+                         'Content Editable';
+            statusEl.textContent = `✅ Ready to insert into ${type}`;
+            statusEl.style.color = '#4ade80';
+        } else {
+            statusEl.textContent = '⚠️ Click on an input field first';
+            statusEl.style.color = '#fb923c';
+        }
+    }
+
+    /**
+     * Load quick replies from server
+     */
+    async loadQuickReplies() {
+        try {
+            console.log('📥 Requesting quick replies from background...');
+
+            const response = await chrome.runtime.sendMessage({
+                type: 'GET_SAVED_REPLIES'
+            });
+
+            console.log('📦 Quick replies response:', response);
+
+            if (response && response.success && response.replies) {
+                this.settings.quickReplies = response.replies;
+                this.quickRepliesManager.updateReplies(response.replies);
+                console.log(`✅ Loaded ${response.replies.length} quick replies`);
+                return { success: true, needsAuth: false };
+            } else if (response && !response.success) {
+                console.warn('⚠️ Failed to load quick replies:', response.message);
+                this.settings.quickReplies = [];
+                this.quickRepliesManager.updateReplies([]);
+                return {
+                    success: false,
+                    needsAuth: response.needsAuth || false,
+                    message: response.message
+                };
+            } else {
+                console.warn('⚠️ Invalid response from background');
+                this.settings.quickReplies = [];
+                this.quickRepliesManager.updateReplies([]);
+                return { success: false, needsAuth: false };
+            }
+        } catch (error) {
+            console.error('❌ Error loading quick replies:', error);
+            this.settings.quickReplies = [];
+            this.quickRepliesManager.updateReplies([]);
+            return { success: false, needsAuth: false };
+        }
+    }
+
+    /**
+     * Escape HTML to prevent XSS
+     */
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     /**
@@ -975,6 +1245,118 @@ class FarislyAI {
                 this.togglePanel();
             }
         });
+    }
+
+    /**
+     * Show Settings tab
+     */
+    async showSettingsTab(content) {
+        // Check auth status
+        const authResponse = await chrome.runtime.sendMessage({ type: 'GET_AUTH_STATE' });
+        const isAuthenticated = authResponse?.success && authResponse?.authState?.isAuthenticated;
+        const user = authResponse?.authState?.user;
+
+        content.innerHTML = `
+            <div style="padding: 8px;">
+                <!-- Account Section -->
+                <div class="farisly-settings-section">
+                    <h3>Account</h3>
+
+                    ${isAuthenticated ? `
+                        <div class="farisly-auth-card">
+                            <div class="farisly-user-profile">
+                                <div class="farisly-user-avatar">
+                                    ${user?.name?.charAt(0)?.toUpperCase() || '?'}
+                                </div>
+                                <div class="farisly-user-info">
+                                    <div class="farisly-user-name">${this.escapeHtml(user?.name || 'User')}</div>
+                                    <div class="farisly-user-email">${this.escapeHtml(user?.email || '')}</div>
+                                </div>
+                            </div>
+                            <div class="farisly-auth-status">
+                                <span style="color: #10b981; font-size: 20px;">✓</span>
+                                <span class="farisly-auth-status-success">Signed In</span>
+                            </div>
+                        </div>
+
+                        <button class="farisly-btn-secondary" id="logout-btn">
+                            Sign Out
+                        </button>
+                    ` : `
+                        <div class="farisly-login-prompt">
+                            <div class="farisly-login-icon">🔒</div>
+                            <div class="farisly-login-text">Sign in to access Quick Replies and AI features</div>
+                            <button class="farisly-btn-primary" id="sync-auth-btn">
+                                Sign In with Dashboard
+                            </button>
+                            <div class="farisly-login-hint">
+                                Make sure you're signed in on the web dashboard, then click the button above
+                            </div>
+                        </div>
+                    `}
+                </div>
+
+                <!-- Quick Actions Section -->
+                <div class="farisly-settings-section">
+                    <h3>Quick Actions</h3>
+                    <button class="farisly-btn-secondary" id="open-dashboard-settings" style="margin-bottom: 8px;">
+                        📊 Open Dashboard
+                    </button>
+                    <button class="farisly-btn-secondary" id="open-saved-replies">
+                        💾 Manage Quick Replies
+                    </button>
+                </div>
+            </div>
+        `;
+
+        // Setup event listeners
+        const syncAuthBtn = content.querySelector('#sync-auth-btn');
+        if (syncAuthBtn) {
+            syncAuthBtn.addEventListener('click', async () => {
+                syncAuthBtn.disabled = true;
+                syncAuthBtn.textContent = 'Signing in...';
+
+                try {
+                    const response = await chrome.runtime.sendMessage({ type: 'SYNC_AUTH_FROM_WEB' });
+
+                    if (response?.success) {
+                        this.showToast('✓ Signed in successfully!', 'success');
+                        // AUTH_UPDATED broadcast will automatically refresh the UI
+                    } else {
+                        this.showToast('Not signed in on dashboard. Please log in first.', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error syncing auth:', error);
+                    this.showToast('Error signing in', 'error');
+                } finally {
+                    syncAuthBtn.disabled = false;
+                    syncAuthBtn.textContent = 'Sign In with Dashboard';
+                }
+            });
+        }
+
+        const logoutBtn = content.querySelector('#logout-btn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', async () => {
+                await chrome.runtime.sendMessage({ type: 'LOGOUT' });
+                this.showToast('Signed out', 'info');
+                // AUTH_UPDATED broadcast will automatically refresh the UI
+            });
+        }
+
+        const dashboardBtn = content.querySelector('#open-dashboard-settings');
+        if (dashboardBtn) {
+            dashboardBtn.addEventListener('click', () => {
+                chrome.runtime.sendMessage({ type: 'OPEN_DASHBOARD' });
+            });
+        }
+
+        const repliesBtn = content.querySelector('#open-saved-replies');
+        if (repliesBtn) {
+            repliesBtn.addEventListener('click', () => {
+                window.open('http://localhost:3000/saved-replies', '_blank');
+            });
+        }
     }
 
     /**

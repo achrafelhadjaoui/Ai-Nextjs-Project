@@ -35,6 +35,7 @@
       "matches": ["<all_urls>"],
       "js": [
         "content/DragManager.js",
+        "content/QuickRepliesManager.js",
         "content/content-enhanced.js"
       ],
       "css": ["content/panel.css"],

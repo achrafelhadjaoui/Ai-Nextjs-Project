@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db/connect';
 import SavedReply from '@/lib/models/SavedReply';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 /**
  * GET endpoint for Chrome extension to fetch user's saved replies
@@ -12,6 +10,8 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
+
+    console.log('📥 Extension saved-replies request - userId:', userId);
 
     if (!userId) {
       return NextResponse.json(
@@ -37,8 +37,11 @@ export async function GET(request: NextRequest) {
       .select('title content category keywords usageCount')
       .lean();
 
+    console.log(`✅ Found ${savedReplies.length} saved replies for user ${userId}`);
+
     // Transform to extension-compatible format
-    const extensionReplies = savedReplies.map((reply) => ({
+    const extensionReplies = savedReplies.map((reply: any) => ({
+      _id: reply._id.toString(),
       key: reply._id.toString(),
       title: reply.title,
       content: reply.content,
