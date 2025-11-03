@@ -549,18 +549,47 @@ class FarislyAI {
                     }
                 }
             } else if (request.type === 'CONFIG_UPDATED') {
-                // Re-check if site is still allowed
-                console.log('🔄 Config updated, re-checking site permission...');
-                const isAllowed = await this.checkSiteAllowed();
+                // Use the settings passed directly in the message (no async fetch needed!)
+                const startTime = performance.now();
+                console.log('🔄 [INSTANT SYNC] Config updated, checking new settings...');
+
+                const newSettings = request.data;
+                console.log('📦 New settings received:', {
+                    enableOnAllSites: newSettings.enableOnAllSites,
+                    allowedSites: newSettings.allowedSites
+                });
+
+                // Check if site is allowed with the NEW settings (synchronous, no waiting!)
+                const currentUrl = window.location.href;
+                const currentDomain = window.location.hostname;
+
+                let isAllowed = false;
+                if (newSettings.enableOnAllSites) {
+                    isAllowed = true;
+                    console.log('✅ Extension enabled on all sites');
+                } else if (newSettings.allowedSites && Array.isArray(newSettings.allowedSites)) {
+                    isAllowed = newSettings.allowedSites.some(site =>
+                        currentUrl.toLowerCase().includes(site.toLowerCase()) ||
+                        currentDomain.toLowerCase().includes(site.toLowerCase())
+                    );
+                    console.log(isAllowed ? '✅ Site found in allowed list' : '❌ Site not in allowed list');
+                }
+
+                const checkTime = performance.now();
+                console.log(`⏱️  Permission check took ${(checkTime - startTime).toFixed(2)}ms`);
 
                 if (!isAllowed && this.isEnabled) {
-                    // Site is no longer allowed, disable extension
-                    console.log('⛔ Site no longer allowed, disabling extension');
+                    // Site is no longer allowed, disable extension INSTANTLY
+                    console.log('⛔ [INSTANT SYNC] Site no longer allowed, disabling extension');
                     this.disable();
+                    const disableTime = performance.now();
+                    console.log(`⏱️  TOTAL disable time: ${(disableTime - startTime).toFixed(2)}ms ⚡`);
                 } else if (isAllowed && !this.isEnabled) {
-                    // Site is now allowed, enable dynamically without page reload
-                    console.log('✅ Site now allowed, enabling extension dynamically');
+                    // Site is now allowed, enable dynamically INSTANTLY
+                    console.log('✅ [INSTANT SYNC] Site now allowed, enabling extension dynamically');
                     await this.enableDynamically();
+                    const enableTime = performance.now();
+                    console.log(`⏱️  TOTAL enable time: ${(enableTime - startTime).toFixed(2)}ms ⚡`);
                 }
             } else if (request.type === 'DISABLE_EXTENSION') {
                 this.disable();
@@ -1441,18 +1470,46 @@ class FarislyAI {
         if (!this.iconContainer) {
             console.log('Creating icon...');
             this.createIcon();
+
+            // Fade in animation for smooth UX
+            if (this.iconContainer) {
+                this.iconContainer.style.opacity = '0';
+                this.iconContainer.style.transition = 'opacity 0.3s ease-in';
+                // Force reflow
+                this.iconContainer.offsetHeight;
+                this.iconContainer.style.opacity = '1';
+            }
         } else {
-            // Icon exists but might be hidden, show it
+            // Icon exists but might be hidden, show it with fade in
             this.iconContainer.style.display = 'block';
+            this.iconContainer.style.opacity = '0';
+            this.iconContainer.style.transition = 'opacity 0.3s ease-in';
+            // Force reflow
+            this.iconContainer.offsetHeight;
+            this.iconContainer.style.opacity = '1';
         }
 
         // Create panel if it doesn't exist
         if (!this.panel) {
             console.log('Creating panel...');
             this.createPanel();
+
+            // Fade in animation for smooth UX
+            if (this.panel) {
+                this.panel.style.opacity = '0';
+                this.panel.style.transition = 'opacity 0.3s ease-in';
+                // Force reflow
+                this.panel.offsetHeight;
+                this.panel.style.opacity = '1';
+            }
         } else {
             // Panel exists but might be hidden, ensure proper state
             this.panel.style.display = this.isVisible ? 'flex' : 'none';
+            this.panel.style.opacity = '0';
+            this.panel.style.transition = 'opacity 0.3s ease-in';
+            // Force reflow
+            this.panel.offsetHeight;
+            this.panel.style.opacity = '1';
         }
 
         // Set up event listeners if not already done
@@ -1470,28 +1527,56 @@ class FarislyAI {
     }
 
     /**
-     * Disable extension (when not allowed on site)
+     * Disable extension dynamically (when not allowed on site)
+     * Gracefully removes UI without page reload
      */
     disable() {
+        console.log('🔌 Disabling extension dynamically...');
+
         // Cleanup drag manager
         if (this.dragManager) {
             this.dragManager.destroy();
             this.dragManager = null;
         }
 
-        // Remove DOM elements
+        // Hide and remove icon
         if (this.iconContainer) {
-            this.iconContainer.remove();
-            this.iconContainer = null;
-        }
-        if (this.panel) {
-            this.panel.remove();
-            this.panel = null;
+            // Fade out animation for smooth UX
+            this.iconContainer.style.transition = 'opacity 0.2s ease-out';
+            this.iconContainer.style.opacity = '0';
+
+            setTimeout(() => {
+                if (this.iconContainer) {
+                    this.iconContainer.remove();
+                    this.iconContainer = null;
+                }
+            }, 200);
         }
 
+        // Hide and remove panel
+        if (this.panel) {
+            // Close panel first if open
+            if (this.isVisible) {
+                this.isVisible = false;
+            }
+
+            // Fade out animation
+            this.panel.style.transition = 'opacity 0.2s ease-out';
+            this.panel.style.opacity = '0';
+
+            setTimeout(() => {
+                if (this.panel) {
+                    this.panel.remove();
+                    this.panel = null;
+                }
+            }, 200);
+        }
+
+        // Reset state flags
         this.isEnabled = false;
         this.eventListenersSetup = false;
-        console.log('🔌 Extension disabled and cleaned up');
+
+        console.log('✅ Extension disabled dynamically without page reload!');
 
         // Show a subtle notification
         this.showToast('Extension disabled on this site', 'info');

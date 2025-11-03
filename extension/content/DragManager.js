@@ -138,8 +138,16 @@ class DragManager {
         this.element.removeEventListener('pointerup', this.boundHandlers.up);
         this.element.removeEventListener('pointercancel', this.boundHandlers.cancel);
 
-        if (this.pointerId !== null && this.element.hasPointerCapture) {
-            this.element.releasePointerCapture(this.pointerId);
+        // Safely release pointer capture if active
+        if (this.pointerId !== null) {
+            try {
+                if (this.element.hasPointerCapture(this.pointerId)) {
+                    this.element.releasePointerCapture(this.pointerId);
+                }
+            } catch (err) {
+                // Pointer capture may have already been released
+                console.debug('[DragManager] Pointer capture already released');
+            }
         }
     }
 }

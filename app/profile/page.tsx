@@ -253,8 +253,8 @@ export default function ProfilePage() {
                     const delay = retryCount === 0 ? 500 : 1000;
                     setTimeout(() => attemptSync(retryCount + 1), delay);
                   } else {
-                    // All retries failed
-                    toast.info('Extension will sync automatically within 30 seconds');
+                    // All retries failed, but SSE will sync within 2 seconds
+                    toast.info('Extension will sync automatically within 2 seconds (real-time)');
                   }
                 } else if (response && response.success) {
                   console.log('✅ Extension config synced immediately');
@@ -264,7 +264,7 @@ export default function ProfilePage() {
                   }
                 } else {
                   console.warn('Extension sync returned error:', response?.message);
-                  toast.info('Extension will sync automatically within 30 seconds');
+                  toast.info('Extension will sync automatically within 2 seconds (real-time)');
                 }
               });
             };
