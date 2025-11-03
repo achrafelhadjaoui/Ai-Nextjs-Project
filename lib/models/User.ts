@@ -23,6 +23,10 @@ export interface IUser extends Document {
     push: boolean;
     sms: boolean;
   };
+  extensionSettings?: {
+    enableOnAllSites: boolean;
+    allowedSites: string[];
+  };
   createdAt: Date;
   updatedAt?: Date;
 }
@@ -49,6 +53,10 @@ const UserSchema = new Schema<IUser>({
     email: { type: Boolean, default: true },
     push: { type: Boolean, default: true },
     sms: { type: Boolean, default: false },
+  },
+  extensionSettings: {
+    enableOnAllSites: { type: Boolean, default: true },
+    allowedSites: { type: [String], default: [] },
   },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date },

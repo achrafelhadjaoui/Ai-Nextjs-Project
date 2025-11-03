@@ -1,31 +1,80 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db/connect';
-import AppSetting from '@/lib/models/AppSetting';
+import User from '@/lib/models/User';
+import { verify } from 'jsonwebtoken';
 
 /**
  * GET /api/extension/config
- * Public endpoint for extensions to fetch configuration
- * No authentication required - extensions check this before showing UI
+ * Authenticated endpoint for extensions to fetch user-specific configuration
+ * Requires JWT token in Authorization header
  */
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
 
-    // Get extension settings
-    const enableAllSites = await AppSetting.findOne({ key: 'extension_enable_all_sites' });
-    const allowedSites = await AppSetting.findOne({ key: 'extension_allowed_sites' });
+    // Get user ID from Authorization header
+    const authHeader = request.headers.get('authorization');
+    let userId: string | null = null;
 
-    console.log('[Extension Config] Database values:', {
-      enableAllSites: enableAllSites?.value,
-      allowedSites: allowedSites?.value
-    });
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.substring(7);
+        const secret = process.env.NEXTAUTH_SECRET;
+        if (secret) {
+          const decoded = verify(token, secret) as any;
+          userId = decoded.id || decoded.sub;
+        }
+      } catch (err) {
+        console.warn('[Extension Config] Invalid token:', err);
+      }
+    }
+
+    // If no valid user ID, return default settings (enabled on all sites)
+    if (!userId) {
+      console.log('[Extension Config] No authenticated user, returning default settings');
+      return NextResponse.json({
+        success: true,
+        settings: {
+          enableOnAllSites: true,
+          allowedSites: []
+        }
+      }, {
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+          'Cache-Control': 'no-cache, no-store, must-revalidate'
+        }
+      });
+    }
+
+    // Fetch user's extension settings
+    const user = await User.findById(userId).select('extensionSettings');
+
+    if (!user) {
+      console.warn('[Extension Config] User not found:', userId);
+      return NextResponse.json({
+        success: true,
+        settings: {
+          enableOnAllSites: true,
+          allowedSites: []
+        }
+      }, {
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+          'Cache-Control': 'no-cache, no-store, must-revalidate'
+        }
+      });
+    }
 
     const settings = {
-      enableOnAllSites: enableAllSites?.value === 'true' || enableAllSites?.value === true || false,
-      allowedSites: Array.isArray(allowedSites?.value) ? allowedSites.value : []
+      enableOnAllSites: user.extensionSettings?.enableOnAllSites ?? true,
+      allowedSites: user.extensionSettings?.allowedSites ?? []
     };
 
-    console.log('[Extension Config] Returning settings:', settings);
+    console.log('[Extension Config] Returning user settings for:', userId, settings);
 
     return NextResponse.json({
       success: true,
@@ -34,7 +83,7 @@ export async function GET(request: NextRequest) {
       headers: {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
         'Cache-Control': 'no-cache, no-store, must-revalidate'
       }
     });
@@ -45,7 +94,7 @@ export async function GET(request: NextRequest) {
         success: false,
         message: error.message || 'Failed to fetch configuration',
         settings: {
-          enableOnAllSites: false,
+          enableOnAllSites: true,
           allowedSites: []
         }
       },
@@ -54,7 +103,7 @@ export async function GET(request: NextRequest) {
         headers: {
           'Access-Control-Allow-Origin': '*',
           'Access-Control-Allow-Methods': 'GET, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type'
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization'
         }
       }
     );
@@ -67,7 +116,7 @@ export async function OPTIONS() {
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type'
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
     }
   });
 }

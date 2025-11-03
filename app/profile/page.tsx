@@ -24,6 +24,8 @@ import {
   Trash2,
   Lock,
   AlertTriangle,
+  Monitor,
+  Plus,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 
@@ -31,6 +33,7 @@ interface UserProfile {
   _id: string;
   name: string;
   email: string;
+  password?: string;
   role: string;
   image?: string;
   bio?: string;
@@ -44,6 +47,10 @@ interface UserProfile {
     email: boolean;
     push: boolean;
     sms: boolean;
+  };
+  extensionSettings?: {
+    enableOnAllSites: boolean;
+    allowedSites: string[];
   };
   createdAt: string;
   updatedAt?: string;
@@ -76,6 +83,13 @@ export default function ProfilePage() {
     push: true,
     sms: false,
   });
+
+  // Extension settings state
+  const [extensionSettings, setExtensionSettings] = useState({
+    enableOnAllSites: true,
+    allowedSites: [] as string[],
+  });
+  const [newSiteKeyword, setNewSiteKeyword] = useState("");
 
   // Password change state
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -121,6 +135,12 @@ export default function ProfilePage() {
             email: true,
             push: true,
             sms: false,
+          }
+        );
+        setExtensionSettings(
+          data.data.extensionSettings || {
+            enableOnAllSites: true,
+            allowedSites: [],
           }
         );
       } else {
@@ -206,6 +226,7 @@ export default function ProfilePage() {
         body: JSON.stringify({
           ...formData,
           notifications,
+          extensionSettings,
         }),
       });
 
@@ -215,6 +236,47 @@ export default function ProfilePage() {
         setProfile(data.data);
         setIsEditing(false);
         toast.success("Profile updated successfully!");
+
+        // Trigger immediate config sync in extension
+        try {
+          if (typeof (window as any).chrome !== 'undefined' && (window as any).chrome.runtime) {
+            // Try to sync - if service worker is inactive, this will wake it up
+            let syncSuccessful = false;
+            const attemptSync = (retryCount = 0) => {
+              (window as any).chrome.runtime.sendMessage({ type: 'SYNC_EXTENSION_CONFIG' }, (response: any) => {
+                if ((window as any).chrome.runtime.lastError) {
+                  const error = (window as any).chrome.runtime.lastError.message;
+                  console.log('Extension sync attempt failed:', error);
+
+                  // Retry up to 2 times with increasing delays
+                  if (retryCount < 2) {
+                    const delay = retryCount === 0 ? 500 : 1000;
+                    setTimeout(() => attemptSync(retryCount + 1), delay);
+                  } else {
+                    // All retries failed
+                    toast.info('Extension will sync automatically within 30 seconds');
+                  }
+                } else if (response && response.success) {
+                  console.log('✅ Extension config synced immediately');
+                  if (!syncSuccessful) {
+                    syncSuccessful = true;
+                    toast.success('Extension settings synced immediately!');
+                  }
+                } else {
+                  console.warn('Extension sync returned error:', response?.message);
+                  toast.info('Extension will sync automatically within 30 seconds');
+                }
+              });
+            };
+            attemptSync();
+          } else {
+            // Extension not installed
+            toast.info('Settings saved. Install the browser extension to use them.');
+          }
+        } catch (err) {
+          console.log('Chrome extension API not available');
+          toast.info('Settings saved. Install the browser extension to use them.');
+        }
       } else {
         toast.error(data.message || "Failed to update profile");
       }
@@ -658,6 +720,154 @@ export default function ProfilePage() {
                 <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
               </label>
             </div>
+          </div>
+        </div>
+
+        {/* Extension Settings */}
+        <div className="bg-[#111111] border border-gray-800 rounded-xl p-6 mb-6">
+          <h3 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
+            <Monitor className="w-5 h-5" />
+            Extension Settings
+          </h3>
+          <div className="space-y-4">
+            <div className={`flex items-center justify-between p-4 rounded-lg border-2 transition-colors ${
+              extensionSettings.enableOnAllSites
+                ? 'bg-[#0a0a0a] border-transparent'
+                : 'bg-orange-600/5 border-orange-600/20'
+            }`}>
+              <div>
+                <p className="text-white font-medium">Enable on All Websites</p>
+                <p className="text-sm text-gray-400">
+                  {extensionSettings.enableOnAllSites
+                    ? 'Extension will work on every website you visit'
+                    : 'Extension will only work on specific websites you allow'}
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={extensionSettings.enableOnAllSites}
+                  onChange={(e) =>
+                    setExtensionSettings({ ...extensionSettings, enableOnAllSites: e.target.checked })
+                  }
+                  disabled={!isEditing}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
+
+            {!extensionSettings.enableOnAllSites && (
+              <div className="p-4 bg-[#0a0a0a] rounded-lg">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-white font-medium">Allowed Websites</p>
+                  {extensionSettings.allowedSites.length > 0 && (
+                    <span className="text-xs px-2 py-1 bg-blue-600/20 text-blue-400 rounded-full">
+                      {extensionSettings.allowedSites.length} {extensionSettings.allowedSites.length === 1 ? 'site' : 'sites'}
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-gray-400 mb-4">
+                  Add keywords or domain names where you want the extension to work
+                </p>
+
+                <div className="flex gap-2 mb-3">
+                  <input
+                    type="text"
+                    value={newSiteKeyword}
+                    onChange={(e) => setNewSiteKeyword(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === "Enter" && newSiteKeyword.trim()) {
+                        if (!extensionSettings.allowedSites.includes(newSiteKeyword.trim())) {
+                          setExtensionSettings({
+                            ...extensionSettings,
+                            allowedSites: [...extensionSettings.allowedSites, newSiteKeyword.trim()],
+                          });
+                        }
+                        setNewSiteKeyword("");
+                      }
+                    }}
+                    placeholder="Type keyword and press Enter..."
+                    disabled={!isEditing}
+                    className="flex-1 px-4 py-2 bg-[#1a1a1a] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:opacity-50"
+                  />
+                  <button
+                    onClick={() => {
+                      if (newSiteKeyword.trim() && !extensionSettings.allowedSites.includes(newSiteKeyword.trim())) {
+                        setExtensionSettings({
+                          ...extensionSettings,
+                          allowedSites: [...extensionSettings.allowedSites, newSiteKeyword.trim()],
+                        });
+                        setNewSiteKeyword("");
+                      }
+                    }}
+                    disabled={!isEditing || !newSiteKeyword.trim()}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Plus className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {extensionSettings.allowedSites.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {extensionSettings.allowedSites.map((site, index) => (
+                      <span
+                        key={index}
+                        className="inline-flex items-center gap-2 px-3 py-1 bg-blue-600/20 text-blue-400 rounded-full text-sm"
+                      >
+                        {site}
+                        {isEditing && (
+                          <button
+                            onClick={() => {
+                              setExtensionSettings({
+                                ...extensionSettings,
+                                allowedSites: extensionSettings.allowedSites.filter((_, i) => i !== index),
+                              });
+                            }}
+                            className="hover:text-red-400 transition-colors"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {extensionSettings.allowedSites.length === 0 && (
+                  <div className="text-center py-4">
+                    <p className="text-gray-500 text-sm mb-3">
+                      No websites added yet. The extension won't work on any site until you add keywords.
+                    </p>
+                    {isEditing && (
+                      <div className="flex flex-wrap gap-2 justify-center">
+                        <p className="text-xs text-gray-600 w-full mb-1">Quick add:</p>
+                        {['fiverr.com', 'upwork.com', 'freelancer.com', 'linkedin.com'].map((site) => (
+                          <button
+                            key={site}
+                            onClick={() => {
+                              setExtensionSettings({
+                                ...extensionSettings,
+                                allowedSites: [...extensionSettings.allowedSites, site],
+                              });
+                            }}
+                            className="px-3 py-1 text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-full transition-colors"
+                          >
+                            + {site}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="mt-4 p-3 bg-blue-600/10 border border-blue-600/20 rounded-lg">
+                  <p className="text-sm text-blue-400">
+                    <strong>Tip:</strong> Use general keywords like "fiverr" to match all Fiverr pages, or specific domains like "fiverr.com"
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

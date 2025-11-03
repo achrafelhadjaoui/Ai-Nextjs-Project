@@ -53,6 +53,7 @@ export async function PATCH(request: Request) {
       language,
       image,
       notifications,
+      extensionSettings,
     } = body;
 
     const userProfile = await User.findById(user.id);
@@ -106,6 +107,18 @@ export async function PATCH(request: Request) {
         email: notifications.email ?? userProfile.notifications?.email ?? true,
         push: notifications.push ?? userProfile.notifications?.push ?? true,
         sms: notifications.sms ?? userProfile.notifications?.sms ?? false,
+      };
+    }
+
+    if (extensionSettings !== undefined) {
+      // Validate and sanitize allowed sites
+      const allowedSites = Array.isArray(extensionSettings.allowedSites)
+        ? extensionSettings.allowedSites.filter((site: any) => typeof site === 'string' && site.trim().length > 0)
+        : [];
+
+      userProfile.extensionSettings = {
+        enableOnAllSites: extensionSettings.enableOnAllSites ?? true,
+        allowedSites,
       };
     }
 

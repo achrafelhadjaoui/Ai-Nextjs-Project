@@ -15,6 +15,11 @@ let authState = {
   expiresAt: null
 };
 
+// SSE (Server-Sent Events) connection for real-time config updates
+let sseConnection = null;
+let sseReconnectTimeout = null;
+let lastConfigUpdate = null;
+
 /**
  * Initialize extension on install
  */
@@ -36,7 +41,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 
   // Set up periodic sync alarms
   chrome.alarms.create('syncData', { periodInMinutes: SYNC_INTERVAL });
-  chrome.alarms.create('syncConfig', { periodInMinutes: 5 }); // Sync config every 5 minutes
+  // Note: Config sync is now handled by real-time SSE connection, no polling needed!
 
   // Load auth state from storage
   await loadAuthState();
@@ -59,7 +64,19 @@ async function syncExtensionConfig() {
   try {
     console.log('🔄 Syncing extension config from server...');
 
-    const response = await fetch(`${API_URL}/api/extension/config`);
+    // Prepare headers with auth token if available
+    const headers = {
+      'Accept': 'application/json'
+    };
+
+    if (authState.isAuthenticated && authState.token) {
+      headers['Authorization'] = `Bearer ${authState.token}`;
+      console.log('📤 Fetching user-specific config');
+    } else {
+      console.log('📤 Fetching default config (not authenticated)');
+    }
+
+    const response = await fetch(`${API_URL}/api/extension/config`, { headers });
     const data = await response.json();
 
     if (data.success && data.settings) {
@@ -71,14 +88,16 @@ async function syncExtensionConfig() {
       const updatedSettings = {
         ...currentSettings,
         enableOnAllSites: data.settings.enableOnAllSites,
-        allowedSites: data.settings.allowedSites || []
+        allowedSites: data.settings.allowedSites || [],
+        lastConfigSync: Date.now() // Add timestamp for cache validation
       };
 
       await chrome.storage.local.set({ settings: updatedSettings });
 
       console.log('✅ Extension config synced:', {
         enableOnAllSites: updatedSettings.enableOnAllSites,
-        allowedSites: updatedSettings.allowedSites
+        allowedSites: updatedSettings.allowedSites,
+        lastConfigSync: new Date(updatedSettings.lastConfigSync).toISOString()
       });
 
       // Notify all tabs to reload if necessary
@@ -86,7 +105,8 @@ async function syncExtensionConfig() {
         type: 'CONFIG_UPDATED',
         data: {
           enableOnAllSites: updatedSettings.enableOnAllSites,
-          allowedSites: updatedSettings.allowedSites
+          allowedSites: updatedSettings.allowedSites,
+          lastConfigSync: updatedSettings.lastConfigSync
         }
       });
 
@@ -117,6 +137,155 @@ async function syncExtensionConfig() {
     }
     return false;
   }
+}
+
+/**
+ * Connect to SSE (Server-Sent Events) for real-time config updates
+ * This provides instant config sync instead of polling every 30 seconds
+ */
+async function connectConfigStream() {
+  // Close existing connection if any
+  if (sseConnection) {
+    console.log('🔌 Closing existing SSE connection');
+    sseConnection.close();
+    sseConnection = null;
+  }
+
+  // Clear any pending reconnect
+  if (sseReconnectTimeout) {
+    clearTimeout(sseReconnectTimeout);
+    sseReconnectTimeout = null;
+  }
+
+  // Only connect if authenticated
+  if (!authState.isAuthenticated || !authState.token) {
+    console.log('⏸️  Not authenticated, skipping SSE connection');
+    return;
+  }
+
+  console.log('🌐 Connecting to config stream (SSE)...');
+
+  try {
+    // Use fetch with ReadableStream for SSE
+    const response = await fetch(`${API_URL}/api/extension/config/stream`, {
+      headers: {
+        'Authorization': `Bearer ${authState.token}`,
+        'Accept': 'text/event-stream'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`SSE connection failed: ${response.status}`);
+    }
+
+    console.log('✅ SSE connection established');
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    // Store connection reference
+    sseConnection = {
+      close: () => {
+        reader.cancel();
+      }
+    };
+
+    // Read the stream
+    while (true) {
+      const { done, value } = await reader.read();
+
+      if (done) {
+        console.log('📡 SSE stream ended');
+        break;
+      }
+
+      // Decode chunk and add to buffer
+      buffer += decoder.decode(value, { stream: true });
+
+      // Process complete messages (separated by \n\n)
+      const messages = buffer.split('\n\n');
+      buffer = messages.pop(); // Keep incomplete message in buffer
+
+      for (const message of messages) {
+        if (!message.trim()) continue;
+
+        // Parse SSE message format: "data: {...}"
+        const dataMatch = message.match(/^data: (.+)$/m);
+        if (dataMatch) {
+          try {
+            const data = JSON.parse(dataMatch[1]);
+
+            if (data.type === 'config') {
+              // Check if config actually changed
+              const currentUpdate = data.settings?.updatedAt || Date.now();
+
+              if (lastConfigUpdate === null || currentUpdate > lastConfigUpdate) {
+                console.log('🔄 Received config update via SSE:', data.settings);
+                lastConfigUpdate = currentUpdate;
+
+                // Update local storage
+                const result = await chrome.storage.local.get('settings');
+                const currentSettings = result.settings || {};
+
+                const updatedSettings = {
+                  ...currentSettings,
+                  enableOnAllSites: data.settings.enableOnAllSites,
+                  allowedSites: data.settings.allowedSites || [],
+                  lastConfigSync: Date.now()
+                };
+
+                await chrome.storage.local.set({ settings: updatedSettings });
+
+                // Broadcast to all tabs
+                broadcastMessage({
+                  type: 'CONFIG_UPDATED',
+                  data: {
+                    enableOnAllSites: updatedSettings.enableOnAllSites,
+                    allowedSites: updatedSettings.allowedSites,
+                    lastConfigSync: updatedSettings.lastConfigSync
+                  }
+                });
+
+                console.log('✅ Config synced via SSE (instant)');
+              }
+            } else if (data.type === 'heartbeat') {
+              console.log('💓 SSE heartbeat received');
+            }
+          } catch (err) {
+            console.error('Error parsing SSE message:', err);
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('❌ SSE connection error:', error);
+  }
+
+  // Connection closed or errored, reconnect after 5 seconds
+  sseConnection = null;
+  if (authState.isAuthenticated) {
+    console.log('🔄 Reconnecting SSE in 5 seconds...');
+    sseReconnectTimeout = setTimeout(() => connectConfigStream(), 5000);
+  }
+}
+
+/**
+ * Disconnect from config stream
+ */
+function disconnectConfigStream() {
+  if (sseConnection) {
+    console.log('🔌 Disconnecting config stream');
+    sseConnection.close();
+    sseConnection = null;
+  }
+
+  if (sseReconnectTimeout) {
+    clearTimeout(sseReconnectTimeout);
+    sseReconnectTimeout = null;
+  }
+
+  lastConfigUpdate = null;
 }
 
 /**
@@ -286,6 +455,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name === 'syncData') {
     await syncDataWithServer();
   }
+  // Note: Config sync is now handled by real-time SSE, no alarm needed
 });
 
 /**
@@ -313,7 +483,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         case 'LOGIN':
           const { user, token, expiresIn } = request.payload;
           await saveAuthState(user, token, expiresIn);
+          await syncExtensionConfig(); // Sync user-specific config
           await syncDataWithServer();
+          await connectConfigStream(); // Connect to real-time config stream (SSE)
           sendResponse({ success: true });
           break;
 
@@ -336,7 +508,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             if (authData.success && authData.authenticated) {
               console.log('✅ Authentication successful, saving state...');
               await saveAuthState(authData.user, authData.token, authData.expiresIn);
+              await syncExtensionConfig(); // Sync user-specific config
               await syncDataWithServer();
+              await connectConfigStream(); // Connect to real-time config stream (SSE)
 
               // Broadcast auth update to all tabs to refresh UI
               broadcastMessage({
@@ -360,6 +534,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
         case 'LOGOUT':
           await clearAuthState();
+          disconnectConfigStream(); // Disconnect SSE stream
+
+          // Sync config back to defaults
+          await syncExtensionConfig();
 
           // Broadcast logout to all tabs to refresh UI
           broadcastMessage({
@@ -378,9 +556,35 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           sendResponse({ success: true });
           break;
 
+        case 'SYNC_EXTENSION_CONFIG':
+          // Manually trigger extension config sync
+          console.log('📨 Manual config sync requested');
+          try {
+            await syncExtensionConfig();
+            console.log('✅ Manual config sync completed successfully');
+            sendResponse({ success: true, message: 'Config synced successfully' });
+          } catch (error) {
+            console.error('❌ Manual config sync failed:', error);
+            sendResponse({ success: false, message: error.message || 'Config sync failed' });
+          }
+          break;
+
         case 'GET_SETTINGS':
           const settings = await chrome.storage.local.get('settings');
-          sendResponse({ success: true, settings: settings.settings });
+          // Return settings with safe defaults if not initialized
+          const safeSettings = settings.settings || {
+            enableOnAllSites: true, // Default to true for non-authenticated users
+            allowedSites: [],
+            useOpenAI: true,
+            openaiKey: '',
+            agentName: '',
+            agentTone: 'friendly',
+            useLineSpacing: true,
+            panelMinimized: false,
+            aiInstructions: [],
+            quickReplies: []
+          };
+          sendResponse({ success: true, settings: safeSettings });
           break;
 
         case 'UPDATE_SETTINGS':
@@ -596,4 +800,14 @@ chrome.action.onClicked.addListener(async (tab) => {
     isAuthenticated: authState.isAuthenticated,
     userEmail: authState.user?.email
   });
+
+  // Sync extension config on startup
+  await syncExtensionConfig();
+  console.log('✅ Extension config synced on initialization');
+
+  // Connect to real-time config stream if authenticated
+  if (authState.isAuthenticated) {
+    await connectConfigStream();
+    console.log('✅ Real-time config stream connected');
+  }
 })();

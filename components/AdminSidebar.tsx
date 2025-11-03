@@ -301,7 +301,6 @@ import {
   Lightbulb,
   Layers,
   HelpCircle,
-  Puzzle,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useI18n } from '@/providers/i18n-provider';
@@ -382,12 +381,6 @@ export default function AdminSidebar() {
       href: '/admin/security',
       icon: Shield,
       color: 'red'
-    },
-    {
-      name: 'Extension',
-      href: '/admin/extension',
-      icon: Puzzle,
-      color: 'orange'
     },
     {
       name: 'Settings',

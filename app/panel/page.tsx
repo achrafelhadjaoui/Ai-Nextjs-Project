@@ -710,14 +710,15 @@
 import DashboardLayout from '@/components/DashboardLayout';
 import { Settings, Globe, Eye, EyeOff, Plus, Trash2, Upload, Download, Save } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { useI18n } from '@/providers/i18n-provider'; // Add this import
+import { useI18n } from '@/providers/i18n-provider';
+import { toast } from 'react-toastify';
 
 export default function PanelPage() {
   // Default settings
   const defaultSettings = {
     // Extension Activation
     enableOnAllSites: true,
-    allowedSites: ['fiverr', 'upwork', 'freelancer'],
+    allowedSites: [],
     
     // AI Agent Settings
     useNameSignature: false,
@@ -757,26 +758,52 @@ export default function PanelPage() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [initialSettings, setInitialSettings] = useState(null);
 
-  // Load settings from localStorage on client side only
+  // Load settings from localStorage and user profile on client side only
   useEffect(() => {
-    const saved = localStorage.getItem('farisly-settings');
-    if (saved) {
-      try {
-        const parsedSettings = JSON.parse(saved);
-        setSettings({ ...defaultSettings, ...parsedSettings });
-      } catch (error) {
-        console.error('Error parsing saved settings:', error);
-        setSettings(defaultSettings);
+    const loadSettings = async () => {
+      // Load from localStorage first
+      const saved = localStorage.getItem('farisly-settings');
+      let localSettings = defaultSettings;
+
+      if (saved) {
+        try {
+          const parsedSettings = JSON.parse(saved);
+          localSettings = { ...defaultSettings, ...parsedSettings };
+        } catch (error) {
+          console.error('Error parsing saved settings:', error);
+        }
       }
-    }
-    setIsLoaded(true);
+
+      // Load extension settings from user profile
+      try {
+        const profileResponse = await fetch('/api/profile');
+        if (profileResponse.ok) {
+          const profileData = await profileResponse.json();
+          if (profileData.success && profileData.data.extensionSettings) {
+            localSettings = {
+              ...localSettings,
+              enableOnAllSites: profileData.data.extensionSettings.enableOnAllSites ?? true,
+              allowedSites: profileData.data.extensionSettings.allowedSites ?? []
+            };
+            console.log('✅ Loaded extension settings from user profile');
+          }
+        }
+      } catch (error) {
+        console.error('Error loading extension settings from profile:', error);
+      }
+
+      setSettings(localSettings);
+      setIsLoaded(true);
+    };
+
+    loadSettings();
   }, []);
 
   const handleSettingChange = (key: string, value: any) => {
     setSettings(prev => ({ ...prev, [key]: value }));
   };
 
-  console.log("this is settings: ", t('panel.extensionActivation'))
+  console.log("Current settings state: ", settings);
 
   // Track changes to enable/disable save button
   useEffect(() => {
@@ -800,12 +827,75 @@ export default function PanelPage() {
 
   const handleSave = async () => {
     if (!hasUnsavedChanges) return;
-    
+
     // Save settings to localStorage
     if (typeof window !== 'undefined') {
       localStorage.setItem('farisly-settings', JSON.stringify(settings));
     }
-    
+
+    // Save extension settings to user profile
+    try {
+      const profileResponse = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          extensionSettings: {
+            enableOnAllSites: settings.enableOnAllSites,
+            allowedSites: settings.allowedSites
+          }
+        })
+      });
+
+      if (!profileResponse.ok) {
+        console.error('Failed to save extension settings to profile');
+      } else {
+        console.log('✅ Extension settings saved to user profile');
+
+        // Trigger immediate config sync in extension
+        try {
+          if (typeof (window as any).chrome !== 'undefined' && (window as any).chrome.runtime) {
+            // Try to sync - if service worker is inactive, this will wake it up
+            let syncSuccessful = false;
+            const attemptSync = (retryCount = 0) => {
+              (window as any).chrome.runtime.sendMessage({ type: 'SYNC_EXTENSION_CONFIG' }, (response: any) => {
+                if ((window as any).chrome.runtime.lastError) {
+                  const error = (window as any).chrome.runtime.lastError.message;
+                  console.log('Extension sync attempt failed:', error);
+
+                  // Retry up to 2 times with increasing delays
+                  if (retryCount < 2) {
+                    const delay = retryCount === 0 ? 500 : 1000;
+                    setTimeout(() => attemptSync(retryCount + 1), delay);
+                  } else {
+                    // All retries failed
+                    toast.info('Extension will sync automatically within 30 seconds');
+                  }
+                } else if (response && response.success) {
+                  console.log('✅ Extension config synced immediately');
+                  if (!syncSuccessful) {
+                    syncSuccessful = true;
+                    toast.success('Extension settings synced immediately!');
+                  }
+                } else {
+                  console.warn('Extension sync returned error:', response?.message);
+                  toast.info('Extension will sync automatically within 30 seconds');
+                }
+              });
+            };
+            attemptSync();
+          } else {
+            // Extension not installed
+            toast.info('Settings saved. Install the browser extension to use them.');
+          }
+        } catch (err) {
+          console.log('Chrome extension API not available');
+          toast.info('Settings saved. Install the browser extension to use them.');
+        }
+      }
+    } catch (error) {
+      console.error('Error saving extension settings to profile:', error);
+    }
+
     // Save to extension storage
     try {
       // Save API key to extension
@@ -835,7 +925,7 @@ export default function PanelPage() {
     } catch (error) {
       console.error('Error saving to extension:', error);
     }
-    
+
     // Update state to reflect saved settings
     setInitialSettings(JSON.parse(JSON.stringify(settings)));
     setHasUnsavedChanges(false);

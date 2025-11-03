@@ -23,6 +23,7 @@ class FarislyAI {
         this.selectedText = '';
         this.selectedElement = null;
         this.isEnabled = false;
+        this.eventListenersSetup = false; // Track if event listeners are set up
         this.init();
     }
 
@@ -30,13 +31,18 @@ class FarislyAI {
         console.log('🔧 Initializing Farisly AI...');
         console.log('Current URL:', window.location.href);
 
+        // CRITICAL: Always set up message listeners first, even if site is not allowed
+        // This ensures extension can "wake up" when CONFIG_UPDATED arrives
+        this.setupMessageListeners();
+
         // Check if extension should work on this site
         const isAllowed = await this.checkSiteAllowed();
         console.log('Is site allowed?', isAllowed);
 
         if (!isAllowed) {
             console.log('⏭️  Extension not allowed on this site');
-            console.log('👉 Please add this site in Admin Extension Settings or enable "All Sites"');
+            console.log('👉 Please add this site in your Extension Settings or enable "All Sites"');
+            console.log('⚡ Listening for config updates to auto-enable when permission granted');
             return;
         }
 
@@ -54,9 +60,10 @@ class FarislyAI {
         console.log('Creating panel...');
         this.createPanel();
 
-        console.log('Setting up event listeners...');
+        console.log('Setting up remaining event listeners...');
         this.setupEventListeners();
         this.setupTextSelectionDetection();
+        this.eventListenersSetup = true;
 
         console.log('✅ Farisly AI initialized successfully');
     }
@@ -85,7 +92,8 @@ class FarislyAI {
 
             console.log('Extension settings:', {
                 enableOnAllSites: settings.enableOnAllSites,
-                allowedSites: settings.allowedSites
+                allowedSites: settings.allowedSites,
+                lastConfigSync: settings.lastConfigSync ? new Date(settings.lastConfigSync).toISOString() : 'never'
             });
 
             // If enabled on all sites
@@ -498,12 +506,20 @@ class FarislyAI {
             });
         });
 
+        // Note: Message listeners are set up in setupMessageListeners()
+        // which is called early in init(), even if site is not allowed
+    }
+
+    /**
+     * Setup message listeners (ALWAYS called, even if site not allowed)
+     * This ensures extension can "wake up" when CONFIG_UPDATED arrives
+     */
+    setupMessageListeners() {
         // Listen for messages from background
         chrome.runtime.onMessage.addListener(async (request) => {
             if (request.type === 'TOGGLE_PANEL') {
                 // If icon is hidden, show it first
-                const isIconHidden = this.iconContainer.style.display === 'none';
-                if (isIconHidden) {
+                if (this.iconContainer && this.iconContainer.style.display === 'none') {
                     this.showIcon();
                 }
                 // Then toggle the panel
@@ -542,9 +558,9 @@ class FarislyAI {
                     console.log('⛔ Site no longer allowed, disabling extension');
                     this.disable();
                 } else if (isAllowed && !this.isEnabled) {
-                    // Site is now allowed, re-initialize
-                    console.log('✅ Site now allowed, re-initializing extension');
-                    window.location.reload(); // Reload to re-initialize properly
+                    // Site is now allowed, enable dynamically without page reload
+                    console.log('✅ Site now allowed, enabling extension dynamically');
+                    await this.enableDynamically();
                 }
             } else if (request.type === 'DISABLE_EXTENSION') {
                 this.disable();
@@ -1402,6 +1418,58 @@ class FarislyAI {
     }
 
     /**
+     * Enable extension dynamically without page reload
+     * Called when site becomes allowed after initial check
+     */
+    async enableDynamically() {
+        console.log('🚀 Enabling extension dynamically...');
+
+        // Set enabled flag
+        this.isEnabled = true;
+
+        // Initialize Quick Replies Manager if not already done
+        if (!this.quickRepliesManager) {
+            console.log('Initializing Quick Replies Manager...');
+            this.quickRepliesManager = new QuickRepliesManager();
+        }
+
+        // Load settings
+        console.log('Loading settings...');
+        await this.loadSettings();
+
+        // Create icon if it doesn't exist
+        if (!this.iconContainer) {
+            console.log('Creating icon...');
+            this.createIcon();
+        } else {
+            // Icon exists but might be hidden, show it
+            this.iconContainer.style.display = 'block';
+        }
+
+        // Create panel if it doesn't exist
+        if (!this.panel) {
+            console.log('Creating panel...');
+            this.createPanel();
+        } else {
+            // Panel exists but might be hidden, ensure proper state
+            this.panel.style.display = this.isVisible ? 'flex' : 'none';
+        }
+
+        // Set up event listeners if not already done
+        if (!this.eventListenersSetup) {
+            console.log('Setting up event listeners...');
+            this.setupEventListeners();
+            this.setupTextSelectionDetection();
+            this.eventListenersSetup = true;
+        }
+
+        console.log('✅ Extension enabled dynamically without page reload!');
+
+        // Show a subtle notification
+        this.showToast('Extension enabled on this site', 'success');
+    }
+
+    /**
      * Disable extension (when not allowed on site)
      */
     disable() {
@@ -1422,7 +1490,11 @@ class FarislyAI {
         }
 
         this.isEnabled = false;
+        this.eventListenersSetup = false;
         console.log('🔌 Extension disabled and cleaned up');
+
+        // Show a subtle notification
+        this.showToast('Extension disabled on this site', 'info');
     }
 }
 
