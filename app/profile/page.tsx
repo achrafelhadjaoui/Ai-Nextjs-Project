@@ -393,7 +393,7 @@ export default function ProfilePage() {
       <div className="p-4 md:p-6 lg:p-8">
         {/* Header */}
         <div className="mb-6 md:mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">
+          <h1 className="text-3xl font-bold farisly-text-gradient mb-2">
             {get("content.profile_title", "My Profile")}
           </h1>
           <p className="text-gray-400">
@@ -402,11 +402,11 @@ export default function ProfilePage() {
         </div>
 
         {/* Profile Card */}
-        <div className="bg-[#111111] border border-gray-800 rounded-xl p-6 mb-6">
+        <div className="farisly-card farisly-card-hover p-6 mb-6">
           <div className="flex flex-col md:flex-row items-start gap-6">
             {/* Profile Image */}
             <div className="relative">
-              <div className="w-24 h-24 md:w-32 md:h-32 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center overflow-hidden">
+              <div className="w-24 h-24 md:w-32 md:h-32 farisly-gradient rounded-full flex items-center justify-center overflow-hidden farisly-glow">
                 {profile.image ? (
                   <img
                     src={profile.image}
@@ -417,7 +417,7 @@ export default function ProfilePage() {
                   <User className="w-12 h-12 md:w-16 md:h-16 text-white" />
                 )}
               </div>
-              <label className="absolute bottom-0 right-0 p-2 bg-blue-600 hover:bg-blue-700 rounded-full cursor-pointer transition-colors">
+              <label className="absolute bottom-0 right-0 p-2 farisly-gradient hover:bg-[var(--farisly-purple-light)] rounded-full cursor-pointer transition-colors farisly-glow-hover">
                 <Camera className="w-4 h-4 text-white" />
                 <input
                   type="file"
@@ -444,7 +444,7 @@ export default function ProfilePage() {
                 {!isEditing ? (
                   <button
                     onClick={() => setIsEditing(true)}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors"
+                    className="farisly-button farisly-glow-hover inline-flex items-center gap-2 text-sm"
                   >
                     <Edit className="w-4 h-4" />
                     Edit Profile
@@ -465,7 +465,7 @@ export default function ProfilePage() {
                     <button
                       onClick={handleSaveProfile}
                       disabled={isSaving}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm transition-colors disabled:opacity-50"
+                      className="farisly-button farisly-glow-hover inline-flex items-center gap-2 text-sm disabled:opacity-50"
                     >
                       {isSaving ? (
                         <>
@@ -510,7 +510,7 @@ export default function ProfilePage() {
         </div>
 
         {/* Profile Details Form */}
-        <div className="bg-[#111111] border border-gray-800 rounded-xl p-6 mb-6">
+        <div className="farisly-card farisly-card-hover p-6 mb-6">
           <h3 className="text-lg font-semibold text-white mb-6">Personal Information</h3>
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -521,7 +521,7 @@ export default function ProfilePage() {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   disabled={!isEditing}
-                  className="w-full px-4 py-2.5 bg-[#0a0a0a] border border-gray-800 rounded-lg text-white focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="farisly-input disabled:opacity-50 disabled:cursor-not-allowed"
                   placeholder="Enter your full name"
                 />
               </div>
@@ -546,7 +546,7 @@ export default function ProfilePage() {
                 rows={3}
                 maxLength={500}
                 placeholder="Tell us about yourself..."
-                className="w-full px-4 py-2.5 bg-[#0a0a0a] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors resize-none disabled:opacity-50 disabled:cursor-not-allowed"
+                className="farisly-input resize-none disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <p className="text-xs text-gray-500 mt-1">{formData.bio.length}/500 characters</p>
             </div>
@@ -563,7 +563,7 @@ export default function ProfilePage() {
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   disabled={!isEditing}
                   placeholder="+1 (555) 000-0000"
-                  className="w-full px-4 py-2.5 bg-[#0a0a0a] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="farisly-input disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               </div>
               <div>
@@ -577,7 +577,7 @@ export default function ProfilePage() {
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                   disabled={!isEditing}
                   placeholder="City, Country"
-                  className="w-full px-4 py-2.5 bg-[#0a0a0a] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="farisly-input disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               </div>
             </div>
@@ -594,7 +594,7 @@ export default function ProfilePage() {
                   onChange={(e) => setFormData({ ...formData, company: e.target.value })}
                   disabled={!isEditing}
                   placeholder="Your company name"
-                  className="w-full px-4 py-2.5 bg-[#0a0a0a] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="farisly-input disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               </div>
               <div>
@@ -608,7 +608,7 @@ export default function ProfilePage() {
                   onChange={(e) => setFormData({ ...formData, website: e.target.value })}
                   disabled={!isEditing}
                   placeholder="https://example.com"
-                  className="w-full px-4 py-2.5 bg-[#0a0a0a] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="farisly-input disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               </div>
             </div>
@@ -623,7 +623,7 @@ export default function ProfilePage() {
                   value={formData.timezone}
                   onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
                   disabled={!isEditing}
-                  className="w-full px-4 py-2.5 bg-[#0a0a0a] border border-gray-800 rounded-lg text-white focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="farisly-input disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <option value="UTC">UTC</option>
                   <option value="America/New_York">Eastern Time (ET)</option>
@@ -646,7 +646,7 @@ export default function ProfilePage() {
                   value={formData.language}
                   onChange={(e) => setFormData({ ...formData, language: e.target.value })}
                   disabled={!isEditing}
-                  className="w-full px-4 py-2.5 bg-[#0a0a0a] border border-gray-800 rounded-lg text-white focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="farisly-input disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <option value="en">English</option>
                   <option value="es">Spanish</option>
@@ -662,7 +662,7 @@ export default function ProfilePage() {
         </div>
 
         {/* Notification Preferences */}
-        <div className="bg-[#111111] border border-gray-800 rounded-xl p-6 mb-6">
+        <div className="farisly-card farisly-card-hover p-6 mb-6">
           <h3 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
             <Bell className="w-5 h-5" />
             Notification Preferences
@@ -683,7 +683,7 @@ export default function ProfilePage() {
                   disabled={!isEditing}
                   className="sr-only peer"
                 />
-                <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--farisly-purple)]"></div>
               </label>
             </div>
 
@@ -700,7 +700,7 @@ export default function ProfilePage() {
                   disabled={!isEditing}
                   className="sr-only peer"
                 />
-                <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--farisly-purple)]"></div>
               </label>
             </div>
 
@@ -717,14 +717,14 @@ export default function ProfilePage() {
                   disabled={true}
                   className="sr-only peer"
                 />
-                <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--farisly-purple)]"></div>
               </label>
             </div>
           </div>
         </div>
 
         {/* Extension Settings */}
-        <div className="bg-[#111111] border border-gray-800 rounded-xl p-6 mb-6">
+        <div className="farisly-card farisly-card-hover p-6 mb-6">
           <h3 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
             <Monitor className="w-5 h-5" />
             Extension Settings
@@ -733,7 +733,7 @@ export default function ProfilePage() {
             <div className={`flex items-center justify-between p-4 rounded-lg border-2 transition-colors ${
               extensionSettings.enableOnAllSites
                 ? 'bg-[#0a0a0a] border-transparent'
-                : 'bg-orange-600/5 border-orange-600/20'
+                : 'bg-[var(--farisly-purple)]/5 border-[var(--farisly-purple)]/20'
             }`}>
               <div>
                 <p className="text-white font-medium">Enable on All Websites</p>
@@ -753,7 +753,7 @@ export default function ProfilePage() {
                   disabled={!isEditing}
                   className="sr-only peer"
                 />
-                <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--farisly-purple)]"></div>
               </label>
             </div>
 
@@ -762,7 +762,7 @@ export default function ProfilePage() {
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-white font-medium">Allowed Websites</p>
                   {extensionSettings.allowedSites.length > 0 && (
-                    <span className="text-xs px-2 py-1 bg-blue-600/20 text-blue-400 rounded-full">
+                    <span className="text-xs px-2 py-1 bg-[var(--farisly-purple)]/20 text-[var(--farisly-purple-light)] rounded-full">
                       {extensionSettings.allowedSites.length} {extensionSettings.allowedSites.length === 1 ? 'site' : 'sites'}
                     </span>
                   )}
@@ -776,7 +776,7 @@ export default function ProfilePage() {
                     type="text"
                     value={newSiteKeyword}
                     onChange={(e) => setNewSiteKeyword(e.target.value)}
-                    onKeyPress={(e) => {
+                    onKeyDown={(e) => {
                       if (e.key === "Enter" && newSiteKeyword.trim()) {
                         if (!extensionSettings.allowedSites.includes(newSiteKeyword.trim())) {
                           setExtensionSettings({
@@ -789,7 +789,7 @@ export default function ProfilePage() {
                     }}
                     placeholder="Type keyword and press Enter..."
                     disabled={!isEditing}
-                    className="flex-1 px-4 py-2 bg-[#1a1a1a] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:opacity-50"
+                    className="flex-1 px-4 py-2 bg-[#1a1a1a] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[var(--farisly-purple)] disabled:opacity-50"
                   />
                   <button
                     onClick={() => {
@@ -802,7 +802,7 @@ export default function ProfilePage() {
                       }
                     }}
                     disabled={!isEditing || !newSiteKeyword.trim()}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-4 py-2 farisly-gradient hover:bg-[var(--farisly-purple-light)] text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Plus className="w-5 h-5" />
                   </button>
@@ -813,7 +813,7 @@ export default function ProfilePage() {
                     {extensionSettings.allowedSites.map((site, index) => (
                       <span
                         key={index}
-                        className="inline-flex items-center gap-2 px-3 py-1 bg-blue-600/20 text-blue-400 rounded-full text-sm"
+                        className="inline-flex items-center gap-2 px-3 py-1 bg-[var(--farisly-purple)]/20 text-[var(--farisly-purple-light)] rounded-full text-sm"
                       >
                         {site}
                         {isEditing && (
@@ -861,8 +861,8 @@ export default function ProfilePage() {
                   </div>
                 )}
 
-                <div className="mt-4 p-3 bg-blue-600/10 border border-blue-600/20 rounded-lg">
-                  <p className="text-sm text-blue-400">
+                <div className="mt-4 p-3 bg-[var(--farisly-purple)]/10 border border-[var(--farisly-purple)]/20 rounded-lg">
+                  <p className="text-sm text-[var(--farisly-purple-light)]">
                     <strong>Tip:</strong> Use general keywords like "fiverr" to match all Fiverr pages, or specific domains like "fiverr.com"
                   </p>
                 </div>
@@ -872,7 +872,7 @@ export default function ProfilePage() {
         </div>
 
         {/* Security */}
-        <div className="bg-[#111111] border border-gray-800 rounded-xl p-6 mb-6">
+        <div className="farisly-card farisly-card-hover p-6 mb-6">
           <h3 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
             <Lock className="w-5 h-5" />
             Security
@@ -888,7 +888,7 @@ export default function ProfilePage() {
               <button
                 onClick={() => setShowPasswordModal(true)}
                 disabled={!profile.password}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="farisly-button farisly-glow-hover text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Change Password
               </button>
@@ -898,7 +898,7 @@ export default function ProfilePage() {
 
         {/* Danger Zone */}
         {profile.role !== "admin" && (
-          <div className="bg-[#111111] border border-red-900/30 rounded-xl p-6">
+          <div className="farisly-card border-red-900/30 p-6">
             <h3 className="text-lg font-semibold text-red-400 mb-4 flex items-center gap-2">
               <AlertTriangle className="w-5 h-5" />
               Danger Zone
@@ -930,7 +930,7 @@ export default function ProfilePage() {
                     onChange={(e) =>
                       setPasswordData({ ...passwordData, currentPassword: e.target.value })
                     }
-                    className="w-full px-4 py-2.5 bg-[#111111] border border-gray-800 rounded-lg text-white focus:outline-none focus:border-blue-500 transition-colors"
+                    className="farisly-input"
                     required
                   />
                 </div>
@@ -942,7 +942,7 @@ export default function ProfilePage() {
                     onChange={(e) =>
                       setPasswordData({ ...passwordData, newPassword: e.target.value })
                     }
-                    className="w-full px-4 py-2.5 bg-[#111111] border border-gray-800 rounded-lg text-white focus:outline-none focus:border-blue-500 transition-colors"
+                    className="farisly-input"
                     required
                     minLength={6}
                   />
@@ -955,7 +955,7 @@ export default function ProfilePage() {
                     onChange={(e) =>
                       setPasswordData({ ...passwordData, confirmPassword: e.target.value })
                     }
-                    className="w-full px-4 py-2.5 bg-[#111111] border border-gray-800 rounded-lg text-white focus:outline-none focus:border-blue-500 transition-colors"
+                    className="farisly-input"
                     required
                     minLength={6}
                   />
@@ -972,7 +972,7 @@ export default function ProfilePage() {
                   <button
                     type="submit"
                     disabled={changingPassword}
-                    className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="farisly-button farisly-glow-hover flex-1 disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     {changingPassword ? (
                       <>
@@ -1013,7 +1013,7 @@ export default function ProfilePage() {
                       type="password"
                       value={deleteData.password}
                       onChange={(e) => setDeleteData({ ...deleteData, password: e.target.value })}
-                      className="w-full px-4 py-2.5 bg-[#111111] border border-gray-800 rounded-lg text-white focus:outline-none focus:border-red-500 transition-colors"
+                      className="farisly-input focus:border-red-500"
                       required={!!profile.password}
                     />
                   </div>

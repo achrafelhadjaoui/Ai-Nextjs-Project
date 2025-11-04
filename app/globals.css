@@ -21,6 +21,32 @@
     --border: 0 0% 20%;
     --input: 0 0% 20%;
     --ring: 0 0% 83%;
+
+    /* Farisly AI Brand Colors - Purple Gradient Theme */
+    --farisly-purple: #667eea;
+    --farisly-purple-dark: #764ba2;
+    --farisly-purple-light: #7c8ef5;
+    --farisly-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+    /* Supporting Colors */
+    --farisly-bg-primary: #0a0a0a;
+    --farisly-bg-secondary: #111111;
+    --farisly-bg-tertiary: #1a1a1a;
+    --farisly-bg-card: #2a2a2a;
+
+    --farisly-border-primary: #2a2a2a;
+    --farisly-border-secondary: #3a3a3a;
+    --farisly-border-accent: #667eea;
+
+    --farisly-text-primary: #ffffff;
+    --farisly-text-secondary: #cccccc;
+    --farisly-text-muted: #999999;
+    --farisly-text-disabled: #666666;
+
+    --farisly-success: #10b981;
+    --farisly-error: #ef4444;
+    --farisly-warning: #f59e0b;
+    --farisly-info: #3b82f6;
   }
 }
 
@@ -30,5 +56,83 @@
   }
   body {
     @apply bg-[#0a0a0a] text-white;
+  }
+}
+
+@layer utilities {
+  /* Farisly AI Brand Utilities */
+  .farisly-gradient {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  }
+
+  .farisly-gradient-hover {
+    background: linear-gradient(135deg, #7c8ef5 0%, #8557b3 100%);
+  }
+
+  .farisly-text-gradient {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .farisly-border-gradient {
+    border-image: linear-gradient(135deg, #667eea 0%, #764ba2 100%) 1;
+  }
+
+  .farisly-glow {
+    box-shadow: 0 0 20px rgba(102, 126, 234, 0.3), 0 0 40px rgba(102, 126, 234, 0.2);
+  }
+
+  .farisly-glow-hover:hover {
+    box-shadow: 0 0 30px rgba(102, 126, 234, 0.5), 0 0 60px rgba(102, 126, 234, 0.3);
+  }
+
+  .farisly-card {
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: 12px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .farisly-card-hover:hover {
+    border-color: #667eea;
+    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2);
+    transform: translateY(-2px);
+  }
+
+  .farisly-button {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: none;
+    cursor: pointer;
+  }
+
+  .farisly-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+  }
+
+  .farisly-button:active {
+    transform: translateY(0);
+  }
+
+  .farisly-input {
+    background: #111111;
+    border: 2px solid #2a2a2a;
+    border-radius: 8px;
+    padding: 12px;
+    color: white;
+    transition: all 0.3s ease;
+  }
+
+  .farisly-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
   }
 }

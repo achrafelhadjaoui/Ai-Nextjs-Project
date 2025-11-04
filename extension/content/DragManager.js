@@ -79,8 +79,30 @@ class DragManager {
 
         if (this.state.hasMoved) {
             // Calculate new position
-            this.state.currentX = e.clientX - this.state.offsetX;
-            this.state.currentY = e.clientY - this.state.offsetY;
+            let newX = e.clientX - this.state.offsetX;
+            let newY = e.clientY - this.state.offsetY;
+
+            // Get element dimensions
+            const rect = this.element.getBoundingClientRect();
+            const elementWidth = rect.width;
+            const elementHeight = rect.height;
+
+            // Get viewport dimensions
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+
+            // Apply boundary constraints
+            const minX = 0;
+            const minY = 0;
+            const maxX = viewportWidth - elementWidth;
+            const maxY = viewportHeight - elementHeight;
+
+            // Clamp position within boundaries
+            newX = Math.max(minX, Math.min(newX, maxX));
+            newY = Math.max(minY, Math.min(newY, maxY));
+
+            this.state.currentX = newX;
+            this.state.currentY = newY;
 
             // Call drag callback
             this.options.onDrag(this.state);

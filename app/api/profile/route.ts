@@ -117,8 +117,11 @@ export async function PATCH(request: Request) {
         : [];
 
       userProfile.extensionSettings = {
-        enableOnAllSites: extensionSettings.enableOnAllSites ?? true,
+        enableOnAllSites: extensionSettings.enableOnAllSites ?? userProfile.extensionSettings?.enableOnAllSites ?? true,
         allowedSites,
+        openaiApiKey: extensionSettings.openaiApiKey !== undefined
+          ? extensionSettings.openaiApiKey
+          : userProfile.extensionSettings?.openaiApiKey ?? '',
       };
     }
 

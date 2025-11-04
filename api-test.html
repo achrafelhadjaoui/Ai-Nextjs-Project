@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Key Test - Farisly AI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 40px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+        .status-banner {
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            font-weight: 600;
+            text-align: center;
+        }
+        .status-banner.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 2px solid #10b981;
+        }
+        .status-banner.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 2px solid #ef4444;
+        }
+        .status-banner.info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 2px solid #3b82f6;
+        }
+        .test-card {
+            background: #f9fafb;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+        .test-card h2 {
+            color: #1f2937;
+            font-size: 20px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .test-card p {
+            color: #6b7280;
+            margin-bottom: 16px;
+            line-height: 1.6;
+        }
+        textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 15px;
+            font-family: inherit;
+            resize: vertical;
+            margin-bottom: 12px;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .result-box {
+            background: white;
+            border: 2px solid #10b981;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 12px;
+            display: none;
+        }
+        .result-box.show {
+            display: block;
+        }
+        .result-box h3 {
+            color: #059669;
+            font-size: 14px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .result-box .text {
+            color: #1f2937;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 12px;
+        }
+        .select-container {
+            margin-bottom: 12px;
+        }
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 15px;
+            background: white;
+            cursor: pointer;
+        }
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .hidden {
+            display: none;
+        }
+        .instructions {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        .instructions strong {
+            color: #92400e;
+            display: block;
+            margin-bottom: 8px;
+        }
+        .instructions ol {
+            margin-left: 20px;
+            color: #78350f;
+        }
+        .instructions li {
+            margin-bottom: 4px;
+        }
+        .grammar-test-area {
+            background: #f0f9ff;
+            border: 2px solid #3b82f6;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+        .grammar-test-area h2 {
+            color: #1e40af;
+            margin-bottom: 12px;
+        }
+        .grammar-test-area textarea {
+            background: white;
+        }
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 API Key Test - All Features</h1>
+        <p class="subtitle">Test your OpenAI API key with Grammar, Translation, Expand, and more!</p>
+
+        <div id="status-banner" class="status-banner info">
+            📋 Instructions: Load the extension first, then save your API key in Settings
+        </div>
+
+        <div class="instructions">
+            <strong>⚡ Quick Setup:</strong>
+            <ol>
+                <li>Enter your OpenAI API key below (starts with sk-...)</li>
+                <li>Test each AI feature by clicking the buttons</li>
+                <li>Your API key is stored in browser memory only (secure)</li>
+            </ol>
+        </div>
+
+        <!-- API Key Input -->
+        <div class="test-card" style="background: #fef3c7; border-color: #f59e0b;">
+            <h2>🔑 Step 1: Enter Your OpenAI API Key</h2>
+            <p>Get your API key from: <a href="https://platform.openai.com/api-keys" target="_blank" style="color: #667eea;">https://platform.openai.com/api-keys</a></p>
+            <input type="password" id="api-key-input" placeholder="sk-..." style="width: 100%; padding: 12px; border: 2px solid #f59e0b; border-radius: 8px; font-size: 15px; margin-bottom: 12px;">
+            <button onclick="saveApiKey()" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">Save API Key</button>
+            <p id="api-key-status" style="margin-top: 12px; color: #92400e; font-weight: 600;"></p>
+        </div>
+
+        <!-- Test 1: Grammar Fix -->
+        <div class="test-card">
+            <h2>✅ Test 1: Grammar Fix</h2>
+            <p>This will check and correct grammar, spelling, and punctuation errors.</p>
+            <textarea id="grammar-input" placeholder="Try: He don't like apples and she go to the store yesterday">He don't like apples and she go to the store yesterday</textarea>
+            <button onclick="testGrammar()">Fix Grammar</button>
+            <div id="grammar-result" class="result-box">
+                <h3>✓ Corrected Text:</h3>
+                <div class="text"></div>
+            </div>
+        </div>
+
+        <!-- Test 2: Translate -->
+        <div class="test-card">
+            <h2>🌍 Test 2: Translate</h2>
+            <p>Translate text to any language.</p>
+            <div class="select-container">
+                <select id="translate-language">
+                    <option value="Spanish">Spanish</option>
+                    <option value="French">French</option>
+                    <option value="German">German</option>
+                    <option value="Italian">Italian</option>
+                    <option value="Portuguese">Portuguese</option>
+                    <option value="Chinese (Simplified)">Chinese (Simplified)</option>
+                    <option value="Japanese">Japanese</option>
+                    <option value="Korean">Korean</option>
+                    <option value="Arabic">Arabic</option>
+                    <option value="Russian">Russian</option>
+                </select>
+            </div>
+            <textarea id="translate-input" placeholder="Try: Hello, how are you today?">Hello, how are you today?</textarea>
+            <button onclick="testTranslate()">Translate</button>
+            <div id="translate-result" class="result-box">
+                <h3>✓ Translation:</h3>
+                <div class="text"></div>
+            </div>
+        </div>
+
+        <!-- Test 3: Expand -->
+        <div class="test-card">
+            <h2>📝 Test 3: Expand Text</h2>
+            <p>Add more detail and context to make text more comprehensive.</p>
+            <textarea id="expand-input" placeholder="Try: The product is good">The product is good</textarea>
+            <button onclick="testExpand()">Expand Text</button>
+            <div id="expand-result" class="result-box">
+                <h3>✓ Expanded Text:</h3>
+                <div class="text"></div>
+            </div>
+        </div>
+
+        <!-- Test 4: Summarize -->
+        <div class="test-card">
+            <h2>📊 Test 4: Summarize</h2>
+            <p>Create a concise summary of long text.</p>
+            <textarea id="summarize-input" placeholder="Paste a long paragraph here...">Artificial intelligence is revolutionizing the way we work and live. From automating mundane tasks to providing insights from vast amounts of data, AI has become an integral part of modern technology. Machine learning algorithms can now predict outcomes, recognize patterns, and even create content. As AI continues to evolve, it's important to consider both its benefits and potential challenges, including ethical considerations and the impact on employment.</textarea>
+            <button onclick="testSummarize()">Summarize</button>
+            <div id="summarize-result" class="result-box">
+                <h3>✓ Summary:</h3>
+                <div class="text"></div>
+            </div>
+        </div>
+
+        <!-- Test 5: Change Tone -->
+        <div class="test-card">
+            <h2>🎭 Test 5: Change Tone</h2>
+            <p>Rewrite text in a different tone while keeping the meaning.</p>
+            <div class="select-container">
+                <select id="tone-select">
+                    <option value="professional">Professional</option>
+                    <option value="friendly">Friendly</option>
+                    <option value="formal">Formal</option>
+                    <option value="casual">Casual</option>
+                </select>
+            </div>
+            <textarea id="tone-input" placeholder="Try: hey can u help me with this">hey can u help me with this</textarea>
+            <button onclick="testTone()">Change Tone</button>
+            <div id="tone-result" class="result-box">
+                <h3>✓ Rewritten Text:</h3>
+                <div class="text"></div>
+            </div>
+        </div>
+
+        <!-- Test 6: Elaborate -->
+        <div class="test-card">
+            <h2>📖 Test 6: Elaborate</h2>
+            <p>Provide comprehensive details with examples and explanations.</p>
+            <textarea id="elaborate-input" placeholder="Try: Exercise is healthy">Exercise is healthy</textarea>
+            <button onclick="testElaborate()">Elaborate</button>
+            <div id="elaborate-result" class="result-box">
+                <h3>✓ Elaborated Text:</h3>
+                <div class="text"></div>
+            </div>
+        </div>
+
+        <!-- Real-Time Grammar Checker Test -->
+        <div class="grammar-test-area">
+            <h2>📝 Bonus: Real-Time Grammar Checker</h2>
+            <p style="color: #1e40af; margin-bottom: 16px;">
+                Type text with grammar errors below and wait 2 seconds. Red squiggly underlines will appear!
+            </p>
+            <textarea placeholder="Type here: He don't like apples and she go to school yesterday..." style="min-height: 120px;"></textarea>
+            <p style="color: #1e40af; font-size: 14px; margin-top: 8px;">
+                ✨ Click the red underlines to see fix suggestions and apply corrections!
+            </p>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000';
+        let storedApiKey = null;
+
+        function updateStatus(message, type) {
+            const banner = document.getElementById('status-banner');
+            banner.textContent = message;
+            banner.className = `status-banner ${type}`;
+        }
+
+        function saveApiKey() {
+            const apiKeyInput = document.getElementById('api-key-input');
+            const apiKey = apiKeyInput.value.trim();
+
+            if (!apiKey) {
+                document.getElementById('api-key-status').textContent = '❌ Please enter an API key';
+                document.getElementById('api-key-status').style.color = '#991b1b';
+                return;
+            }
+
+            if (!apiKey.startsWith('sk-')) {
+                document.getElementById('api-key-status').textContent = '❌ Invalid API key format (should start with sk-)';
+                document.getElementById('api-key-status').style.color = '#991b1b';
+                return;
+            }
+
+            storedApiKey = apiKey;
+            localStorage.setItem('farisly_test_api_key', apiKey);
+            document.getElementById('api-key-status').textContent = '✅ API Key saved! Ready to test features below.';
+            document.getElementById('api-key-status').style.color = '#065f46';
+            updateStatus('✅ API Key saved! You can now test all features below.', 'success');
+        }
+
+        function getApiKey() {
+            if (storedApiKey) return storedApiKey;
+
+            const saved = localStorage.getItem('farisly_test_api_key');
+            if (saved) {
+                storedApiKey = saved;
+                return saved;
+            }
+
+            return null;
+        }
+
+        async function testFeature(action, text, extraParams = {}) {
+            const apiKey = getApiKey();
+
+            if (!apiKey) {
+                updateStatus('❌ No API key found! Please enter your API key above first.', 'error');
+                return null;
+            }
+
+            updateStatus('⏳ Processing with OpenAI...', 'info');
+
+            const payload = {
+                text: text,
+                action: action,
+                apiKey: apiKey,
+                ...extraParams
+            };
+
+            try {
+                const response = await fetch(`${API_URL}/api/ai/compose`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.data) {
+                    updateStatus('✅ Success! Your API key is working perfectly!', 'success');
+                    return data.data.processedText;
+                } else {
+                    updateStatus('❌ Error: ' + (data.message || 'Failed to process'), 'error');
+                    return null;
+                }
+            } catch (error) {
+                updateStatus('❌ Network error: ' + error.message, 'error');
+                return null;
+            }
+        }
+
+        function showResult(resultId, text) {
+            const resultBox = document.getElementById(resultId);
+            const textDiv = resultBox.querySelector('.text');
+            textDiv.textContent = text;
+            resultBox.classList.add('show');
+        }
+
+        function setButtonLoading(button, loading) {
+            if (loading) {
+                button.disabled = true;
+                button.innerHTML = '<span class="loading"></span> Processing...';
+            } else {
+                button.disabled = false;
+                button.textContent = button.textContent.replace(' Processing...', '');
+            }
+        }
+
+        async function testGrammar() {
+            const input = document.getElementById('grammar-input').value;
+            const btn = event.target;
+            setButtonLoading(btn, true);
+
+            const result = await testFeature('grammar', input);
+
+            setButtonLoading(btn, false);
+            if (result) {
+                showResult('grammar-result', result);
+            }
+        }
+
+        async function testTranslate() {
+            const input = document.getElementById('translate-input').value;
+            const language = document.getElementById('translate-language').value;
+            const btn = event.target;
+            setButtonLoading(btn, true);
+
+            const result = await testFeature('translate', input, { targetLanguage: language });
+
+            setButtonLoading(btn, false);
+            if (result) {
+                showResult('translate-result', result);
+            }
+        }
+
+        async function testExpand() {
+            const input = document.getElementById('expand-input').value;
+            const btn = event.target;
+            setButtonLoading(btn, true);
+
+            const result = await testFeature('expand', input);
+
+            setButtonLoading(btn, false);
+            if (result) {
+                showResult('expand-result', result);
+            }
+        }
+
+        async function testSummarize() {
+            const input = document.getElementById('summarize-input').value;
+            const btn = event.target;
+            setButtonLoading(btn, true);
+
+            const result = await testFeature('summarize', input);
+
+            setButtonLoading(btn, false);
+            if (result) {
+                showResult('summarize-result', result);
+            }
+        }
+
+        async function testTone() {
+            const input = document.getElementById('tone-input').value;
+            const tone = document.getElementById('tone-select').value;
+            const btn = event.target;
+            setButtonLoading(btn, true);
+
+            const result = await testFeature('tone', input, { tone: tone });
+
+            setButtonLoading(btn, false);
+            if (result) {
+                showResult('tone-result', result);
+            }
+        }
+
+        async function testElaborate() {
+            const input = document.getElementById('elaborate-input').value;
+            const btn = event.target;
+            setButtonLoading(btn, true);
+
+            const result = await testFeature('elaborate', input);
+
+            setButtonLoading(btn, false);
+            if (result) {
+                showResult('elaborate-result', result);
+            }
+        }
+
+        // Check if API key is saved on page load
+        window.addEventListener('load', () => {
+            const apiKey = getApiKey();
+            if (apiKey) {
+                document.getElementById('api-key-input').value = apiKey;
+                document.getElementById('api-key-status').textContent = '✅ API Key loaded! Ready to test.';
+                document.getElementById('api-key-status').style.color = '#065f46';
+                updateStatus('✅ API Key found! You can test all features below.', 'success');
+            } else {
+                updateStatus('📋 Please enter your OpenAI API key above to get started.', 'info');
+            }
+        });
+    </script>
+</body>
+</html>

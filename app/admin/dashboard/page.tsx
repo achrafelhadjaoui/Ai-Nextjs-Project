@@ -814,14 +814,14 @@ export default function AdminDashboardPage() {
           {/* Header */}
           <div className="flex justify-between items-center mb-8">
             <div>
-              <h1 className="text-3xl font-bold text-white mb-2">Admin Dashboard</h1>
+              <h1 className="text-3xl font-bold farisly-text-gradient mb-2">Admin Dashboard</h1>
               <p className="text-gray-400">
                 Manage users, monitor performance, and configure app settings.
               </p>
             </div>
             <button
               onClick={handleAddUser}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="farisly-button farisly-glow-hover flex items-center gap-2"
             >
               <UserPlus className="w-5 h-5" />
               Add User
@@ -830,22 +830,22 @@ export default function AdminDashboardPage() {
 
           {/* Dashboard Widgets */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-[#111111] p-6 rounded-xl border border-gray-800 hover:border-gray-700 transition-colors">
-              <Users className="text-blue-400 mb-3 w-8 h-8" />
+            <div className="farisly-card farisly-card-hover p-6">
+              <Users className="text-[var(--farisly-purple-light)] mb-3 w-8 h-8" />
               <h3 className="text-xl font-semibold text-white mb-2">User Management</h3>
               <p className="text-gray-400 text-sm mb-2">Total Users: {users.length}</p>
               <p className="text-gray-400 text-sm">Add, edit, or remove users.</p>
             </div>
 
-            <div className="bg-[#111111] p-6 rounded-xl border border-gray-800 hover:border-gray-700 transition-colors">
-              <BarChart className="text-green-400 mb-3 w-8 h-8" />
+            <div className="farisly-card farisly-card-hover p-6">
+              <BarChart className="text-[var(--farisly-success)] mb-3 w-8 h-8" />
               <h3 className="text-xl font-semibold text-white mb-2">Analytics</h3>
               <p className="text-gray-400 text-sm mb-2">System Overview</p>
               <p className="text-gray-400 text-sm">Monitor system activity and stats.</p>
             </div>
 
-            <div className="bg-[#111111] p-6 rounded-xl border border-gray-800 hover:border-gray-700 transition-colors">
-              <Settings className="text-purple-400 mb-3 w-8 h-8" />
+            <div className="farisly-card farisly-card-hover p-6">
+              <Settings className="text-[var(--farisly-purple)] mb-3 w-8 h-8" />
               <h3 className="text-xl font-semibold text-white mb-2">App Settings</h3>
               <p className="text-gray-400 text-sm mb-2">Configuration</p>
               <p className="text-gray-400 text-sm">Configure global settings.</p>
@@ -853,7 +853,7 @@ export default function AdminDashboardPage() {
           </div>
 
           {/* Users Table Section */}
-          <div className="bg-[#111111] border border-gray-800 rounded-xl p-6">
+          <div className="farisly-card farisly-card-hover p-6">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-white">Users</h2>
               <div className="text-sm text-gray-400">
@@ -905,9 +905,9 @@ export default function AdminDashboardPage() {
                         <td className="py-3 px-4 text-gray-300">{user.email}</td>
                         <td className="py-3 px-4">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            user.role === 'admin' 
-                              ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                              : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                            user.role === 'admin'
+                              ? 'bg-[var(--farisly-error)]/20 text-[var(--farisly-error)] border border-[var(--farisly-error)]/30'
+                              : 'bg-[var(--farisly-purple)]/20 text-[var(--farisly-purple-light)] border border-[var(--farisly-purple)]/30'
                           }`}>
                             {user.role}
                           </span>
@@ -915,8 +915,8 @@ export default function AdminDashboardPage() {
                         <td className="py-3 px-4">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                             user.isVerified
-                              ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                              : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+                              ? 'bg-[var(--farisly-success)]/20 text-[var(--farisly-success)] border border-[var(--farisly-success)]/30'
+                              : 'bg-[var(--farisly-warning)]/20 text-[var(--farisly-warning)] border border-[var(--farisly-warning)]/30'
                           }`}>
                             {user.isVerified ? 'Verified' : 'Pending'}
                           </span>
@@ -925,14 +925,14 @@ export default function AdminDashboardPage() {
                           <div className="flex gap-2">
                             <button
                               onClick={() => handleEdit(user._id)}
-                              className="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded transition-colors"
+                              className="p-2 text-[var(--farisly-purple-light)] hover:text-[var(--farisly-purple)] hover:bg-[var(--farisly-purple)]/10 rounded transition-colors"
                               title="Edit User"
                             >
                               <SquarePen className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => handleDelete(user._id)}
-                              className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors"
+                              className="p-2 text-[var(--farisly-error)] hover:text-red-300 hover:bg-[var(--farisly-error)]/10 rounded transition-colors"
                               title="Delete User"
                             >
                               <Trash2 className="w-4 h-4" />

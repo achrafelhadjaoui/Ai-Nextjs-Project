@@ -71,7 +71,8 @@ export async function GET(request: NextRequest) {
 
     const settings = {
       enableOnAllSites: user.extensionSettings?.enableOnAllSites ?? true,
-      allowedSites: user.extensionSettings?.allowedSites ?? []
+      allowedSites: user.extensionSettings?.allowedSites ?? [],
+      openaiApiKey: user.extensionSettings?.openaiApiKey ?? ''
     };
 
     console.log('[Extension Config] Returning user settings for:', userId, settings);

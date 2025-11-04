@@ -26,6 +26,7 @@ export interface IUser extends Document {
   extensionSettings?: {
     enableOnAllSites: boolean;
     allowedSites: string[];
+    openaiApiKey?: string; // User's OpenAI API key for AI features
   };
   createdAt: Date;
   updatedAt?: Date;
@@ -57,6 +58,7 @@ const UserSchema = new Schema<IUser>({
   extensionSettings: {
     enableOnAllSites: { type: Boolean, default: true },
     allowedSites: { type: [String], default: [] },
+    openaiApiKey: { type: String, default: '' },
   },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date },

@@ -45,7 +45,8 @@ export async function GET(request: NextRequest) {
 
       const settings = {
         enableOnAllSites: user?.extensionSettings?.enableOnAllSites ?? true,
-        allowedSites: user?.extensionSettings?.allowedSites ?? []
+        allowedSites: user?.extensionSettings?.allowedSites ?? [],
+        openaiApiKey: user?.extensionSettings?.openaiApiKey ?? ''
       };
 
       const message = `data: ${JSON.stringify({ type: 'config', settings })}\n\n`;
@@ -67,6 +68,7 @@ export async function GET(request: NextRequest) {
       const settings = {
         enableOnAllSites: user?.extensionSettings?.enableOnAllSites ?? true,
         allowedSites: user?.extensionSettings?.allowedSites ?? [],
+        openaiApiKey: user?.extensionSettings?.openaiApiKey ?? '',
         updatedAt: user?.updatedAt?.getTime()
       };
 

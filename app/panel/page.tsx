@@ -252,7 +252,7 @@
 //                     checked={settings.enableOnAllSites}
 //                     onChange={(e) => handleSettingChange('enableOnAllSites', e.target.checked)}
 //                   />
-//                   <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gray-300 peer-checked:border peer-checked:border-gray-400"></div>
+//                   <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--farisly-purple)]"></div>
 //                 </label>
 //               </div>
               
@@ -341,7 +341,7 @@
 //                     checked={settings.useNameSignature}
 //                     onChange={(e) => handleSettingChange('useNameSignature', e.target.checked)}
 //                   />
-//                   <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gray-300 peer-checked:border peer-checked:border-gray-400"></div>
+//                   <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--farisly-purple)]"></div>
 //                 </label>
 //               </div>
 
@@ -370,7 +370,7 @@
 //                     checked={settings.useLineSpacing}
 //                     onChange={(e) => handleSettingChange('useLineSpacing', e.target.checked)}
 //                   />
-//                   <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gray-300 peer-checked:border peer-checked:border-gray-400"></div>
+//                   <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--farisly-purple)]"></div>
 //                 </label>
 //               </div>
 
@@ -386,7 +386,7 @@
 //                     checked={settings.useToneSettings}
 //                     onChange={(e) => handleSettingChange('useToneSettings', e.target.checked)}
 //                   />
-//                   <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gray-300 peer-checked:border peer-checked:border-gray-400"></div>
+//                   <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--farisly-purple)]"></div>
 //                 </label>
 //               </div>
 
@@ -418,7 +418,7 @@
 //                     checked={settings.useOpenAI}
 //                     onChange={(e) => handleSettingChange('useOpenAI', e.target.checked)}
 //                   />
-//                   <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gray-300 peer-checked:border peer-checked:border-gray-400"></div>
+//                   <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--farisly-purple)]"></div>
 //                 </label>
 //               </div>
 
@@ -653,7 +653,7 @@
 //                     checked={settings.panelMinimized}
 //                     onChange={(e) => handleSettingChange('panelMinimized', e.target.checked)}
 //                   />
-//                   <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gray-300 peer-checked:border peer-checked:border-gray-400"></div>
+//                   <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--farisly-purple)]"></div>
 //                 </label>
 //               </div>
 //             </div>
@@ -783,7 +783,8 @@ export default function PanelPage() {
             localSettings = {
               ...localSettings,
               enableOnAllSites: profileData.data.extensionSettings.enableOnAllSites ?? true,
-              allowedSites: profileData.data.extensionSettings.allowedSites ?? []
+              allowedSites: profileData.data.extensionSettings.allowedSites ?? [],
+              openaiKey: profileData.data.extensionSettings.openaiApiKey ?? ''
             };
             console.log('✅ Loaded extension settings from user profile');
           }
@@ -841,7 +842,8 @@ export default function PanelPage() {
         body: JSON.stringify({
           extensionSettings: {
             enableOnAllSites: settings.enableOnAllSites,
-            allowedSites: settings.allowedSites
+            allowedSites: settings.allowedSites,
+            openaiApiKey: settings.openaiKey
           }
         })
       });
@@ -1010,7 +1012,7 @@ export default function PanelPage() {
       <div className="p-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">{t('panel.headerTitle')}</h1>
+          <h1 className="text-3xl font-bold farisly-text-gradient mb-2">{t('panel.headerTitle')}</h1>
           <p className="text-gray-400">{t('panel.headerSubtitle')}</p>
         </div>
 
@@ -1021,7 +1023,7 @@ export default function PanelPage() {
             disabled={!hasUnsavedChanges}
             className={`inline-flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 ${
               hasUnsavedChanges
-                ? 'bg-white text-black hover:bg-gray-100 shadow-lg'
+                ? 'farisly-button farisly-glow-hover shadow-lg'
                 : 'bg-gray-700 text-gray-400 cursor-not-allowed shadow-md'
             }`}
           >
@@ -1033,7 +1035,7 @@ export default function PanelPage() {
         {/* Settings Sections */}
         <div className="space-y-6">
           {/* Extension Activation */}
-          <div className="bg-[#111111] border border-gray-800 rounded-xl p-6">
+          <div className="farisly-card farisly-card-hover p-6">
             <div className="flex items-center gap-3 mb-6">
               <Globe className="w-5 h-5 text-white" />
               <h3 className="text-lg font-semibold text-white">{t('panel.extensionActivation.title')}</h3>
@@ -1051,7 +1053,7 @@ export default function PanelPage() {
                     checked={settings.enableOnAllSites}
                     onChange={(e) => handleSettingChange('enableOnAllSites', e.target.checked)}
                   />
-                  <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gray-300 peer-checked:border peer-checked:border-gray-400"></div>
+                  <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--farisly-purple)]"></div>
                 </label>
               </div>
               
@@ -1122,7 +1124,7 @@ export default function PanelPage() {
           </div>
 
           {/* AI Agent Settings */}
-          <div className="bg-[#111111] border border-gray-800 rounded-xl p-6">
+          <div className="farisly-card farisly-card-hover p-6">
             <div className="flex items-center gap-3 mb-6">
               <Settings className="w-5 h-5 text-white" />
               <h3 className="text-lg font-semibold text-white">{t('panel.aiAgent.title')}</h3>
@@ -1140,7 +1142,7 @@ export default function PanelPage() {
                     checked={settings.useNameSignature}
                     onChange={(e) => handleSettingChange('useNameSignature', e.target.checked)}
                   />
-                  <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gray-300 peer-checked:border peer-checked:border-gray-400"></div>
+                  <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--farisly-purple)]"></div>
                 </label>
               </div>
 
@@ -1169,7 +1171,7 @@ export default function PanelPage() {
                     checked={settings.useLineSpacing}
                     onChange={(e) => handleSettingChange('useLineSpacing', e.target.checked)}
                   />
-                  <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gray-300 peer-checked:border peer-checked:border-gray-400"></div>
+                  <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--farisly-purple)]"></div>
                 </label>
               </div>
 
@@ -1185,7 +1187,7 @@ export default function PanelPage() {
                     checked={settings.useToneSettings}
                     onChange={(e) => handleSettingChange('useToneSettings', e.target.checked)}
                   />
-                  <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gray-300 peer-checked:border peer-checked:border-gray-400"></div>
+                  <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--farisly-purple)]"></div>
                 </label>
               </div>
 
@@ -1217,7 +1219,7 @@ export default function PanelPage() {
                     checked={settings.useOpenAI}
                     onChange={(e) => handleSettingChange('useOpenAI', e.target.checked)}
                   />
-                  <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gray-300 peer-checked:border peer-checked:border-gray-400"></div>
+                  <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--farisly-purple)]"></div>
                 </label>
               </div>
 
@@ -1246,7 +1248,7 @@ export default function PanelPage() {
           </div>
 
           {/* Instructions */}
-          <div className="bg-[#111111] border border-gray-800 rounded-xl p-6">
+          <div className="farisly-card farisly-card-hover p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
                 <Settings className="w-5 h-5 text-white" />
@@ -1323,7 +1325,7 @@ export default function PanelPage() {
                 <div className="flex gap-2">
                   <button
                     onClick={addInstruction}
-                    className="px-4 py-2 bg-white text-black rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors"
+                    className="farisly-button farisly-glow-hover text-sm"
                   >
                     {t('panel.common.add')}
                   </button>
@@ -1342,7 +1344,7 @@ export default function PanelPage() {
           </div>
 
           {/* Quick Replies */}
-          <div className="bg-[#111111] border border-gray-800 rounded-xl p-6">
+          <div className="farisly-card farisly-card-hover p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
                 <Settings className="w-5 h-5 text-white" />
@@ -1415,7 +1417,7 @@ export default function PanelPage() {
                 <div className="flex gap-2">
                   <button
                     onClick={addQuickReply}
-                    className="px-4 py-2 bg-white text-black rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors"
+                    className="farisly-button farisly-glow-hover text-sm"
                   >
                     {t('panel.common.add')}
                   </button>
@@ -1434,7 +1436,7 @@ export default function PanelPage() {
           </div>
 
           {/* Panel Settings */}
-          <div className="bg-[#111111] border border-gray-800 rounded-xl p-6">
+          <div className="farisly-card farisly-card-hover p-6">
             <div className="flex items-center gap-3 mb-6">
               <Settings className="w-5 h-5 text-white" />
               <h3 className="text-lg font-semibold text-white">{t('panel.panelSettings.title')}</h3>
@@ -1452,14 +1454,14 @@ export default function PanelPage() {
                     checked={settings.panelMinimized}
                     onChange={(e) => handleSettingChange('panelMinimized', e.target.checked)}
                   />
-                  <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gray-300 peer-checked:border peer-checked:border-gray-400"></div>
+                  <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--farisly-purple)]"></div>
                 </label>
               </div>
             </div>
           </div>
 
           {/* Import/Export */}
-          <div className="bg-[#111111] border border-gray-800 rounded-xl p-6">
+          <div className="farisly-card farisly-card-hover p-6">
             <div className="flex items-center gap-3 mb-6">
               <Settings className="w-5 h-5 text-white" />
               <h3 className="text-lg font-semibold text-white">{t('panel.importExport.title')}</h3>

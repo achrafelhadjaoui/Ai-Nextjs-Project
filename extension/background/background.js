@@ -89,6 +89,7 @@ async function syncExtensionConfig() {
         ...currentSettings,
         enableOnAllSites: data.settings.enableOnAllSites,
         allowedSites: data.settings.allowedSites || [],
+        openaiKey: data.settings.openaiApiKey || currentSettings.openaiKey || '',
         lastConfigSync: Date.now() // Add timestamp for cache validation
       };
 
@@ -232,6 +233,7 @@ async function connectConfigStream() {
                   ...currentSettings,
                   enableOnAllSites: data.settings.enableOnAllSites,
                   allowedSites: data.settings.allowedSites || [],
+                  openaiKey: data.settings.openaiApiKey || currentSettings.openaiKey || '',
                   lastConfigSync: Date.now()
                 };
 
@@ -587,6 +589,54 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           sendResponse({ success: true, settings: safeSettings });
           break;
 
+        case 'SAVE_API_KEY':
+          // Save API key to server (user profile)
+          console.log('💾 Saving API key to server...');
+          try {
+            if (!authState.isAuthenticated || !authState.token) {
+              sendResponse({ success: false, message: 'Please sign in first' });
+              break;
+            }
+
+            const { apiKey } = request.payload;
+
+            const response = await fetch(`${API_URL}/api/profile`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authState.token}`
+              },
+              body: JSON.stringify({
+                extensionSettings: {
+                  openaiApiKey: apiKey
+                }
+              })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+              // Update local storage
+              const currentSettings = await chrome.storage.local.get('settings');
+              await chrome.storage.local.set({
+                settings: {
+                  ...currentSettings.settings,
+                  openaiKey: apiKey
+                }
+              });
+
+              console.log('✅ API key saved successfully');
+              sendResponse({ success: true, message: 'API key saved successfully' });
+            } else {
+              console.error('❌ Failed to save API key:', data.message);
+              sendResponse({ success: false, message: data.message || 'Failed to save API key' });
+            }
+          } catch (error) {
+            console.error('❌ Error saving API key:', error);
+            sendResponse({ success: false, message: error.message || 'Error saving API key' });
+          }
+          break;
+
         case 'UPDATE_SETTINGS':
           await chrome.storage.local.set({ settings: request.payload });
           broadcastMessage({ type: 'SETTINGS_UPDATED', data: request.payload });
@@ -721,6 +771,27 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
           const replyData = await replyResponse.json();
           sendResponse(replyData);
+          break;
+
+        case 'CHECK_GRAMMAR':
+          // Forward to Grammar Check API
+          console.log('📝 Checking grammar via API...');
+          try {
+            const grammarResponse = await fetch(`${API_URL}/api/ai/grammar`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': authState.token ? `Bearer ${authState.token}` : ''
+              },
+              body: JSON.stringify(request.payload)
+            });
+
+            const grammarData = await grammarResponse.json();
+            sendResponse(grammarData);
+          } catch (error) {
+            console.error('❌ Grammar check failed:', error);
+            sendResponse({ success: false, message: error.message, errors: [] });
+          }
           break;
 
         case 'OPEN_DASHBOARD':

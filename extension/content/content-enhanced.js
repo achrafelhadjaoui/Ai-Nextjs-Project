@@ -22,8 +22,12 @@ class FarislyAI {
         this.settings = null;
         this.selectedText = '';
         this.selectedElement = null;
+        this.selectedRange = null; // Store the selection range
+        this.selectionStart = null; // Store selection start for input/textarea
+        this.selectionEnd = null; // Store selection end for input/textarea
         this.isEnabled = false;
         this.eventListenersSetup = false; // Track if event listeners are set up
+        this.grammarChecker = null; // Grammar checker instance
         this.init();
     }
 
@@ -51,8 +55,17 @@ class FarislyAI {
         console.log('Initializing Quick Replies Manager...');
         this.quickRepliesManager = new QuickRepliesManager();
 
+        console.log('Initializing Grammar Checker...');
+        this.grammarChecker = new GrammarChecker();
+
         console.log('Loading settings...');
         await this.loadSettings();
+
+        // Enable grammar checker if API key is available
+        if (this.settings?.openaiKey) {
+            this.grammarChecker.enable(this.settings.openaiKey);
+            this.startMonitoringFields();
+        }
 
         console.log('Creating icon...');
         this.createIcon();
@@ -392,13 +405,8 @@ class FarislyAI {
 
         this.panel.innerHTML = `
             <div class="farisly-panel-header" id="panel-header">
-                <div class="farisly-panel-title">
-                    <span>🤖</span>
-                    <span>Farisly AI</span>
-                </div>
                 <div class="farisly-panel-actions">
-                    <button class="farisly-panel-btn" id="minimize-btn" title="Minimize">−</button>
-                    <button class="farisly-panel-btn" id="close-btn" title="Close">×</button>
+                    <button class="farisly-panel-btn farisly-minimize-btn" id="minimize-btn" title="Minimize">−</button>
                 </div>
             </div>
 
@@ -412,7 +420,11 @@ class FarislyAI {
             <div class="farisly-panel-content" id="panel-content">
                 <!-- Content will be loaded dynamically -->
             </div>
+            <div class="farisly-resize-handle" id="resize-handle" title="Drag to resize"></div>
         `;
+
+        // Set initial height (since we removed the fixed CSS height to allow resize)
+        this.panel.style.height = '220px';
 
         // Initially hide the panel using CSS class
         this.panel.classList.add('hidden');
@@ -493,9 +505,84 @@ class FarislyAI {
             }
         });
 
-        // Close button
-        this.panel.querySelector('#close-btn').addEventListener('click', () => {
-            this.togglePanel();
+        // Resize functionality
+        const resizeHandle = this.panel.querySelector('#resize-handle');
+        if (!resizeHandle) {
+            console.error('❌ Resize handle not found!');
+            return;
+        }
+        console.log('✅ Resize handle found, setting up listeners');
+        this.isResizing = false;
+
+        const handleResizeMove = (e) => {
+            if (this.isResizing) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const deltaX = e.clientX - this.resizeStartX;
+                const deltaY = e.clientY - this.resizeStartY;
+
+                // Calculate new dimensions
+                let newWidth = this.resizeStartWidth + deltaX;
+                let newHeight = this.resizeStartHeight + deltaY;
+
+                // Apply constraints
+                const minWidth = 300;
+                const maxWidth = window.innerWidth - (this.panel.getBoundingClientRect().left);
+                const minHeight = 200;
+                const maxHeight = window.innerHeight - (this.panel.getBoundingClientRect().top);
+
+                // Clamp to constraints
+                newWidth = Math.max(minWidth, Math.min(newWidth, maxWidth));
+                newHeight = Math.max(minHeight, Math.min(newHeight, maxHeight));
+
+                // Apply new dimensions
+                this.panel.style.width = `${newWidth}px`;
+                this.panel.style.height = `${newHeight}px`;
+
+                console.log(`📏 Resizing to: ${newWidth}px × ${newHeight}px`);
+
+                // Add visual feedback class if at boundaries
+                if (newWidth === minWidth || newHeight === minHeight) {
+                    this.panel.classList.add('at-min-size');
+                } else {
+                    this.panel.classList.remove('at-min-size');
+                }
+            }
+        };
+
+        const handleResizeEnd = () => {
+            if (this.isResizing) {
+                this.isResizing = false;
+                this.panel.classList.remove('dragging');
+                document.removeEventListener('mousemove', handleResizeMove);
+                document.removeEventListener('mouseup', handleResizeEnd);
+            }
+        };
+
+        resizeHandle.addEventListener('mousedown', (e) => {
+            console.log('🖱️ Resize handle mousedown detected');
+            e.preventDefault();
+            e.stopPropagation(); // Prevent dragging when resizing
+
+            this.isResizing = true;
+            const rect = this.panel.getBoundingClientRect();
+            this.resizeStartX = e.clientX;
+            this.resizeStartY = e.clientY;
+            this.resizeStartWidth = rect.width;
+            this.resizeStartHeight = rect.height;
+
+            console.log('📐 Starting resize:', {
+                startX: this.resizeStartX,
+                startY: this.resizeStartY,
+                startWidth: this.resizeStartWidth,
+                startHeight: this.resizeStartHeight
+            });
+
+            this.panel.classList.add('dragging'); // Disable transitions during resize
+
+            document.addEventListener('mousemove', handleResizeMove);
+            document.addEventListener('mouseup', handleResizeEnd);
         });
 
         // Tab switching
@@ -608,6 +695,20 @@ class FarislyAI {
             if (text.length > 0) {
                 this.selectedText = text;
                 this.selectedElement = selection.anchorNode.parentElement;
+
+                // Store the selection range for later use
+                if (selection.rangeCount > 0) {
+                    this.selectedRange = selection.getRangeAt(0).cloneRange();
+                }
+
+                // Store selection positions for input/textarea
+                const activeElement = document.activeElement;
+                if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
+                    this.selectionStart = activeElement.selectionStart;
+                    this.selectionEnd = activeElement.selectionEnd;
+                    this.selectedElement = activeElement;
+                }
+
                 console.log('📝 Text selected:', text.substring(0, 50) + '...');
 
                 // Show quick action menu
@@ -681,13 +782,172 @@ class FarislyAI {
             });
 
             btn.addEventListener('click', () => {
-                this.processSelectedText(action);
+                if (action === 'translate') {
+                    this.showLanguageSelector();
+                } else {
+                    this.processSelectedText(action);
+                }
             });
 
             this.quickMenu.appendChild(btn);
         });
 
         document.body.appendChild(this.quickMenu);
+    }
+
+    /**
+     * Show language selector for translation
+     */
+    showLanguageSelector() {
+        this.hideQuickActionMenu();
+
+        const languages = [
+            { code: 'es', name: 'Spanish', flag: '🇪🇸' },
+            { code: 'fr', name: 'French', flag: '🇫🇷' },
+            { code: 'de', name: 'German', flag: '🇩🇪' },
+            { code: 'it', name: 'Italian', flag: '🇮🇹' },
+            { code: 'pt', name: 'Portuguese', flag: '🇵🇹' },
+            { code: 'zh', name: 'Chinese', flag: '🇨🇳' },
+            { code: 'ja', name: 'Japanese', flag: '🇯🇵' },
+            { code: 'ko', name: 'Korean', flag: '🇰🇷' },
+            { code: 'ar', name: 'Arabic', flag: '🇸🇦' },
+            { code: 'ru', name: 'Russian', flag: '🇷🇺' },
+            { code: 'hi', name: 'Hindi', flag: '🇮🇳' },
+            { code: 'nl', name: 'Dutch', flag: '🇳🇱' }
+        ];
+
+        // Create language selector modal
+        const modal = document.createElement('div');
+        modal.className = 'farisly-language-modal';
+        modal.style.cssText = `
+            position: fixed !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            background: #1a1a1a !important;
+            border: 1px solid #333 !important;
+            border-radius: 12px !important;
+            padding: 20px !important;
+            z-index: 2147483647 !important;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
+            max-width: 400px !important;
+            width: 90% !important;
+            max-height: 80vh !important;
+            overflow-y: auto !important;
+        `;
+
+        modal.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="color: white; margin: 0; font-size: 18px; font-weight: 600;">
+                    🌍 Select Translation Language
+                </h3>
+                <button id="farisly-close-lang-selector" style="background: transparent; border: none; color: #999; font-size: 24px; cursor: pointer; padding: 0; line-height: 1;">×</button>
+            </div>
+            <div style="color: #999; font-size: 13px; margin-bottom: 16px;">
+                Choose the language you want to translate to:
+            </div>
+            <div id="farisly-language-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+            </div>
+        `;
+
+        const grid = modal.querySelector('#farisly-language-grid');
+        languages.forEach(({ code, name, flag }) => {
+            const langBtn = document.createElement('button');
+            langBtn.style.cssText = `
+                display: flex !important;
+                align-items: center !important;
+                gap: 8px !important;
+                padding: 12px !important;
+                background: #2a2a2a !important;
+                border: 1px solid #3a3a3a !important;
+                border-radius: 8px !important;
+                color: white !important;
+                cursor: pointer !important;
+                font-size: 14px !important;
+                transition: all 0.2s ease !important;
+                width: 100% !important;
+            `;
+            langBtn.innerHTML = `
+                <span style="font-size: 20px;">${flag}</span>
+                <span>${name}</span>
+            `;
+
+            langBtn.addEventListener('mouseenter', () => {
+                langBtn.style.background = '#3a3a3a !important';
+                langBtn.style.borderColor = '#667eea !important';
+            });
+
+            langBtn.addEventListener('mouseleave', () => {
+                langBtn.style.background = '#2a2a2a !important';
+                langBtn.style.borderColor = '#3a3a3a !important';
+            });
+
+            grid.appendChild(langBtn);
+        });
+
+        // Close modal function
+        const closeModal = () => {
+            modal.style.opacity = '0';
+            modal.style.transform = 'translate(-50%, -50%) scale(0.9)';
+            overlay.style.background = 'rgba(0, 0, 0, 0)';
+            setTimeout(() => {
+                if (document.body.contains(modal)) document.body.removeChild(modal);
+                if (document.body.contains(overlay)) document.body.removeChild(overlay);
+            }, 300);
+        };
+
+        // Add click handlers to language buttons (needs to be after closeModal is defined)
+        grid.querySelectorAll('button').forEach((btn, index) => {
+            btn.addEventListener('click', () => {
+                const selectedLang = languages[index].name;
+                closeModal();
+                setTimeout(() => {
+                    this.processSelectedText('translate', selectedLang);
+                }, 100);
+            });
+        });
+
+        // Create overlay
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            background: rgba(0, 0, 0, 0) !important;
+            z-index: 2147483646 !important;
+            transition: background 0.3s ease !important;
+        `;
+
+        overlay.addEventListener('click', closeModal);
+
+        // Close button
+        modal.querySelector('#farisly-close-lang-selector').addEventListener('click', closeModal);
+
+        // Escape key to close
+        const escapeHandler = (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+                document.removeEventListener('keydown', escapeHandler);
+            }
+        };
+        document.addEventListener('keydown', escapeHandler);
+
+        document.body.appendChild(overlay);
+        document.body.appendChild(modal);
+
+        // Animate in
+        setTimeout(() => {
+            overlay.style.background = 'rgba(0, 0, 0, 0.7) !important';
+            modal.style.opacity = '1';
+            modal.style.transform = 'translate(-50%, -50%) scale(1)';
+        }, 10);
+
+        // Set initial state for animation
+        modal.style.opacity = '0';
+        modal.style.transform = 'translate(-50%, -50%) scale(0.9)';
+        modal.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
     }
 
     /**
@@ -701,23 +961,94 @@ class FarislyAI {
     }
 
     /**
-     * Process selected text with AI (directly on page)
+     * Process selected text with AI (show in panel for grammar, direct replace for others)
      */
-    async processSelectedText(action) {
+    async processSelectedText(action, targetLanguage = null) {
         if (!this.selectedText) return;
 
         this.hideQuickActionMenu();
-        this.showToast('Processing...', 'info');
+
+        // For grammar action, show in panel instead of direct replace
+        if (action === 'grammar') {
+            // Open panel if not visible
+            if (!this.isVisible) {
+                this.togglePanel();
+            }
+
+            // Switch to compose tab
+            this.showTab('compose');
+
+            // Populate compose input with selected text
+            const composeInput = this.panel.querySelector('#compose-input');
+            if (composeInput) {
+                composeInput.value = this.selectedText;
+            }
+
+            // Select the grammar action button
+            const grammarBtn = this.panel.querySelector('[data-action="grammar"]');
+            if (grammarBtn) {
+                this.panel.querySelectorAll('.farisly-ai-btn').forEach(b => {
+                    b.style.borderColor = b === grammarBtn ? '#667eea' : '#2a2a2a';
+                });
+            }
+
+            // Auto-process the text
+            this.showToast('Checking grammar...', 'info');
+
+            try {
+                const response = await chrome.runtime.sendMessage({
+                    type: 'AI_COMPOSE',
+                    payload: {
+                        text: this.selectedText,
+                        action: action,
+                        apiKey: this.settings?.openaiKey,
+                        userInstructions: this.settings?.aiInstructions?.join('\n')
+                    }
+                });
+
+                if (response.success && response.data) {
+                    const processedText = response.data.processedText;
+
+                    // Show result in panel
+                    const resultArea = this.panel.querySelector('#result-area');
+                    const resultText = this.panel.querySelector('#result-text');
+                    if (resultArea && resultText) {
+                        resultText.textContent = processedText;
+                        resultArea.style.display = 'block';
+                    }
+
+                    this.showToast('✓ Grammar corrected! Click Insert to replace.', 'success');
+                } else {
+                    this.showToast(response.message || 'Grammar check failed', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                this.showToast('Error checking grammar', 'error');
+            }
+
+            return;
+        }
+
+        // For other actions, process directly on page
+        const actionLabel = action === 'translate' ? `Translating to ${targetLanguage}...` : 'Processing...';
+        this.showToast(actionLabel, 'info');
 
         try {
+            const payload = {
+                text: this.selectedText,
+                action: action,
+                apiKey: this.settings?.openaiKey,
+                userInstructions: this.settings?.aiInstructions?.join('\n')
+            };
+
+            // Add target language for translation
+            if (action === 'translate' && targetLanguage) {
+                payload.targetLanguage = targetLanguage;
+            }
+
             const response = await chrome.runtime.sendMessage({
                 type: 'AI_COMPOSE',
-                payload: {
-                    text: this.selectedText,
-                    action: action,
-                    apiKey: this.settings?.openaiKey,
-                    userInstructions: this.settings?.aiInstructions?.join('\n')
-                }
+                payload: payload
             });
 
             if (response.success && response.data) {
@@ -737,37 +1068,81 @@ class FarislyAI {
     }
 
     /**
-     * Replace selected text in the page
+     * Replace selected text in the page using stored selection
      */
     replaceSelectedText(newText) {
+        // Check if we have stored selection for input/textarea
+        if (this.selectedElement &&
+            (this.selectedElement.tagName === 'INPUT' || this.selectedElement.tagName === 'TEXTAREA') &&
+            this.selectionStart !== null && this.selectionEnd !== null) {
+
+            const element = this.selectedElement;
+            const value = element.value;
+
+            // Replace text at stored selection positions
+            element.value = value.substring(0, this.selectionStart) + newText + value.substring(this.selectionEnd);
+            element.selectionStart = element.selectionEnd = this.selectionStart + newText.length;
+
+            // Focus the element
+            element.focus();
+
+            // Trigger input event
+            element.dispatchEvent(new Event('input', { bubbles: true }));
+
+            console.log('✅ Text replaced in input/textarea at original position');
+            return;
+        }
+
+        // Check if we have stored range for contenteditable or regular text
+        if (this.selectedRange) {
+            try {
+                // Delete the old content
+                this.selectedRange.deleteContents();
+
+                // Insert new text
+                const textNode = document.createTextNode(newText);
+                this.selectedRange.insertNode(textNode);
+
+                // If it's contenteditable, update selection
+                if (this.selectedElement && this.selectedElement.isContentEditable) {
+                    const selection = window.getSelection();
+                    const newRange = document.createRange();
+                    newRange.setStartAfter(textNode);
+                    newRange.setEndAfter(textNode);
+                    selection.removeAllRanges();
+                    selection.addRange(newRange);
+
+                    // Focus the element
+                    this.selectedElement.focus();
+                }
+
+                console.log('✅ Text replaced at original selection range');
+                return;
+            } catch (error) {
+                console.error('Error using stored range:', error);
+            }
+        }
+
+        // Fallback to current selection if stored selection is not available
+        console.warn('⚠️ No stored selection found, using current selection as fallback');
         const selection = window.getSelection();
-        if (!selection.rangeCount) return;
+        if (!selection.rangeCount) {
+            console.error('❌ No selection available');
+            return;
+        }
 
         const range = selection.getRangeAt(0);
         range.deleteContents();
 
-        // Check if we're in an input/textarea
-        const activeElement = document.activeElement;
-        if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
-            const start = activeElement.selectionStart;
-            const end = activeElement.selectionEnd;
-            const value = activeElement.value;
+        const textNode = document.createTextNode(newText);
+        range.insertNode(textNode);
 
-            activeElement.value = value.substring(0, start) + newText + value.substring(end);
-            activeElement.selectionStart = activeElement.selectionEnd = start + newText.length;
-        } else if (activeElement && activeElement.isContentEditable) {
-            // For contenteditable elements
-            const textNode = document.createTextNode(newText);
-            range.insertNode(textNode);
-            range.setStartAfter(textNode);
-            range.setEndAfter(textNode);
-            selection.removeAllRanges();
-            selection.addRange(range);
-        } else {
-            // For regular text
-            const textNode = document.createTextNode(newText);
-            range.insertNode(textNode);
-        }
+        // Update selection
+        const newRange = document.createRange();
+        newRange.setStartAfter(textNode);
+        newRange.setEndAfter(textNode);
+        selection.removeAllRanges();
+        selection.addRange(newRange);
     }
 
     /**
@@ -842,70 +1217,156 @@ class FarislyAI {
      */
     showComposeTab(content) {
         content.innerHTML = `
-            <div class="farisly-ai-actions">
-                <button class="farisly-ai-btn" data-action="grammar">✓ Fix Grammar</button>
-                <button class="farisly-ai-btn" data-action="expand">📝 Expand</button>
-                <button class="farisly-ai-btn" data-action="summarize">📊 Summarize</button>
-                <button class="farisly-ai-btn" data-action="translate">🌍 Translate</button>
-                <button class="farisly-ai-btn" data-action="tone">🎭 Change Tone</button>
-                <button class="farisly-ai-btn" data-action="elaborate">📖 Elaborate</button>
-            </div>
-            <textarea class="farisly-textarea" id="compose-input" placeholder="Paste text here or select text on the page..."></textarea>
-            <button class="farisly-btn-primary" id="process-btn">Process Text</button>
-            <div id="result-area" style="margin-top: 12px; display: none;">
-                <div style="color: #999; font-size: 12px; margin-bottom: 6px;">Result:</div>
-                <div style="background: #111; border: 1px solid #2a2a2a; border-radius: 8px; padding: 12px; color: #fff; max-height: 200px; overflow-y: auto;" id="result-text"></div>
+            <div>
+                <div class="farisly-ai-actions">
+                    <button class="farisly-ai-btn" data-action="grammar">✓ Fix Grammar</button>
+                    <button class="farisly-ai-btn" data-action="expand">📝 Expand</button>
+                    <button class="farisly-ai-btn" data-action="summarize">📊 Summarize</button>
+                    <button class="farisly-ai-btn" data-action="translate">🌍 Translate</button>
+                    <button class="farisly-ai-btn" data-action="tone">🎭 Change Tone</button>
+                    <button class="farisly-ai-btn" data-action="elaborate">📖 Elaborate</button>
+                </div>
+
+                <!-- Options for Translate and Tone actions -->
+                <div id="translate-options" style="display: none; margin: 12px 0;">
+                    <label style="display: block; color: #999; font-size: 12px; margin-bottom: 6px;">Target Language:</label>
+                    <select id="target-language" style="width: 100%; padding: 8px; background: #111; border: 1px solid #2a2a2a; border-radius: 8px; color: #fff; font-size: 14px;">
+                        <option value="Spanish">Spanish</option>
+                        <option value="French">French</option>
+                        <option value="German">German</option>
+                        <option value="Italian">Italian</option>
+                        <option value="Portuguese">Portuguese</option>
+                        <option value="Chinese (Simplified)">Chinese (Simplified)</option>
+                        <option value="Japanese">Japanese</option>
+                        <option value="Korean">Korean</option>
+                        <option value="Arabic">Arabic</option>
+                        <option value="Russian">Russian</option>
+                        <option value="Hindi">Hindi</option>
+                    </select>
+                </div>
+
+                <div id="tone-options" style="display: none; margin: 12px 0;">
+                    <label style="display: block; color: #999; font-size: 12px; margin-bottom: 6px;">Select Tone:</label>
+                    <select id="tone-select" style="width: 100%; padding: 8px; background: #111; border: 1px solid #2a2a2a; border-radius: 8px; color: #fff; font-size: 14px;">
+                        <option value="professional">Professional</option>
+                        <option value="friendly">Friendly</option>
+                        <option value="formal">Formal</option>
+                        <option value="casual">Casual</option>
+                    </select>
+                </div>
             </div>
         `;
 
-        let selectedAction = 'grammar';
-
+        // Handle action button clicks - process selected text directly
         content.querySelectorAll('.farisly-ai-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                selectedAction = btn.dataset.action;
-                content.querySelectorAll('.farisly-ai-btn').forEach(b => {
-                    b.style.borderColor = b === btn ? '#667eea' : '#2a2a2a';
-                });
+            btn.addEventListener('click', async () => {
+                const action = btn.dataset.action;
+
+                // Get selected text from page
+                const selectedText = window.getSelection().toString().trim();
+                if (!selectedText) {
+                    this.showToast('Please select text on the page first', 'error');
+                    return;
+                }
+
+                // Show/hide options for translate and tone
+                const translateOptions = content.querySelector('#translate-options');
+                const toneOptions = content.querySelector('#tone-options');
+
+                // If translate or tone, show options first and wait for confirmation
+                if (action === 'translate' || action === 'tone') {
+                    // Highlight selected button
+                    content.querySelectorAll('.farisly-ai-btn').forEach(b => {
+                        b.style.borderColor = b === btn ? '#667eea' : '#2a2a2a';
+                    });
+
+                    if (action === 'translate') {
+                        translateOptions.style.display = 'block';
+                        toneOptions.style.display = 'none';
+                    } else if (action === 'tone') {
+                        translateOptions.style.display = 'none';
+                        toneOptions.style.display = 'block';
+                    }
+
+                    // Add one-time confirmation handler
+                    const processWithOptions = async () => {
+                        let tone = undefined;
+                        let targetLanguage = undefined;
+
+                        if (action === 'tone') {
+                            tone = content.querySelector('#tone-select').value;
+                        } else if (action === 'translate') {
+                            targetLanguage = content.querySelector('#target-language').value;
+                        }
+
+                        await this.processTextAction(selectedText, action, tone, targetLanguage, btn);
+
+                        // Hide options after processing
+                        translateOptions.style.display = 'none';
+                        toneOptions.style.display = 'none';
+                    };
+
+                    // Listen for select change to auto-process
+                    if (action === 'translate') {
+                        const select = content.querySelector('#target-language');
+                        select.onchange = processWithOptions;
+                    } else if (action === 'tone') {
+                        const select = content.querySelector('#tone-select');
+                        select.onchange = processWithOptions;
+                    }
+                } else {
+                    // For other actions, process immediately
+                    translateOptions.style.display = 'none';
+                    toneOptions.style.display = 'none';
+
+                    // Highlight selected button
+                    content.querySelectorAll('.farisly-ai-btn').forEach(b => {
+                        b.style.borderColor = b === btn ? '#667eea' : '#2a2a2a';
+                    });
+
+                    await this.processTextAction(selectedText, action, undefined, undefined, btn);
+                }
             });
         });
+    }
 
-        content.querySelector('#process-btn').addEventListener('click', async () => {
-            const text = content.querySelector('#compose-input').value.trim();
-            if (!text) {
-                this.showToast('Please enter text to process', 'error');
-                return;
-            }
+    /**
+     * Process text with AI action
+     */
+    async processTextAction(text, action, tone, targetLanguage, btn) {
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = '⏳ Processing...';
 
-            const btn = content.querySelector('#process-btn');
-            btn.disabled = true;
-            btn.textContent = 'Processing...';
-
-            try {
-                const response = await chrome.runtime.sendMessage({
-                    type: 'AI_COMPOSE',
-                    payload: {
-                        text: text,
-                        action: selectedAction,
-                        apiKey: this.settings?.openaiKey,
-                        userInstructions: this.settings?.aiInstructions?.join('\n')
-                    }
-                });
-
-                if (response.success && response.data) {
-                    content.querySelector('#result-area').style.display = 'block';
-                    content.querySelector('#result-text').textContent = response.data.processedText;
-                    this.showToast('✓ Processed successfully!', 'success');
-                } else {
-                    this.showToast(response.message || 'Processing failed', 'error');
+        try {
+            const response = await chrome.runtime.sendMessage({
+                type: 'AI_COMPOSE',
+                payload: {
+                    text: text,
+                    action: action,
+                    tone: tone,
+                    targetLanguage: targetLanguage,
+                    apiKey: this.settings?.openaiKey,
+                    userInstructions: this.settings?.aiInstructions?.join('\n')
                 }
-            } catch (error) {
-                console.error('Error:', error);
-                this.showToast('Error processing text', 'error');
-            } finally {
-                btn.disabled = false;
-                btn.textContent = 'Process Text';
+            });
+
+            if (response.success && response.data) {
+                const processedText = response.data.processedText;
+
+                // Replace selected text with processed text
+                this.replaceSelectedText(processedText);
+                this.showToast('✓ Text processed and replaced!', 'success');
+            } else {
+                this.showToast(response.message || 'Processing failed', 'error');
             }
-        });
+        } catch (error) {
+            console.error('Error:', error);
+            this.showToast('Error processing text', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = originalText;
+        }
     }
 
     /**
@@ -1016,7 +1477,7 @@ class FarislyAI {
     }
 
     /**
-     * Render replies HTML
+     * Render replies HTML with modern design
      */
     renderReplies(replies, filter = null) {
         const filtered = filter ?
@@ -1028,24 +1489,90 @@ class FarislyAI {
         if (filtered.length === 0) {
             return `
                 <div class="farisly-empty">
-                    <div class="farisly-empty-text">No replies match your search</div>
+                    <div class="farisly-empty-icon">🔍</div>
+                    <div class="farisly-empty-text">No replies found</div>
+                    <div class="farisly-empty-hint">Try adjusting your search or filters</div>
                 </div>
             `;
         }
 
-        return filtered.map(reply => `
-            <div class="farisly-reply-card" data-reply-id="${reply._id || reply.key}">
-                <div class="farisly-reply-header">
-                    <div class="farisly-reply-title">${this.escapeHtml(reply.title)}</div>
-                    ${reply.category ? `<span class="farisly-reply-badge">${this.escapeHtml(reply.category)}</span>` : ''}
+        return filtered.map((reply, index) => {
+            const contentPreview = this.escapeHtml(reply.content).substring(0, 150);
+            const isLong = reply.content.length > 150;
+            const usageCount = reply.usageCount || 0;
+
+            return `
+                <div class="farisly-reply-card" data-reply-id="${reply._id || reply.key}" style="animation-delay: ${index * 0.05}s">
+                    <div class="farisly-reply-card-inner">
+                        <div class="farisly-reply-header">
+                            <div class="farisly-reply-title-row">
+                                <span class="farisly-reply-icon">💬</span>
+                                <h3 class="farisly-reply-title">${this.escapeHtml(reply.title)}</h3>
+                            </div>
+                            ${reply.category ? `
+                                <span class="farisly-reply-badge farisly-badge-${this.getCategoryColor(reply.category)}">
+                                    <span class="farisly-badge-dot"></span>
+                                    ${this.escapeHtml(reply.category)}
+                                </span>
+                            ` : ''}
+                        </div>
+                        <div class="farisly-reply-content">
+                            <p class="farisly-reply-text">${contentPreview}${isLong ? '...' : ''}</p>
+                        </div>
+                        <div class="farisly-reply-footer">
+                            <div class="farisly-reply-meta">
+                                ${usageCount > 0 ? `
+                                    <span class="farisly-usage-stat">
+                                        <svg class="farisly-usage-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M2 14V7L8 2L14 7V14H10V10H6V14H2Z"></path>
+                                        </svg>
+                                        ${usageCount} use${usageCount > 1 ? 's' : ''}
+                                    </span>
+                                ` : `
+                                    <span class="farisly-usage-stat farisly-stat-new">
+                                        <svg class="farisly-usage-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="8" cy="8" r="6"></circle>
+                                            <path d="M8 5V8L10 10"></path>
+                                        </svg>
+                                        New
+                                    </span>
+                                `}
+                                <span class="farisly-word-count">${this.getWordCount(reply.content)} words</span>
+                            </div>
+                            <span class="farisly-insert-hint">
+                                <span class="farisly-insert-text">Click to insert</span>
+                                <svg class="farisly-insert-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M6 12L10 8L6 4"></path>
+                                </svg>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="farisly-card-glow"></div>
                 </div>
-                <div class="farisly-reply-content">${this.escapeHtml(reply.content)}</div>
-                <div class="farisly-reply-footer">
-                    ${reply.usageCount ? `<span class="farisly-usage-count">📊 Used ${reply.usageCount}x</span>` : ''}
-                    <span class="farisly-click-hint">Click to insert →</span>
-                </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
+    }
+
+    /**
+     * Get category color for badge styling
+     */
+    getCategoryColor(category) {
+        const colors = {
+            'Business': 'blue',
+            'Personal': 'green',
+            'Support': 'purple',
+            'Sales': 'orange',
+            'Marketing': 'pink',
+            'Technical': 'cyan'
+        };
+        return colors[category] || 'gray';
+    }
+
+    /**
+     * Get word count from text
+     */
+    getWordCount(text) {
+        return text.trim().split(/\s+/).length;
     }
 
     /**
@@ -1341,6 +1868,31 @@ class FarislyAI {
                     `}
                 </div>
 
+                <!-- AI Configuration Section -->
+                ${isAuthenticated ? `
+                <div class="farisly-settings-section">
+                    <h3>AI Configuration</h3>
+                    <div style="margin-bottom: 12px;">
+                        <label style="display: block; color: #999; font-size: 12px; margin-bottom: 6px;">
+                            OpenAI API Key
+                        </label>
+                        <input
+                            type="password"
+                            id="openai-api-key"
+                            placeholder="sk-..."
+                            value="${this.escapeHtml(this.settings?.openaiKey || '')}"
+                            style="width: 100%; padding: 10px; background: #111; border: 1px solid #2a2a2a; border-radius: 8px; color: #fff; font-size: 14px; font-family: monospace;"
+                        />
+                        <div style="color: #666; font-size: 11px; margin-top: 4px;">
+                            Required for AI text processing features (Compose & AI Reply)
+                        </div>
+                    </div>
+                    <button class="farisly-btn-primary" id="save-api-key-btn">
+                        Save API Key
+                    </button>
+                </div>
+                ` : ''}
+
                 <!-- Quick Actions Section -->
                 <div class="farisly-settings-section">
                     <h3>Quick Actions</h3>
@@ -1400,6 +1952,42 @@ class FarislyAI {
         if (repliesBtn) {
             repliesBtn.addEventListener('click', () => {
                 window.open('http://localhost:3000/saved-replies', '_blank');
+            });
+        }
+
+        // API Key save button
+        const saveApiKeyBtn = content.querySelector('#save-api-key-btn');
+        if (saveApiKeyBtn) {
+            saveApiKeyBtn.addEventListener('click', async () => {
+                const apiKeyInput = content.querySelector('#openai-api-key');
+                const apiKey = apiKeyInput.value.trim();
+
+                saveApiKeyBtn.disabled = true;
+                saveApiKeyBtn.textContent = 'Saving...';
+
+                try {
+                    // Send to background to save to server
+                    const response = await chrome.runtime.sendMessage({
+                        type: 'SAVE_API_KEY',
+                        payload: { apiKey }
+                    });
+
+                    if (response?.success) {
+                        this.showToast('✓ API Key saved successfully!', 'success');
+                        // Update local settings
+                        if (this.settings) {
+                            this.settings.openaiKey = apiKey;
+                        }
+                    } else {
+                        this.showToast(response?.message || 'Failed to save API key', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error saving API key:', error);
+                    this.showToast('Error saving API key', 'error');
+                } finally {
+                    saveApiKeyBtn.disabled = false;
+                    saveApiKeyBtn.textContent = 'Save API Key';
+                }
             });
         }
     }
@@ -1462,9 +2050,25 @@ class FarislyAI {
             this.quickRepliesManager = new QuickRepliesManager();
         }
 
+        // Initialize Grammar Checker if not already done
+        if (!this.grammarChecker) {
+            console.log('Initializing Grammar Checker...');
+            this.grammarChecker = new GrammarChecker();
+        }
+
         // Load settings
         console.log('Loading settings...');
         await this.loadSettings();
+
+        // Enable grammar checker if API key is available
+        console.log('📝 Checking for OpenAI API key...', this.settings?.openaiKey ? '✅ Found' : '❌ Not found');
+        if (this.settings?.openaiKey) {
+            console.log('✅ Enabling grammar checker with API key');
+            this.grammarChecker.enable(this.settings.openaiKey);
+            this.startMonitoringFields();
+        } else {
+            console.log('⚠️ Grammar checker NOT enabled - no API key found in settings');
+        }
 
         // Create icon if it doesn't exist
         if (!this.iconContainer) {
@@ -1527,11 +2131,69 @@ class FarislyAI {
     }
 
     /**
+     * Start monitoring text fields for grammar checking
+     */
+    startMonitoringFields() {
+        if (!this.grammarChecker) return;
+
+        console.log('👁️ Starting field monitoring for grammar checking...');
+
+        // Monitor existing fields
+        const fields = document.querySelectorAll('textarea, input[type="text"], [contenteditable="true"]');
+        fields.forEach(field => {
+            this.grammarChecker.monitorField(field);
+        });
+
+        // Monitor dynamically added fields
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.addedNodes.forEach((node) => {
+                    if (node.nodeType === 1) { // Element node
+                        // Check if the node itself is a field
+                        if (node.matches && (node.matches('textarea') || node.matches('input[type="text"]') || node.matches('[contenteditable="true"]'))) {
+                            this.grammarChecker.monitorField(node);
+                        }
+                        // Check for fields within the node
+                        const innerFields = node.querySelectorAll('textarea, input[type="text"], [contenteditable="true"]');
+                        innerFields.forEach(field => {
+                            this.grammarChecker.monitorField(field);
+                        });
+                    }
+                });
+            });
+        });
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+
+        // Store observer for cleanup
+        this.fieldObserver = observer;
+    }
+
+    /**
+     * Stop monitoring fields
+     */
+    stopMonitoringFields() {
+        if (this.fieldObserver) {
+            this.fieldObserver.disconnect();
+            this.fieldObserver = null;
+        }
+    }
+
+    /**
      * Disable extension dynamically (when not allowed on site)
      * Gracefully removes UI without page reload
      */
     disable() {
         console.log('🔌 Disabling extension dynamically...');
+
+        // Disable grammar checker
+        if (this.grammarChecker) {
+            this.grammarChecker.disable();
+            this.stopMonitoringFields();
+        }
 
         // Cleanup drag manager
         if (this.dragManager) {
