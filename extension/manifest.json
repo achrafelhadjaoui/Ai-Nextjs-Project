@@ -37,6 +37,7 @@
         "content/DragManager.js",
         "content/QuickRepliesManager.js",
         "content/GrammarChecker.js",
+        "content/ConversationDetector.js",
         "content/content-enhanced.js"
       ],
       "css": ["content/panel.css"],

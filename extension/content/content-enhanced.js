@@ -1758,28 +1758,129 @@ class FarislyAI {
      * Show AI Reply tab
      */
     showAIReplyTab(content) {
+        // Initialize conversation detector
+        if (!this.conversationDetector) {
+            this.conversationDetector = new ConversationDetector();
+        }
+
+        // Auto-detect conversation on page
+        const detectedConversation = this.conversationDetector.detectConversation();
+        const stats = this.conversationDetector.getStats(detectedConversation);
+        const formattedContext = this.conversationDetector.formatConversation(detectedConversation);
+
         content.innerHTML = `
-            <textarea class="farisly-textarea" id="ai-context" placeholder="Paste the conversation context here..." style="min-height: 150px;"></textarea>
-            <button class="farisly-btn-primary" id="generate-reply-btn">Generate AI Reply</button>
-            <div id="ai-reply-result" style="margin-top: 12px; display: none;">
-                <div style="color: #999; font-size: 12px; margin-bottom: 6px;">Generated Reply:</div>
-                <div style="background: #111; border: 1px solid #2a2a2a; border-radius: 8px; padding: 12px; color: #fff; max-height: 200px; overflow-y: auto;" id="ai-reply-text"></div>
-                <button class="farisly-btn-primary" id="insert-reply-btn" style="margin-top: 12px;">Insert Reply</button>
+            <div style="padding: 8px;">
+                <!-- Detection Status -->
+                ${stats && stats.messageCount > 0 ? `
+                    <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
+                        <div style="font-size: 20px;">✓</div>
+                        <div style="flex: 1;">
+                            <div style="font-size: 13px; font-weight: 600; color: #fff; margin-bottom: 2px;">
+                                Conversation Detected!
+                            </div>
+                            <div style="font-size: 11px; color: rgba(255, 255, 255, 0.9);">
+                                ${stats.platform} • ${stats.messageCount} messages • ${stats.senderCount} participants
+                            </div>
+                        </div>
+                    </div>
+                ` : `
+                    <div style="background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
+                        <div style="font-size: 18px;">⚠️</div>
+                        <div style="flex: 1;">
+                            <div style="font-size: 12px; font-weight: 500; color: #78350f;">
+                                No conversation detected. Paste manually below.
+                            </div>
+                        </div>
+                    </div>
+                `}
+
+                <!-- Auto-Detect Button -->
+                <button class="farisly-btn-secondary" id="auto-detect-btn" style="width: 100%; margin-bottom: 12px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <span style="font-size: 16px;">🔍</span>
+                    <span>Auto-Detect Conversation</span>
+                </button>
+
+                <!-- Conversation Context -->
+                <div style="margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                    <label style="color: #a3a3a3; font-size: 12px; font-weight: 500;">Conversation Context</label>
+                    ${formattedContext ? `
+                        <button class="farisly-text-btn" id="clear-context-btn" style="font-size: 11px; color: #ef4444;">Clear</button>
+                    ` : ''}
+                </div>
+
+                <textarea
+                    class="farisly-textarea"
+                    id="ai-context"
+                    placeholder="Paste conversation here or click Auto-Detect..."
+                    style="min-height: 120px; font-size: 12px; line-height: 1.5;"
+                >${formattedContext || ''}</textarea>
+
+                <!-- Generate Button -->
+                <button class="farisly-btn-primary" id="generate-reply-btn" style="width: 100%; margin-top: 12px;">
+                    ✨ Generate AI Reply
+                </button>
+
+                <!-- Result Display -->
+                <div id="ai-reply-result" style="margin-top: 12px; display: none;">
+                    <div style="color: #10b981; font-size: 12px; font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                        <span>✓</span>
+                        <span>Generated Reply:</span>
+                    </div>
+                    <div style="background: #111; border: 1px solid #2a2a2a; border-radius: 8px; padding: 12px; color: #fff; max-height: 150px; overflow-y: auto; font-size: 13px; line-height: 1.6;" id="ai-reply-text"></div>
+                    <div style="display: flex; gap: 8px; margin-top: 10px;">
+                        <button class="farisly-btn-primary" id="insert-reply-btn" style="flex: 1;">
+                            📤 Insert Reply
+                        </button>
+                        <button class="farisly-btn-secondary" id="copy-reply-btn" style="flex: 1;">
+                            📋 Copy
+                        </button>
+                    </div>
+                </div>
             </div>
         `;
 
         let generatedReply = '';
+        let detectedInputField = detectedConversation?.detectedInputField;
 
+        // Auto-Detect button handler
+        content.querySelector('#auto-detect-btn').addEventListener('click', () => {
+            console.log('🔍 Manual auto-detect triggered');
+            const freshDetection = this.conversationDetector.detectConversation();
+            const freshFormatted = this.conversationDetector.formatConversation(freshDetection);
+
+            if (freshFormatted) {
+                content.querySelector('#ai-context').value = freshFormatted;
+                detectedInputField = freshDetection.detectedInputField;
+                this.showToast('✓ Conversation detected and loaded!', 'success');
+
+                // Refresh the tab to show the detection status
+                this.showAIReplyTab(content);
+            } else {
+                this.showToast('No conversation found on this page', 'error');
+            }
+        });
+
+        // Clear context button handler
+        const clearBtn = content.querySelector('#clear-context-btn');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => {
+                content.querySelector('#ai-context').value = '';
+                this.showAIReplyTab(content);
+            });
+        }
+
+        // Generate Reply button handler
         content.querySelector('#generate-reply-btn').addEventListener('click', async () => {
             const context = content.querySelector('#ai-context').value.trim();
             if (!context) {
-                this.showToast('Please enter conversation context', 'error');
+                this.showToast('Please enter conversation context or click Auto-Detect', 'error');
                 return;
             }
 
             const btn = content.querySelector('#generate-reply-btn');
+            const originalText = btn.innerHTML;
             btn.disabled = true;
-            btn.textContent = 'Generating...';
+            btn.innerHTML = '<span style="font-size: 14px;">⏳</span> Generating...';
 
             try {
                 const response = await chrome.runtime.sendMessage({
@@ -1798,7 +1899,7 @@ class FarislyAI {
                     generatedReply = response.data.reply;
                     content.querySelector('#ai-reply-result').style.display = 'block';
                     content.querySelector('#ai-reply-text').textContent = generatedReply;
-                    this.showToast('✓ Reply generated!', 'success');
+                    this.showToast('✓ Reply generated successfully!', 'success');
                 } else {
                     this.showToast(response.message || 'Generation failed', 'error');
                 }
@@ -1807,16 +1908,50 @@ class FarislyAI {
                 this.showToast('Error generating reply', 'error');
             } finally {
                 btn.disabled = false;
-                btn.textContent = 'Generate AI Reply';
+                btn.innerHTML = originalText;
             }
         });
 
-        content.querySelector('#insert-reply-btn').addEventListener('click', () => {
-            if (generatedReply) {
-                this.insertTextIntoActive(generatedReply);
-                this.togglePanel();
-            }
-        });
+        // Insert Reply button handler
+        const insertBtn = content.querySelector('#insert-reply-btn');
+        if (insertBtn) {
+            insertBtn.addEventListener('click', () => {
+                if (generatedReply) {
+                    // Try to use detected input field first
+                    if (detectedInputField && document.contains(detectedInputField)) {
+                        console.log('📤 Inserting reply into detected field');
+                        this.quickRepliesManager.insertText(generatedReply, detectedInputField);
+                        this.showToast('✓ Reply inserted!', 'success');
+                        this.togglePanel();
+                    } else {
+                        // Fallback to QuickRepliesManager auto-detection
+                        const result = this.quickRepliesManager.insertText(generatedReply);
+                        if (result.success) {
+                            this.showToast('✓ Reply inserted!', 'success');
+                            this.togglePanel();
+                        } else {
+                            this.showToast('Could not find input field. Please select one.', 'error');
+                        }
+                    }
+                }
+            });
+        }
+
+        // Copy Reply button handler
+        const copyBtn = content.querySelector('#copy-reply-btn');
+        if (copyBtn) {
+            copyBtn.addEventListener('click', async () => {
+                if (generatedReply) {
+                    try {
+                        await navigator.clipboard.writeText(generatedReply);
+                        this.showToast('✓ Copied to clipboard!', 'success');
+                    } catch (error) {
+                        console.error('Copy failed:', error);
+                        this.showToast('Failed to copy', 'error');
+                    }
+                }
+            });
+        }
     }
 
     /**
