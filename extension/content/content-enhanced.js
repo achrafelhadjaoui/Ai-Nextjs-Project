@@ -618,6 +618,21 @@ class FarislyAI {
                 }
             } else if (request.type === 'DATA_SYNCED') {
                 this.loadSettings();
+            } else if (request.type === 'QUICK_REPLIES_UPDATED') {
+                // Real-time update from server
+                console.log('🔄 Quick Replies updated in real-time');
+                if (request.data?.quickReplies) {
+                    this.settings.quickReplies = request.data.quickReplies;
+                    this.quickRepliesManager.updateReplies(request.data.quickReplies);
+
+                    // Refresh UI if Quick Replies tab is visible
+                    if (this.currentTab === 'quick-replies' && this.isVisible) {
+                        const content = this.tabContent;
+                        if (content) {
+                            await this.showQuickRepliesTab(content);
+                        }
+                    }
+                }
             } else if (request.type === 'AUTH_UPDATED') {
                 // Authentication state changed - refresh current tab
                 console.log('🔄 Auth updated:', request.data);
@@ -2086,7 +2101,8 @@ class FarislyAI {
         const repliesBtn = content.querySelector('#open-saved-replies');
         if (repliesBtn) {
             repliesBtn.addEventListener('click', () => {
-                window.open('http://localhost:3000/saved-replies', '_blank');
+                // Open Settings panel where Quick Replies are managed
+                window.open('http://localhost:3000/panel', '_blank');
             });
         }
 

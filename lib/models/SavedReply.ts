@@ -8,6 +8,7 @@ export interface ISavedReply extends Document {
   keywords?: string[];
   usageCount: number;
   isActive: boolean;
+  order: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -49,6 +50,10 @@ const SavedReplySchema = new Schema<ISavedReply>({
   isActive: {
     type: Boolean,
     default: true
+  },
+  order: {
+    type: Number,
+    default: 0
   },
   createdAt: {
     type: Date,

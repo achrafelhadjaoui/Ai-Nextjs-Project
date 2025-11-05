@@ -863,6 +863,108 @@ chrome.action.onClicked.addListener(async (tab) => {
   chrome.tabs.sendMessage(tab.id, { type: 'TOGGLE_PANEL' });
 });
 
+/**
+ * Connect to real-time saved replies stream via SSE
+ */
+let savedRepliesEventSource = null;
+
+async function connectSavedRepliesStream() {
+  if (!authState.isAuthenticated || !authState.user?.id) {
+    console.log('⏭️ Skipping saved replies stream - not authenticated');
+    return;
+  }
+
+  // Close existing connection if any
+  if (savedRepliesEventSource) {
+    savedRepliesEventSource.close();
+  }
+
+  const streamUrl = `${API_URL}/api/extension/saved-replies/stream?userId=${authState.user.id}`;
+  console.log('🔌 Connecting to saved replies real-time stream...');
+
+  savedRepliesEventSource = new EventSource(streamUrl);
+
+  savedRepliesEventSource.onopen = () => {
+    console.log('✅ Connected to saved replies real-time stream');
+  };
+
+  savedRepliesEventSource.onmessage = async (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      console.log('📨 Received real-time update:', data.type);
+
+      // Handle different event types
+      if (data.type === 'connected' || data.type === 'heartbeat') {
+        // Just keep-alive messages
+        return;
+      }
+
+      if (data.type === 'created' || data.type === 'updated' || data.type === 'deleted') {
+        console.log(`🔄 Quick Reply ${data.type}:`, data.replyId);
+
+        // Re-sync saved replies from server
+        await syncSavedReplies();
+      }
+    } catch (error) {
+      console.error('Error processing saved replies stream event:', error);
+    }
+  };
+
+  savedRepliesEventSource.onerror = (error) => {
+    console.error('❌ Saved replies stream error:', error);
+    savedRepliesEventSource.close();
+
+    // Retry connection after 5 seconds
+    setTimeout(() => {
+      if (authState.isAuthenticated) {
+        console.log('🔄 Reconnecting to saved replies stream...');
+        connectSavedRepliesStream();
+      }
+    }, 5000);
+  };
+}
+
+/**
+ * Sync saved replies from server (called by real-time updates)
+ */
+async function syncSavedReplies() {
+  if (!authState.isAuthenticated) return;
+
+  try {
+    const response = await fetch(
+      `${API_URL}/api/extension/saved-replies?userId=${authState.user.id}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${authState.token}`
+        }
+      }
+    );
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data.success) {
+        // Update local storage
+        const settings = await chrome.storage.local.get('settings');
+        const updatedSettings = {
+          ...settings.settings,
+          quickReplies: data.data || []
+        };
+
+        await chrome.storage.local.set({ settings: updatedSettings });
+        console.log(`✅ Real-time sync: ${data.data?.length || 0} quick replies updated`);
+
+        // Notify all tabs about the update
+        broadcastMessage({
+          type: 'QUICK_REPLIES_UPDATED',
+          data: { quickReplies: data.data }
+        });
+      }
+    }
+  } catch (error) {
+    console.error('❌ Error syncing saved replies:', error);
+  }
+}
+
 // Load auth state immediately when service worker starts
 (async () => {
   console.log('🎯 Farisly AI Background Service Worker initialized');
@@ -880,5 +982,9 @@ chrome.action.onClicked.addListener(async (tab) => {
   if (authState.isAuthenticated) {
     await connectConfigStream();
     console.log('✅ Real-time config stream connected');
+
+    // Connect to real-time saved replies stream
+    await connectSavedRepliesStream();
+    console.log('✅ Real-time saved replies stream connected');
   }
 })();

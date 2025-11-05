@@ -708,10 +708,93 @@
 'use client';
 
 import DashboardLayout from '@/components/DashboardLayout';
-import { Settings, Globe, Eye, EyeOff, Plus, Trash2, Upload, Download, Save } from 'lucide-react';
+import { Settings, Globe, Eye, EyeOff, Plus, Trash2, Upload, Download, Save, GripVertical } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useI18n } from '@/providers/i18n-provider';
 import { toast } from 'react-toastify';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+// Sortable Quick Reply Item Component
+function SortableQuickReply({
+  quickReply,
+  onEdit,
+  onDelete,
+  t
+}: {
+  quickReply: any;
+  onEdit: (qr: any) => void;
+  onDelete: (qr: any) => void;
+  t: any;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: quickReply.key });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="p-3 bg-white/5 rounded-lg"
+    >
+      <div className="flex items-start justify-between">
+        <div className="flex items-start gap-2 flex-1">
+          <button
+            {...attributes}
+            {...listeners}
+            className="mt-1 p-1 text-gray-400 hover:text-white transition-colors cursor-grab active:cursor-grabbing"
+          >
+            <GripVertical className="w-4 h-4" />
+          </button>
+          <div className="flex-1">
+            <div className="text-white text-sm font-medium mb-1">{quickReply.title}</div>
+            <div className="text-gray-400 text-sm">{quickReply.text}</div>
+          </div>
+        </div>
+        <div className="flex gap-2 ml-4">
+          <button
+            onClick={() => onEdit(quickReply)}
+            className="p-1 text-gray-400 hover:text-white transition-colors"
+          >
+            {t('panel.common.edit')}
+          </button>
+          <button
+            onClick={() => onDelete(quickReply)}
+            className="p-1 text-gray-400 hover:text-red-400 transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function PanelPage() {
   // Default settings
@@ -744,7 +827,6 @@ export default function PanelPage() {
   const [isLoaded, setIsLoaded] = useState(false);
   const { t } = useI18n(); // Add this hook call
 
-  const [showApiKey, setShowApiKey] = useState(false);
   const [newInstruction, setNewInstruction] = useState('');
   const [newQuickReply, setNewQuickReply] = useState({ title: '', text: '' });
   const [showAddInstruction, setShowAddInstruction] = useState(false);
@@ -757,6 +839,14 @@ export default function PanelPage() {
   const [editingKeyword, setEditingKeyword] = useState(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [initialSettings, setInitialSettings] = useState(null);
+
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // Load settings from localStorage and user profile on client side only
   useEffect(() => {
@@ -783,14 +873,39 @@ export default function PanelPage() {
             localSettings = {
               ...localSettings,
               enableOnAllSites: profileData.data.extensionSettings.enableOnAllSites ?? true,
-              allowedSites: profileData.data.extensionSettings.allowedSites ?? [],
-              openaiKey: profileData.data.extensionSettings.openaiApiKey ?? ''
+              allowedSites: profileData.data.extensionSettings.allowedSites ?? []
+              // openaiKey removed - now managed by admin
             };
             console.log('✅ Loaded extension settings from user profile');
           }
         }
       } catch (error) {
         console.error('Error loading extension settings from profile:', error);
+      }
+
+      // Load Quick Replies from database
+      try {
+        const repliesResponse = await fetch('/api/saved-replies');
+        if (repliesResponse.ok) {
+          const repliesData = await repliesResponse.json();
+          if (repliesData.success && repliesData.data) {
+            // Transform saved replies to quick replies format
+            const quickReplies = repliesData.data.map((reply: any) => ({
+              key: reply._id,
+              title: reply.title,
+              text: reply.content,
+              category: reply.category || 'General',
+              keywords: reply.keywords || []
+            }));
+            localSettings = {
+              ...localSettings,
+              quickReplies
+            };
+            console.log(`✅ Loaded ${quickReplies.length} Quick Replies from database`);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading Quick Replies:', error);
       }
 
       setSettings(localSettings);
@@ -820,18 +935,21 @@ export default function PanelPage() {
   }, [settings, initialSettings, isLoaded]);
 
   // Auto-save settings to localStorage when they change (optional)
+  // NOTE: Quick Replies are NOT saved to localStorage - they're managed by the database
   useEffect(() => {
     if (isLoaded && initialSettings && typeof window !== 'undefined') {
-      localStorage.setItem('farisly-settings', JSON.stringify(settings));
+      const { quickReplies, ...settingsWithoutQuickReplies } = settings;
+      localStorage.setItem('farisly-settings', JSON.stringify(settingsWithoutQuickReplies));
     }
   }, [settings, initialSettings, isLoaded]);
 
   const handleSave = async () => {
     if (!hasUnsavedChanges) return;
 
-    // Save settings to localStorage
+    // Save settings to localStorage (excluding Quick Replies - they're managed by database)
     if (typeof window !== 'undefined') {
-      localStorage.setItem('farisly-settings', JSON.stringify(settings));
+      const { quickReplies, ...settingsWithoutQuickReplies } = settings;
+      localStorage.setItem('farisly-settings', JSON.stringify(settingsWithoutQuickReplies));
     }
 
     // Save extension settings to user profile
@@ -842,8 +960,8 @@ export default function PanelPage() {
         body: JSON.stringify({
           extensionSettings: {
             enableOnAllSites: settings.enableOnAllSites,
-            allowedSites: settings.allowedSites,
-            openaiApiKey: settings.openaiKey
+            allowedSites: settings.allowedSites
+            // openaiApiKey removed - now managed by admin
           }
         })
       });
@@ -900,14 +1018,7 @@ export default function PanelPage() {
 
     // Save to extension storage
     try {
-      // Save API key to extension
-      if (settings.openaiKey) {
-        await fetch('http://localhost:3000/api/extension/set-api-key', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ apiKey: settings.openaiKey })
-        });
-      }
+      // API key removed - now managed by admin centrally
       // Save settings to extension
       await fetch('http://localhost:3000/api/extension/set-settings', {
         method: 'POST',
@@ -974,16 +1085,133 @@ export default function PanelPage() {
     }
   };
 
-  const addQuickReply = () => {
+  const addQuickReply = async () => {
     if (newQuickReply.title.trim() && newQuickReply.text.trim()) {
-      const quickReply = {
-        key: newQuickReply.title.toLowerCase().replace(/\s+/g, '_').slice(0, 40),
-        title: newQuickReply.title.trim(),
-        text: newQuickReply.text.trim()
-      };
-      handleSettingChange('quickReplies', [...settings.quickReplies, quickReply]);
-      setNewQuickReply({ title: '', text: '' });
-      setShowAddQuickReply(false);
+      try {
+        // Calculate order for new reply (max + 1)
+        const maxOrder = settings.quickReplies.length > 0
+          ? Math.max(...settings.quickReplies.map((_, index) => index))
+          : -1;
+
+        // Save to database
+        const response = await fetch('/api/saved-replies', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: newQuickReply.title.trim(),
+            content: newQuickReply.text.trim(),
+            category: 'General',
+            keywords: [],
+            order: maxOrder + 1
+          })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          // Add to local state
+          const quickReply = {
+            key: data.data._id,
+            title: data.data.title,
+            text: data.data.content,
+            category: data.data.category || 'General',
+            keywords: data.data.keywords || []
+          };
+          handleSettingChange('quickReplies', [...settings.quickReplies, quickReply]);
+          setNewQuickReply({ title: '', text: '' });
+          setShowAddQuickReply(false);
+          toast.success('Quick Reply saved successfully!');
+        } else {
+          toast.error(data.message || 'Failed to save Quick Reply');
+        }
+      } catch (error) {
+        console.error('Error saving Quick Reply:', error);
+        toast.error('Failed to save Quick Reply');
+      }
+    }
+  };
+
+  const saveQuickReply = async () => {
+    if (!editingQuickReply || !editingQuickReply.title.trim() || !editingQuickReply.text.trim()) {
+      return;
+    }
+
+    try {
+      // Update in database
+      const response = await fetch('/api/saved-replies', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingQuickReply.key,
+          title: editingQuickReply.title.trim(),
+          content: editingQuickReply.text.trim(),
+          category: editingQuickReply.category || 'General',
+          keywords: editingQuickReply.keywords || []
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        // Update local state
+        const updated = settings.quickReplies.map(qr =>
+          qr.key === editingQuickReply.key
+            ? {
+                key: data.data._id,
+                title: data.data.title,
+                text: data.data.content,
+                category: data.data.category || 'General',
+                keywords: data.data.keywords || []
+              }
+            : qr
+        );
+        handleSettingChange('quickReplies', updated);
+        setEditingQuickReply(null);
+        toast.success('Quick Reply updated successfully!');
+      } else {
+        toast.error(data.message || 'Failed to update Quick Reply');
+      }
+    } catch (error) {
+      console.error('Error updating Quick Reply:', error);
+      toast.error('Failed to update Quick Reply');
+    }
+  };
+
+  // Handle drag and drop reordering for Quick Replies
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) {
+      return;
+    }
+
+    const oldIndex = settings.quickReplies.findIndex((qr) => qr.key === active.id);
+    const newIndex = settings.quickReplies.findIndex((qr) => qr.key === over.id);
+
+    // Reorder locally
+    const reordered = arrayMove(settings.quickReplies, oldIndex, newIndex);
+    handleSettingChange('quickReplies', reordered);
+
+    // Update order in database
+    try {
+      const replyOrders = reordered.map((qr, index) => ({
+        id: qr.key,
+        order: index
+      }));
+
+      const response = await fetch('/api/saved-replies/reorder', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ replyOrders })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        toast.success('Quick Replies reordered successfully!');
+      } else {
+        toast.error('Failed to save order');
+      }
+    } catch (error) {
+      console.error('Error reordering Quick Replies:', error);
+      toast.error('Failed to save order');
     }
   };
 
@@ -1206,44 +1434,6 @@ export default function PanelPage() {
                   </select>
                 </div>
               )}
-
-              <div className="flex items-center justify-between py-3 border-b border-gray-800">
-                <div>
-                  <div className="text-white text-sm font-medium mb-1">{t('panel.aiAgent.useOpenAI')}</div>
-                  <div className="text-gray-400 text-xs">{t('panel.aiAgent.useOpenAIDescription')}</div>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="sr-only peer"
-                    checked={settings.useOpenAI}
-                    onChange={(e) => handleSettingChange('useOpenAI', e.target.checked)}
-                  />
-                  <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--farisly-purple)]"></div>
-                </label>
-              </div>
-
-              {settings.useOpenAI && (
-                <div className="py-3">
-                  <label className="block text-white text-sm font-medium mb-2">{t('panel.aiAgent.openaiKey')}</label>
-                  <div className="relative">
-                    <input
-                      type={showApiKey ? "text" : "password"}
-                      value={settings.openaiKey}
-                      onChange={(e) => handleSettingChange('openaiKey', e.target.value)}
-                      placeholder={t('panel.aiAgent.openaiKeyPlaceholder')}
-                      className="w-full px-3 py-2 pr-10 bg-[#0a0a0a] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-700"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowApiKey(!showApiKey)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
-                    >
-                      {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 
@@ -1369,35 +1559,48 @@ export default function PanelPage() {
               />
             </div>
 
-            <div className="space-y-3 max-h-60 overflow-y-auto">
-              {filteredQuickReplies.map((quickReply) => (
-                <div key={quickReply.key} className="p-3 bg-white/5 rounded-lg">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="text-white text-sm font-medium mb-1">{quickReply.title}</div>
-                      <div className="text-gray-400 text-sm">{quickReply.text}</div>
-                    </div>
-                    <div className="flex gap-2 ml-4">
-                      <button
-                        onClick={() => setEditingQuickReply(quickReply)}
-                        className="p-1 text-gray-400 hover:text-white transition-colors"
-                      >
-                        {t('panel.common.edit')}
-                      </button>
-                      <button
-                        onClick={() => {
-                          const updated = settings.quickReplies.filter(qr => qr.key !== quickReply.key);
-                          handleSettingChange('quickReplies', updated);
-                        }}
-                        className="p-1 text-gray-400 hover:text-red-400 transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={settings.quickReplies.map(qr => qr.key)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="space-y-3 max-h-60 overflow-y-auto">
+                  {filteredQuickReplies.map((quickReply) => (
+                    <SortableQuickReply
+                      key={quickReply.key}
+                      quickReply={quickReply}
+                      onEdit={setEditingQuickReply}
+                      onDelete={async (qr) => {
+                        if (!confirm('Are you sure you want to delete this Quick Reply?')) return;
+
+                        try {
+                          const response = await fetch(`/api/saved-replies?id=${qr.key}`, {
+                            method: 'DELETE'
+                          });
+                          const data = await response.json();
+
+                          if (data.success) {
+                            const updated = settings.quickReplies.filter(item => item.key !== qr.key);
+                            handleSettingChange('quickReplies', updated);
+                            toast.success('Quick Reply deleted successfully!');
+                          } else {
+                            toast.error(data.message || 'Failed to delete Quick Reply');
+                          }
+                        } catch (error) {
+                          console.error('Error deleting Quick Reply:', error);
+                          toast.error('Failed to delete Quick Reply');
+                        }
+                      }}
+                      t={t}
+                    />
+                  ))}
                 </div>
-              ))}
-            </div>
+              </SortableContext>
+            </DndContext>
 
             {showAddQuickReply && (
               <div className="mt-4 p-4 bg-white/5 rounded-lg">
@@ -1426,6 +1629,41 @@ export default function PanelPage() {
                       setShowAddQuickReply(false);
                       setNewQuickReply({ title: '', text: '' });
                     }}
+                    className="px-4 py-2 bg-white/5 border border-gray-700 text-white rounded-lg text-sm hover:bg-white/10 transition-colors"
+                  >
+                    {t('panel.common.cancel')}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {editingQuickReply && (
+              <div className="mt-4 p-4 bg-white/5 rounded-lg border border-blue-500/30">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-blue-400 text-sm font-medium">Editing Quick Reply</span>
+                </div>
+                <input
+                  type="text"
+                  value={editingQuickReply.title}
+                  onChange={(e) => setEditingQuickReply(prev => ({ ...prev, title: e.target.value }))}
+                  placeholder={t('panel.quickReplies.titlePlaceholder')}
+                  className="w-full px-3 py-2 bg-[#0a0a0a] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 mb-3"
+                />
+                <textarea
+                  value={editingQuickReply.text}
+                  onChange={(e) => setEditingQuickReply(prev => ({ ...prev, text: e.target.value }))}
+                  placeholder={t('panel.quickReplies.contentPlaceholder')}
+                  className="w-full h-20 px-3 py-2 bg-[#0a0a0a] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-none mb-3"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={saveQuickReply}
+                    className="farisly-button farisly-glow-hover text-sm"
+                  >
+                    {t('panel.common.save')}
+                  </button>
+                  <button
+                    onClick={() => setEditingQuickReply(null)}
                     className="px-4 py-2 bg-white/5 border border-gray-700 text-white rounded-lg text-sm hover:bg-white/10 transition-colors"
                   >
                     {t('panel.common.cancel')}

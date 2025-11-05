@@ -384,7 +384,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
-  MessageSquare,
   HelpCircle,
   Settings,
   User,
@@ -427,12 +426,6 @@ export default function UserSidebar() {
       href: '/dashboard',
       icon: LayoutDashboard,
       description: 'Your workspace'
-    },
-    {
-      name: t('sidebar.savedReplies'),
-      href: '/saved-replies',
-      icon: MessageSquare,
-      description: 'Quick responses'
     },
     {
       name: 'AI Assistant',

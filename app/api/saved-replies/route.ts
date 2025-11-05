@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth/auth-utils';
 import { connectDB } from '@/lib/db/connect';
 import SavedReply from '@/lib/models/SavedReply';
+import { savedReplyEvents } from '@/lib/events/SavedReplyEventEmitter';
 
 // GET - Fetch all saved replies for the authenticated user
 export async function GET(request: NextRequest) {
@@ -31,10 +32,10 @@ export async function GET(request: NextRequest) {
       savedReplies = await SavedReply.find({
         ...query,
         $text: { $search: search }
-      }).sort({ usageCount: -1, createdAt: -1 });
+      }).sort({ order: 1, createdAt: -1 });
     } else {
       savedReplies = await SavedReply.find(query)
-        .sort({ usageCount: -1, createdAt: -1 });
+        .sort({ order: 1, createdAt: -1 });
     }
 
     return NextResponse.json({
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest) {
     await connectDB();
 
     const body = await request.json();
-    const { title, content, category, keywords } = body;
+    const { title, content, category, keywords, order } = body;
 
     // Validation
     if (!title || title.trim().length === 0) {
@@ -95,7 +96,17 @@ export async function POST(request: NextRequest) {
       category: category?.trim() || 'General',
       keywords: keywords || [],
       usageCount: 0,
-      isActive: true
+      isActive: true,
+      order: order ?? 0
+    });
+
+    // Broadcast real-time event
+    savedReplyEvents.emitReplyEvent({
+      type: 'created',
+      userId: user.id,
+      replyId: newReply._id.toString(),
+      data: newReply,
+      timestamp: Date.now()
     });
 
     return NextResponse.json({
@@ -186,6 +197,15 @@ export async function PATCH(request: NextRequest) {
     savedReply.updatedAt = new Date();
     await savedReply.save();
 
+    // Broadcast real-time event
+    savedReplyEvents.emitReplyEvent({
+      type: 'updated',
+      userId: user.id,
+      replyId: savedReply._id.toString(),
+      data: savedReply,
+      timestamp: Date.now()
+    });
+
     return NextResponse.json({
       success: true,
       message: 'Saved reply updated successfully',
@@ -225,6 +245,14 @@ export async function DELETE(request: NextRequest) {
         { status: 404 }
       );
     }
+
+    // Broadcast real-time event
+    savedReplyEvents.emitReplyEvent({
+      type: 'deleted',
+      userId: user.id,
+      replyId: id,
+      timestamp: Date.now()
+    });
 
     return NextResponse.json({
       success: true,

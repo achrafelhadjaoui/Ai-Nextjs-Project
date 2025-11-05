@@ -42,7 +42,6 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/dashboard") ||
     isAdminPage ||
     pathname.startsWith("/profile") ||
-    pathname.startsWith("/saved-replies") ||
     pathname.startsWith("/panel") ||
     pathname.startsWith("/support") ||
     pathname.startsWith("/feature-requests") ||

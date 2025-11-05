@@ -33,8 +33,8 @@ export async function GET(request: NextRequest) {
       userId,
       isActive: true
     })
-      .sort({ usageCount: -1, createdAt: -1 })
-      .select('title content category keywords usageCount')
+      .sort({ order: 1, createdAt: -1 })
+      .select('title content category keywords usageCount order')
       .lean();
 
     console.log(`✅ Found ${savedReplies.length} saved replies for user ${userId}`);
@@ -47,7 +47,8 @@ export async function GET(request: NextRequest) {
       content: reply.content,
       category: reply.category,
       keywords: reply.keywords || [],
-      usageCount: reply.usageCount
+      usageCount: reply.usageCount,
+      order: reply.order || 0
     }));
 
     return NextResponse.json(
