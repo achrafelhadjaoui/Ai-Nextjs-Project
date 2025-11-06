@@ -9,7 +9,8 @@
     "tabs",
     "scripting",
     "identity",
-    "alarms"
+    "alarms",
+    "cookies"
   ],
   "host_permissions": [
     "https://api.openai.com/*",

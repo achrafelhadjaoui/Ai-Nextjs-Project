@@ -101,23 +101,34 @@ class FarislyAI {
     /**
      * Check if user is authenticated
      * CRITICAL: This determines if ANY features are accessible
+     * On page load, we check BOTH extension auth state AND dashboard session cookie
      */
     async checkAuthentication() {
         try {
+            // First check extension's stored auth state
             const response = await chrome.runtime.sendMessage({ type: 'GET_AUTH_STATE' });
 
-            if (response && response.success && response.authState) {
+            if (response && response.success && response.authState && response.authState.isAuthenticated) {
                 this.authState = response.authState;
-                this.isAuthenticated = response.authState.isAuthenticated === true;
+                this.isAuthenticated = true;
+                console.log('✅ User authenticated via extension:', response.authState.user?.email);
+                return;
+            }
 
-                if (this.isAuthenticated) {
-                    console.log('✅ User authenticated:', response.authState.user?.email);
-                } else {
-                    console.log('🔒 User not authenticated');
-                }
+            // If extension auth not found, try to sync from dashboard session cookie
+            console.log('🔍 Extension not authenticated, checking dashboard session...');
+            const syncResult = await chrome.runtime.sendMessage({ type: 'SYNC_AUTH_FROM_WEB' });
+
+            if (syncResult && syncResult.success) {
+                this.authState = {
+                    isAuthenticated: true,
+                    user: syncResult.user
+                };
+                this.isAuthenticated = true;
+                console.log('✅ User authenticated via dashboard session:', syncResult.user?.email);
             } else {
                 this.isAuthenticated = false;
-                console.log('🔒 No valid auth state found');
+                console.log('🔒 User not authenticated on extension or dashboard');
             }
         } catch (error) {
             console.error('Error checking authentication:', error);
@@ -485,7 +496,7 @@ class FarislyAI {
                         </button>
 
                         <p style="color: #6b7280; font-size: 12px; margin: 20px 0 0 0; line-height: 1.5;">
-                            Make sure you're signed in on the dashboard, then click the button above to sync your account
+                            Already signed in on the dashboard? Click "Sync with Dashboard" to activate your account here instantly.
                         </p>
                     </div>
                 </div>
@@ -694,17 +705,21 @@ class FarislyAI {
             const syncBtn = this.panel.querySelector('#auth-gate-sync-btn');
 
             if (signInBtn) {
-                signInBtn.addEventListener('click', async () => {
-                    console.log('🔐 Sign in button clicked');
-                    // Try to sync auth from web
-                    const result = await chrome.runtime.sendMessage({ type: 'SYNC_AUTH_FROM_WEB' });
-                    if (result && result.success) {
-                        // Reload the page to reinitialize with auth
-                        window.location.reload();
-                    } else {
-                        // Open dashboard for login
-                        chrome.runtime.sendMessage({ type: 'OPEN_DASHBOARD' });
-                    }
+                signInBtn.addEventListener('click', () => {
+                    console.log('🔐 Sign in button clicked - opening dashboard in new tab');
+                    // Open dashboard in new tab - DON'T navigate current page
+                    chrome.runtime.sendMessage({ type: 'OPEN_DASHBOARD' });
+
+                    // Show helpful message to user
+                    const originalText = signInBtn.textContent;
+                    signInBtn.textContent = 'Dashboard opened - Sign in there';
+                    signInBtn.style.opacity = '0.7';
+
+                    // Reset button after 3 seconds
+                    setTimeout(() => {
+                        signInBtn.textContent = originalText;
+                        signInBtn.style.opacity = '1';
+                    }, 3000);
                 });
 
                 // Hover effect
@@ -731,7 +746,7 @@ class FarislyAI {
                     syncBtn.disabled = true;
                     syncBtn.style.cursor = 'not-allowed';
                     syncBtn.style.opacity = '0.7';
-                    btnText.textContent = 'Syncing...';
+                    btnText.textContent = 'Checking...';
 
                     // Add rotation animation to SVG
                     btnSvg.style.animation = 'spin 1s linear infinite';
@@ -748,38 +763,89 @@ class FarislyAI {
                     }
 
                     try {
-                        // Try to sync auth from web
-                        const result = await chrome.runtime.sendMessage({ type: 'SYNC_AUTH_FROM_WEB' });
+                        // Try to sync auth from web with timeout
+                        const result = await Promise.race([
+                            chrome.runtime.sendMessage({ type: 'SYNC_AUTH_FROM_WEB' }),
+                            new Promise((_, reject) =>
+                                setTimeout(() => reject(new Error('Sync timeout')), 10000)
+                            )
+                        ]);
+
+                        console.log('🔄 Sync result:', result);
 
                         if (result && result.success) {
-                            // Success - show success state briefly
-                            btnText.textContent = 'Synced! Reloading...';
+                            // Success - show success state
+                            btnText.textContent = 'Synced Successfully!';
                             btnSvg.style.animation = '';
                             syncBtn.style.background = 'rgba(16, 185, 129, 0.2)';
                             syncBtn.style.borderColor = 'rgba(16, 185, 129, 0.4)';
                             syncBtn.style.color = '#10b981';
 
-                            console.log('✅ Auth synced successfully - reloading page');
+                            console.log('✅ Auth synced successfully - updating UI');
 
-                            // Reload after a brief delay
-                            setTimeout(() => {
-                                window.location.reload();
-                            }, 800);
+                            // Update internal state
+                            this.isAuthenticated = true;
+                            this.authState = {
+                                isAuthenticated: true,
+                                user: result.user
+                            };
+
+                            // Show success message for 1.5 seconds, then transform the panel
+                            setTimeout(async () => {
+                                // Initialize features now that user is authenticated
+                                console.log('🔄 Initializing authenticated features...');
+
+                                // Load settings
+                                await this.loadSettings();
+
+                                // Initialize feature managers
+                                this.quickRepliesManager = new QuickRepliesManager();
+                                this.grammarChecker = new GrammarChecker();
+
+                                if (this.settings?.openaiKey) {
+                                    this.grammarChecker.enable(this.settings.openaiKey);
+                                    this.startMonitoringFields();
+                                }
+
+                                // Recreate the panel with authenticated UI
+                                const oldPanel = this.panel;
+                                this.createPanel();
+
+                                // Set up event listeners for the new panel
+                                this.setupEventListeners();
+
+                                // Replace old panel with new one
+                                if (oldPanel && oldPanel.parentNode) {
+                                    oldPanel.parentNode.replaceChild(this.panel, oldPanel);
+                                }
+
+                                // Show the panel and default tab
+                                this.panel.classList.remove('hidden');
+                                this.panel.style.opacity = '1';
+                                this.showTab('compose');
+
+                                // Enable text selection detection for authenticated features
+                                if (!this.eventListenersSetup) {
+                                    this.setupTextSelectionDetection();
+                                    this.eventListenersSetup = true;
+                                }
+
+                                console.log('✨ Panel transformed to authenticated view with all features enabled');
+                            }, 1500);
                         } else {
-                            // Failed - show error state and open dashboard
-                            btnText.textContent = 'Not signed in - Opening Dashboard...';
+                            // Failed - show helpful message (NO redirect, just inform)
+                            btnText.textContent = 'Not signed in on dashboard';
                             btnSvg.style.animation = '';
-                            syncBtn.style.background = 'rgba(239, 68, 68, 0.2)';
-                            syncBtn.style.borderColor = 'rgba(239, 68, 68, 0.4)';
-                            syncBtn.style.color = '#ef4444';
+                            syncBtn.style.background = 'rgba(234, 179, 8, 0.2)';
+                            syncBtn.style.borderColor = 'rgba(234, 179, 8, 0.4)';
+                            syncBtn.style.color = '#eab308';
 
-                            console.log('❌ Sync failed - opening dashboard for login');
+                            const errorMsg = result?.message || 'Not authenticated on dashboard';
+                            console.log('⚠️ Sync failed:', errorMsg);
 
-                            // Open dashboard and reset button after delay
+                            // Just reset button - DON'T redirect to dashboard
+                            // User can use "Sign In to Dashboard" button above if they want
                             setTimeout(() => {
-                                chrome.runtime.sendMessage({ type: 'OPEN_DASHBOARD' });
-
-                                // Reset button state
                                 btnText.textContent = originalText;
                                 syncBtn.disabled = false;
                                 syncBtn.style.cursor = 'pointer';
@@ -787,13 +853,13 @@ class FarislyAI {
                                 syncBtn.style.background = 'rgba(255, 255, 255, 0.05)';
                                 syncBtn.style.borderColor = 'rgba(255, 255, 255, 0.1)';
                                 syncBtn.style.color = '#9ca3af';
-                            }, 2000);
+                            }, 3000);
                         }
                     } catch (error) {
                         console.error('❌ Error during sync:', error);
 
-                        // Error state
-                        btnText.textContent = 'Sync failed - Try again';
+                        // Error state - likely timeout or network issue
+                        btnText.textContent = error.message === 'Sync timeout' ? 'Timeout - Please try again' : 'Error - Try again';
                         btnSvg.style.animation = '';
                         syncBtn.style.background = 'rgba(239, 68, 68, 0.2)';
                         syncBtn.style.borderColor = 'rgba(239, 68, 68, 0.4)';
@@ -808,7 +874,7 @@ class FarislyAI {
                             syncBtn.style.background = 'rgba(255, 255, 255, 0.05)';
                             syncBtn.style.borderColor = 'rgba(255, 255, 255, 0.1)';
                             syncBtn.style.color = '#9ca3af';
-                        }, 2000);
+                        }, 3000);
                     }
                 });
 

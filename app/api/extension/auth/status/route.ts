@@ -7,9 +7,13 @@ import { sign } from 'jsonwebtoken';
  * GET endpoint for extension to check auth status and get token
  * Returns user data and JWT token if authenticated
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     console.log('🔐 Extension auth status request received');
+
+    // Get origin from request for proper CORS with credentials
+    const origin = request.headers.get('origin') || '*';
+
     const session = await getServerSession(authOptions as any);
     console.log('📋 Session:', session ? { email: session.user?.email, id: session.user?.id } : 'null');
 
@@ -23,9 +27,10 @@ export async function GET() {
         },
         {
           headers: {
-            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Origin': origin,
             'Access-Control-Allow-Methods': 'GET, OPTIONS',
             'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+            'Access-Control-Allow-Credentials': 'true',
           },
         }
       );
@@ -67,35 +72,40 @@ export async function GET() {
       },
       {
         headers: {
-          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Origin': origin,
           'Access-Control-Allow-Methods': 'GET, OPTIONS',
           'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+          'Access-Control-Allow-Credentials': 'true',
         },
       }
     );
   } catch (error: any) {
     console.error('Error in extension auth status:', error);
+    const origin = request.headers.get('origin') || '*';
     return NextResponse.json(
       { success: false, message: error.message || 'Internal server error' },
       {
         status: 500,
         headers: {
-          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Origin': origin,
           'Access-Control-Allow-Methods': 'GET, OPTIONS',
           'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+          'Access-Control-Allow-Credentials': 'true',
         },
       }
     );
   }
 }
 
-export async function OPTIONS() {
+export async function OPTIONS(request: NextRequest) {
+  const origin = request.headers.get('origin') || '*';
   return new NextResponse(null, {
     status: 200,
     headers: {
-      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Origin': origin,
       'Access-Control-Allow-Methods': 'GET, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Allow-Credentials': 'true',
     },
   });
 }

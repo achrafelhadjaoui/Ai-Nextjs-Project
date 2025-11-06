@@ -21,6 +21,53 @@ let sseReconnectTimeout = null;
 let lastConfigUpdate = null;
 
 /**
+ * Helper function to get NextAuth session cookie
+ * This enables the extension to read the user's dashboard session
+ */
+async function getSessionCookie() {
+  try {
+    // NextAuth uses different cookie names based on environment and security settings
+    const cookieNames = [
+      '__Secure-next-auth.session-token', // Secure production (HTTPS)
+      'next-auth.session-token',          // Development (HTTP) or non-secure
+      '__Host-next-auth.session-token',   // Most secure (HTTPS with path=/)
+    ];
+
+    console.log('🔍 Searching for NextAuth session cookie...');
+    console.log('🌐 API URL:', API_URL);
+
+    // Get all cookies from the dashboard domain
+    const allCookies = await chrome.cookies.getAll({ url: API_URL });
+    console.log(`📊 Found ${allCookies.length} total cookies for domain`);
+
+    if (allCookies.length > 0) {
+      console.log('🍪 Available cookies:', allCookies.map(c => c.name).join(', '));
+    }
+
+    // Try each possible cookie name
+    for (const cookieName of cookieNames) {
+      const cookies = await chrome.cookies.getAll({
+        url: API_URL,
+        name: cookieName
+      });
+
+      if (cookies && cookies.length > 0 && cookies[0].value) {
+        console.log(`✅ Found NextAuth session cookie: ${cookieName}`);
+        console.log(`📋 Cookie details: domain=${cookies[0].domain}, secure=${cookies[0].secure}, httpOnly=${cookies[0].httpOnly}`);
+        return { name: cookieName, value: cookies[0].value };
+      }
+    }
+
+    console.log('⚠️ No NextAuth session cookie found');
+    console.log('💡 User might not be signed in on dashboard, or cookies are not accessible');
+    return null;
+  } catch (error) {
+    console.error('❌ Error getting session cookie:', error);
+    return null;
+  }
+}
+
+/**
  * Initialize extension on install
  */
 chrome.runtime.onInstalled.addListener(async (details) => {
@@ -504,10 +551,29 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           // Sync authentication from web dashboard
           try {
             console.log('🔄 Syncing auth from web dashboard...');
+
+            // Get the session cookie from the browser
+            const sessionCookie = await getSessionCookie();
+
+            if (!sessionCookie) {
+              console.warn('⚠️ No session cookie found - user not logged in on dashboard');
+              sendResponse({
+                success: false,
+                message: 'Not signed in on dashboard. Please sign in first.'
+              });
+              break;
+            }
+
+            console.log('🍪 Session cookie found, verifying with server...');
+            console.log(`📋 Detected cookie: ${sessionCookie.name}=${sessionCookie.value.substring(0, 20)}...`);
+
+            // Make the request - browser will automatically include cookies with credentials: 'include'
+            // Note: Cannot manually set Cookie header in extensions due to security restrictions
             const authResponse = await fetch(`${API_URL}/api/extension/auth/status`, {
-              credentials: 'include', // Include cookies for session auth
+              method: 'GET',
+              credentials: 'include', // Browser automatically sends cookies for this domain
               headers: {
-                'Accept': 'application/json'
+                'Accept': 'application/json',
               }
             });
 
@@ -535,11 +601,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
               sendResponse({ success: true, user: authData.user });
             } else {
               console.warn('⚠️ Not authenticated on web:', authData.message);
-              sendResponse({ success: false, message: authData.message || 'Not authenticated on web' });
+              sendResponse({ success: false, message: authData.message || 'Session expired. Please sign in again.' });
             }
           } catch (error) {
             console.error('❌ Error syncing auth from web:', error);
-            sendResponse({ success: false, message: error.message });
+            sendResponse({ success: false, message: error.message || 'Failed to sync authentication' });
           }
           break;
 
