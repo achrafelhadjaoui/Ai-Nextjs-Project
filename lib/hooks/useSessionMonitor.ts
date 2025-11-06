@@ -25,14 +25,9 @@ export function useSessionMonitor() {
       return;
     }
 
-    // Refresh session every 10 seconds to catch changes quickly
-    const interval = setInterval(async () => {
-      console.log('🔄 Refreshing session...');
-      await update();
-    }, 10000); // 10 seconds
-
-    return () => clearInterval(interval);
-  }, [status, update, router]);
+    // No polling needed! NextAuth handles session updates automatically
+    // Session refreshes on navigation and when needed - professional approach
+  }, [status, router]);
 
   useEffect(() => {
     // When session updates, check if user's role changed

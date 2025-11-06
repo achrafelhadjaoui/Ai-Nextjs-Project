@@ -28,6 +28,8 @@ class FarislyAI {
         this.isEnabled = false;
         this.eventListenersSetup = false; // Track if event listeners are set up
         this.grammarChecker = null; // Grammar checker instance
+        this.isAuthenticated = false; // CRITICAL: Authentication state
+        this.authState = null; // Store full auth state
         this.init();
     }
 
@@ -35,9 +37,12 @@ class FarislyAI {
         console.log('🔧 Initializing Farisly AI...');
         console.log('Current URL:', window.location.href);
 
-        // CRITICAL: Always set up message listeners first, even if site is not allowed
-        // This ensures extension can "wake up" when CONFIG_UPDATED arrives
+        // CRITICAL: Always set up message listeners first
         this.setupMessageListeners();
+
+        // STEP 1: Check authentication FIRST before anything else
+        await this.checkAuthentication();
+        console.log('🔐 Authentication status:', this.isAuthenticated);
 
         // Check if extension should work on this site
         const isAllowed = await this.checkSiteAllowed();
@@ -52,33 +57,72 @@ class FarislyAI {
 
         this.isEnabled = true;
 
-        console.log('Initializing Quick Replies Manager...');
-        this.quickRepliesManager = new QuickRepliesManager();
-
-        console.log('Initializing Grammar Checker...');
-        this.grammarChecker = new GrammarChecker();
-
+        // Load settings first (needed for UI)
         console.log('Loading settings...');
         await this.loadSettings();
 
-        // Enable grammar checker if API key is available
-        if (this.settings?.openaiKey) {
-            this.grammarChecker.enable(this.settings.openaiKey);
-            this.startMonitoringFields();
-        }
-
+        // Create icon and panel (UI always shown)
         console.log('Creating icon...');
         this.createIcon();
 
         console.log('Creating panel...');
         this.createPanel();
 
-        console.log('Setting up remaining event listeners...');
-        this.setupEventListeners();
-        this.setupTextSelectionDetection();
-        this.eventListenersSetup = true;
+        // If authenticated, enable full features
+        if (this.isAuthenticated) {
+            console.log('✅ User authenticated - enabling full features');
+
+            console.log('Initializing Quick Replies Manager...');
+            this.quickRepliesManager = new QuickRepliesManager();
+
+            console.log('Initializing Grammar Checker...');
+            this.grammarChecker = new GrammarChecker();
+
+            // Enable grammar checker if API key is available
+            if (this.settings?.openaiKey) {
+                this.grammarChecker.enable(this.settings.openaiKey);
+                this.startMonitoringFields();
+            }
+
+            console.log('Setting up event listeners...');
+            this.setupEventListeners();
+            this.setupTextSelectionDetection();
+            this.eventListenersSetup = true;
+        } else {
+            console.log('🔒 User not authenticated - showing auth gate');
+            // Only setup panel events, no feature events
+            this.setupEventListeners();
+            this.eventListenersSetup = true;
+        }
 
         console.log('✅ Farisly AI initialized successfully');
+    }
+
+    /**
+     * Check if user is authenticated
+     * CRITICAL: This determines if ANY features are accessible
+     */
+    async checkAuthentication() {
+        try {
+            const response = await chrome.runtime.sendMessage({ type: 'GET_AUTH_STATE' });
+
+            if (response && response.success && response.authState) {
+                this.authState = response.authState;
+                this.isAuthenticated = response.authState.isAuthenticated === true;
+
+                if (this.isAuthenticated) {
+                    console.log('✅ User authenticated:', response.authState.user?.email);
+                } else {
+                    console.log('🔒 User not authenticated');
+                }
+            } else {
+                this.isAuthenticated = false;
+                console.log('🔒 No valid auth state found');
+            }
+        } catch (error) {
+            console.error('Error checking authentication:', error);
+            this.isAuthenticated = false;
+        }
     }
 
     /**
@@ -403,25 +447,72 @@ class FarislyAI {
         this.panel.id = 'farisly-ai-panel';
         this.panel.className = 'farisly-ai-panel';
 
-        this.panel.innerHTML = `
-            <div class="farisly-panel-header" id="panel-header">
-                <div class="farisly-panel-actions">
-                    <button class="farisly-panel-btn farisly-minimize-btn" id="minimize-btn" title="Minimize">−</button>
+        // If NOT authenticated, show ONLY auth gate UI (no tabs!)
+        if (!this.isAuthenticated) {
+            this.panel.innerHTML = `
+                <div class="farisly-panel-header" id="panel-header">
+                    <div class="farisly-panel-actions">
+                        <button class="farisly-panel-btn farisly-minimize-btn" id="minimize-btn" title="Minimize">−</button>
+                    </div>
                 </div>
-            </div>
 
-            <div class="farisly-tab-nav">
-                <button class="farisly-tab-btn active" data-tab="compose">✏️ Compose</button>
-                <button class="farisly-tab-btn" data-tab="quick-replies">💾 Quick Replies</button>
-                <button class="farisly-tab-btn" data-tab="ai-reply">🤖 AI Reply</button>
-                <button class="farisly-tab-btn" data-tab="settings">⚙️ Settings</button>
-            </div>
+                <div class="farisly-panel-content" id="panel-content" style="padding: 40px 24px; text-align: center;">
+                    <div style="max-width: 320px; margin: 0 auto;">
+                        <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);">
+                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                            </svg>
+                        </div>
 
-            <div class="farisly-panel-content" id="panel-content">
-                <!-- Content will be loaded dynamically -->
-            </div>
-            <div class="farisly-resize-handle" id="resize-handle" title="Drag to resize"></div>
-        `;
+                        <h2 style="color: #fff; font-size: 24px; font-weight: 700; margin: 0 0 12px 0; line-height: 1.3;">
+                            Sign In Required
+                        </h2>
+
+                        <p style="color: #9ca3af; font-size: 15px; line-height: 1.6; margin: 0 0 28px 0;">
+                            Access powerful AI features including AI Compose, Grammar Check, Quick Replies, and more.
+                        </p>
+
+                        <button id="auth-gate-signin-btn" style="width: 100%; padding: 14px 24px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); margin-bottom: 12px;">
+                            Sign In to Dashboard
+                        </button>
+
+                        <button id="auth-gate-sync-btn" style="width: 100%; padding: 12px 24px; background: rgba(255, 255, 255, 0.05); color: #9ca3af; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0;">
+                                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                            </svg>
+                            <span id="sync-btn-text">Sync with Dashboard</span>
+                        </button>
+
+                        <p style="color: #6b7280; font-size: 12px; margin: 20px 0 0 0; line-height: 1.5;">
+                            Make sure you're signed in on the dashboard, then click the button above to sync your account
+                        </p>
+                    </div>
+                </div>
+                <div class="farisly-resize-handle" id="resize-handle" title="Drag to resize"></div>
+            `;
+        } else {
+            // Authenticated - show full UI with all tabs
+            this.panel.innerHTML = `
+                <div class="farisly-panel-header" id="panel-header">
+                    <div class="farisly-panel-actions">
+                        <button class="farisly-panel-btn farisly-minimize-btn" id="minimize-btn" title="Minimize">−</button>
+                    </div>
+                </div>
+
+                <div class="farisly-tab-nav">
+                    <button class="farisly-tab-btn active" data-tab="compose">✏️ Compose</button>
+                    <button class="farisly-tab-btn" data-tab="quick-replies">💾 Quick Replies</button>
+                    <button class="farisly-tab-btn" data-tab="ai-reply">🤖 AI Reply</button>
+                    <button class="farisly-tab-btn" data-tab="settings">⚙️ Settings</button>
+                </div>
+
+                <div class="farisly-panel-content" id="panel-content">
+                    <!-- Content will be loaded dynamically -->
+                </div>
+                <div class="farisly-resize-handle" id="resize-handle" title="Drag to resize"></div>
+            `;
+        }
 
         // Set initial height (since we removed the fixed CSS height to allow resize)
         this.panel.style.height = '220px';
@@ -431,7 +522,11 @@ class FarislyAI {
         this.panel.style.opacity = '0';
 
         document.body.appendChild(this.panel);
-        this.showTab('compose');
+
+        // Only show tabs if authenticated
+        if (this.isAuthenticated) {
+            this.showTab('compose');
+        }
 
         console.log('📋 Panel created (hidden initially)');
     }
@@ -585,13 +680,155 @@ class FarislyAI {
             document.addEventListener('mouseup', handleResizeEnd);
         });
 
-        // Tab switching
+        // Tab switching (only if authenticated and tabs exist)
         this.panel.querySelectorAll('.farisly-tab-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 const tab = btn.dataset.tab;
                 this.showTab(tab);
             });
         });
+
+        // Auth gate buttons (only if not authenticated)
+        if (!this.isAuthenticated) {
+            const signInBtn = this.panel.querySelector('#auth-gate-signin-btn');
+            const syncBtn = this.panel.querySelector('#auth-gate-sync-btn');
+
+            if (signInBtn) {
+                signInBtn.addEventListener('click', async () => {
+                    console.log('🔐 Sign in button clicked');
+                    // Try to sync auth from web
+                    const result = await chrome.runtime.sendMessage({ type: 'SYNC_AUTH_FROM_WEB' });
+                    if (result && result.success) {
+                        // Reload the page to reinitialize with auth
+                        window.location.reload();
+                    } else {
+                        // Open dashboard for login
+                        chrome.runtime.sendMessage({ type: 'OPEN_DASHBOARD' });
+                    }
+                });
+
+                // Hover effect
+                signInBtn.addEventListener('mouseenter', () => {
+                    signInBtn.style.transform = 'translateY(-2px)';
+                    signInBtn.style.boxShadow = '0 6px 16px rgba(102, 126, 234, 0.5)';
+                });
+                signInBtn.addEventListener('mouseleave', () => {
+                    signInBtn.style.transform = 'translateY(0)';
+                    signInBtn.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)';
+                });
+            }
+
+            if (syncBtn) {
+                syncBtn.addEventListener('click', async () => {
+                    console.log('🔄 Sync with Dashboard button clicked');
+
+                    // Get reference to button text and SVG
+                    const btnText = syncBtn.querySelector('#sync-btn-text');
+                    const btnSvg = syncBtn.querySelector('svg');
+                    const originalText = btnText.textContent;
+
+                    // Disable button and show loading state
+                    syncBtn.disabled = true;
+                    syncBtn.style.cursor = 'not-allowed';
+                    syncBtn.style.opacity = '0.7';
+                    btnText.textContent = 'Syncing...';
+
+                    // Add rotation animation to SVG
+                    btnSvg.style.animation = 'spin 1s linear infinite';
+                    const styleSheet = document.createElement('style');
+                    styleSheet.textContent = `
+                        @keyframes spin {
+                            from { transform: rotate(0deg); }
+                            to { transform: rotate(360deg); }
+                        }
+                    `;
+                    if (!document.querySelector('style[data-sync-animation]')) {
+                        styleSheet.setAttribute('data-sync-animation', 'true');
+                        document.head.appendChild(styleSheet);
+                    }
+
+                    try {
+                        // Try to sync auth from web
+                        const result = await chrome.runtime.sendMessage({ type: 'SYNC_AUTH_FROM_WEB' });
+
+                        if (result && result.success) {
+                            // Success - show success state briefly
+                            btnText.textContent = 'Synced! Reloading...';
+                            btnSvg.style.animation = '';
+                            syncBtn.style.background = 'rgba(16, 185, 129, 0.2)';
+                            syncBtn.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+                            syncBtn.style.color = '#10b981';
+
+                            console.log('✅ Auth synced successfully - reloading page');
+
+                            // Reload after a brief delay
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 800);
+                        } else {
+                            // Failed - show error state and open dashboard
+                            btnText.textContent = 'Not signed in - Opening Dashboard...';
+                            btnSvg.style.animation = '';
+                            syncBtn.style.background = 'rgba(239, 68, 68, 0.2)';
+                            syncBtn.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+                            syncBtn.style.color = '#ef4444';
+
+                            console.log('❌ Sync failed - opening dashboard for login');
+
+                            // Open dashboard and reset button after delay
+                            setTimeout(() => {
+                                chrome.runtime.sendMessage({ type: 'OPEN_DASHBOARD' });
+
+                                // Reset button state
+                                btnText.textContent = originalText;
+                                syncBtn.disabled = false;
+                                syncBtn.style.cursor = 'pointer';
+                                syncBtn.style.opacity = '1';
+                                syncBtn.style.background = 'rgba(255, 255, 255, 0.05)';
+                                syncBtn.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                                syncBtn.style.color = '#9ca3af';
+                            }, 2000);
+                        }
+                    } catch (error) {
+                        console.error('❌ Error during sync:', error);
+
+                        // Error state
+                        btnText.textContent = 'Sync failed - Try again';
+                        btnSvg.style.animation = '';
+                        syncBtn.style.background = 'rgba(239, 68, 68, 0.2)';
+                        syncBtn.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+                        syncBtn.style.color = '#ef4444';
+
+                        // Reset button after delay
+                        setTimeout(() => {
+                            btnText.textContent = originalText;
+                            syncBtn.disabled = false;
+                            syncBtn.style.cursor = 'pointer';
+                            syncBtn.style.opacity = '1';
+                            syncBtn.style.background = 'rgba(255, 255, 255, 0.05)';
+                            syncBtn.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                            syncBtn.style.color = '#9ca3af';
+                        }, 2000);
+                    }
+                });
+
+                // Hover effect (only when not disabled)
+                syncBtn.addEventListener('mouseenter', () => {
+                    if (!syncBtn.disabled) {
+                        syncBtn.style.background = 'rgba(255, 255, 255, 0.08)';
+                        syncBtn.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+                        syncBtn.style.transform = 'translateY(-1px)';
+                    }
+                });
+                syncBtn.addEventListener('mouseleave', () => {
+                    if (!syncBtn.disabled) {
+                        syncBtn.style.background = 'rgba(255, 255, 255, 0.05)';
+                        syncBtn.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                        syncBtn.style.transform = 'translateY(0)';
+                    }
+                });
+            }
+        }
 
         // Note: Message listeners are set up in setupMessageListeners()
         // which is called early in init(), even if site is not allowed

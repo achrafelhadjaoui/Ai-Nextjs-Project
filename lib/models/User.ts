@@ -28,6 +28,8 @@ export interface IUser extends Document {
     allowedSites: string[];
     openaiApiKey?: string; // User's OpenAI API key for AI features
   };
+  extensionInstalled?: boolean; // Whether extension is currently installed
+  lastExtensionHeartbeat?: Date; // Last time extension pinged
   createdAt: Date;
   updatedAt?: Date;
 }
@@ -60,6 +62,8 @@ const UserSchema = new Schema<IUser>({
     allowedSites: { type: [String], default: [] },
     openaiApiKey: { type: String, default: '' },
   },
+  extensionInstalled: { type: Boolean, default: false },
+  lastExtensionHeartbeat: { type: Date },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date },
 });

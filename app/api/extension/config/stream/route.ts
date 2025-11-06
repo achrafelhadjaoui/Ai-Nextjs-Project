@@ -2,11 +2,13 @@ import { NextRequest } from 'next/server';
 import { connectDB } from '@/lib/db/connect';
 import User from '@/lib/models/User';
 import { verify } from 'jsonwebtoken';
+import { configEvents, ConfigEvent } from '@/lib/events/ConfigEventEmitter';
 
 /**
  * GET /api/extension/config/stream
  * Server-Sent Events (SSE) endpoint for real-time config updates
- * Extension connects to this endpoint and receives instant config updates
+ * Extension connects to this endpoint and receives instant config updates ONLY when they change
+ * Uses event-based architecture instead of polling - professional, efficient, instant sync
  */
 export async function GET(request: NextRequest) {
   // Get user ID from Authorization header
@@ -22,7 +24,7 @@ export async function GET(request: NextRequest) {
         userId = decoded.id || decoded.sub;
       }
     } catch (err) {
-      console.warn('[SSE] Invalid token:', err);
+      console.warn('[SSE CONFIG] Invalid token:', err);
     }
   }
 
@@ -30,37 +32,25 @@ export async function GET(request: NextRequest) {
     return new Response('Unauthorized', { status: 401 });
   }
 
-  console.log('[SSE] Client connected:', userId);
+  console.log('[SSE CONFIG] Client connected:', userId);
 
   // Create a TransformStream for SSE
   const encoder = new TextEncoder();
   const stream = new TransformStream();
   const writer = stream.writable.getWriter();
 
+  // Helper to send SSE messages
+  const sendMessage = async (data: any) => {
+    try {
+      const message = `data: ${JSON.stringify(data)}\n\n`;
+      await writer.write(encoder.encode(message));
+    } catch (error) {
+      console.error('[SSE CONFIG] Error sending message:', error);
+    }
+  };
+
   // Send initial config immediately
   (async () => {
-    try {
-      await connectDB();
-      const user = await User.findById(userId).select('extensionSettings');
-
-      const settings = {
-        enableOnAllSites: user?.extensionSettings?.enableOnAllSites ?? true,
-        allowedSites: user?.extensionSettings?.allowedSites ?? [],
-        openaiApiKey: user?.extensionSettings?.openaiApiKey ?? ''
-      };
-
-      const message = `data: ${JSON.stringify({ type: 'config', settings })}\n\n`;
-      await writer.write(encoder.encode(message));
-      console.log('[SSE] Initial config sent:', settings);
-    } catch (error) {
-      console.error('[SSE] Error sending initial config:', error);
-    }
-  })();
-
-  // Set up polling to check for config changes
-  // Since MongoDB doesn't have native change streams in all setups,
-  // we'll poll every 2 seconds (much better than 30 seconds, and efficient for SSE)
-  const pollInterval = setInterval(async () => {
     try {
       await connectDB();
       const user = await User.findById(userId).select('extensionSettings updatedAt');
@@ -69,33 +59,46 @@ export async function GET(request: NextRequest) {
         enableOnAllSites: user?.extensionSettings?.enableOnAllSites ?? true,
         allowedSites: user?.extensionSettings?.allowedSites ?? [],
         openaiApiKey: user?.extensionSettings?.openaiApiKey ?? '',
-        updatedAt: user?.updatedAt?.getTime()
+        updatedAt: user?.updatedAt?.getTime() || Date.now()
       };
 
-      const message = `data: ${JSON.stringify({ type: 'config', settings })}\n\n`;
-      await writer.write(encoder.encode(message));
+      await sendMessage({
+        type: 'connected',
+        message: 'Config sync connected - you will receive updates only when config changes'
+      });
+
+      await sendMessage({ type: 'config', settings });
+      console.log('[SSE CONFIG] Initial config sent:', {
+        userId,
+        enableOnAllSites: settings.enableOnAllSites,
+        allowedSitesCount: settings.allowedSites.length
+      });
     } catch (error) {
-      console.error('[SSE] Error polling config:', error);
+      console.error('[SSE CONFIG] Error sending initial config:', error);
     }
-  }, 2000); // Poll every 2 seconds
+  })();
+
+  // Listen for config change events (event-driven, no polling!)
+  const eventHandler = async (event: ConfigEvent) => {
+    console.log('[SSE CONFIG] Config changed, broadcasting to client:', userId);
+    await sendMessage({
+      type: 'config',
+      settings: event.settings
+    });
+  };
+
+  configEvents.onConfigEvent(userId, eventHandler);
 
   // Send heartbeat every 30 seconds to keep connection alive
   const heartbeatInterval = setInterval(async () => {
-    try {
-      const message = `data: ${JSON.stringify({ type: 'heartbeat' })}\n\n`;
-      await writer.write(encoder.encode(message));
-    } catch (error) {
-      console.error('[SSE] Error sending heartbeat:', error);
-      clearInterval(heartbeatInterval);
-      clearInterval(pollInterval);
-    }
+    await sendMessage({ type: 'heartbeat' });
   }, 30000);
 
   // Clean up on disconnect
   request.signal.addEventListener('abort', () => {
-    console.log('[SSE] Client disconnected:', userId);
-    clearInterval(pollInterval);
+    console.log('[SSE CONFIG] Client disconnected:', userId);
     clearInterval(heartbeatInterval);
+    configEvents.offConfigEvent(userId, eventHandler);
     writer.close();
   });
 

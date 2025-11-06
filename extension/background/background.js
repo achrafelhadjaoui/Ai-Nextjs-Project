@@ -217,12 +217,17 @@ async function connectConfigStream() {
           try {
             const data = JSON.parse(dataMatch[1]);
 
-            if (data.type === 'config') {
+            if (data.type === 'connected') {
+              console.log('✅ SSE Config stream connected:', data.message);
+            } else if (data.type === 'config') {
               // Check if config actually changed
               const currentUpdate = data.settings?.updatedAt || Date.now();
 
               if (lastConfigUpdate === null || currentUpdate > lastConfigUpdate) {
-                console.log('🔄 Received config update via SSE:', data.settings);
+                console.log('🔄 Config changed! Syncing...', {
+                  enableOnAllSites: data.settings.enableOnAllSites,
+                  allowedSitesCount: data.settings.allowedSites?.length || 0
+                });
                 lastConfigUpdate = currentUpdate;
 
                 // Update local storage
@@ -249,10 +254,14 @@ async function connectConfigStream() {
                   }
                 });
 
-                console.log('✅ Config synced via SSE (instant)');
+                console.log('✅ Config synced via SSE - instant broadcast sent to all tabs');
+              } else {
+                // Config unchanged - this should never happen with event-based system
+                console.log('⏭️  Config unchanged, skipping broadcast');
               }
             } else if (data.type === 'heartbeat') {
-              console.log('💓 SSE heartbeat received');
+              // Just keep connection alive, no action needed
+              // console.log('💓 SSE heartbeat'); // Commented out to reduce console noise
             }
           } catch (err) {
             console.error('Error parsing SSE message:', err);
@@ -569,6 +578,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             console.error('❌ Manual config sync failed:', error);
             sendResponse({ success: false, message: error.message || 'Config sync failed' });
           }
+          break;
+
+        case 'GET_AUTH_STATE':
+          // Return current authentication state
+          sendResponse({
+            success: true,
+            authState: {
+              isAuthenticated: authState.isAuthenticated,
+              user: authState.user,
+              token: authState.token ? '***' : null // Don't send actual token, just indicate if exists
+            }
+          });
           break;
 
         case 'GET_SETTINGS':
@@ -986,5 +1007,40 @@ async function syncSavedReplies() {
     // Connect to real-time saved replies stream
     await connectSavedRepliesStream();
     console.log('✅ Real-time saved replies stream connected');
+
+    // Start heartbeat to indicate extension is installed
+    startHeartbeat();
+    console.log('✅ Extension heartbeat started');
   }
 })();
+
+/**
+ * Send heartbeat to server every 30 seconds to indicate extension is active
+ */
+function startHeartbeat() {
+  // Send initial heartbeat
+  sendHeartbeat();
+
+  // Send heartbeat every 30 seconds
+  setInterval(() => {
+    if (authState.isAuthenticated) {
+      sendHeartbeat();
+    }
+  }, 30000); // 30 seconds
+}
+
+/**
+ * Send heartbeat ping to server
+ */
+async function sendHeartbeat() {
+  try {
+    await fetch(`${API_URL}/api/extension/heartbeat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: authState.user.id })
+    });
+    console.log('💓 Heartbeat sent');
+  } catch (error) {
+    console.error('❌ Failed to send heartbeat:', error);
+  }
+}

@@ -4,6 +4,7 @@ import { connectDB } from "@/lib/db/connect";
 import User from "@/lib/models/User";
 import { requireAuth, authErrorResponse } from "@/lib/auth/auth-utils";
 import bcrypt from "bcryptjs";
+import { configEvents } from "@/lib/events/ConfigEventEmitter";
 
 // GET - Get current user profile
 export async function GET(request: Request) {
@@ -129,6 +130,22 @@ export async function PATCH(request: Request) {
     await userProfile.save();
 
     console.log(`✅ Profile updated: ${userProfile.email}`);
+
+    // If extension settings were updated, emit event for instant sync
+    if (extensionSettings !== undefined) {
+      configEvents.emitConfigEvent({
+        type: 'updated',
+        userId: user.id,
+        settings: {
+          enableOnAllSites: userProfile.extensionSettings?.enableOnAllSites ?? true,
+          allowedSites: userProfile.extensionSettings?.allowedSites ?? [],
+          openaiApiKey: userProfile.extensionSettings?.openaiApiKey ?? '',
+          updatedAt: userProfile.updatedAt.getTime()
+        },
+        timestamp: Date.now()
+      });
+      console.log(`📡 Config change event emitted for user: ${user.id}`);
+    }
 
     // Return updated profile without sensitive fields
     const updatedProfile = await User.findById(user.id).select(
