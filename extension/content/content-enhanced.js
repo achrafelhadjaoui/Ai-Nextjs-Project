@@ -361,6 +361,12 @@ class FarislyAI {
         const panelWidth = this.panel.offsetWidth;
         const panelHeight = this.panel.offsetHeight;
 
+        // DEBUG: Log dimensions to catch zero-size issues
+        console.log('📏 Panel dimensions:', { panelWidth, panelHeight });
+        if (panelWidth === 0 || panelHeight === 0) {
+            console.error('⚠️ CRITICAL: Panel dimensions are 0! Display property might be none.');
+        }
+
         // Get viewport dimensions
         const viewportWidth = window.innerWidth;
         const viewportHeight = window.innerHeight;
@@ -1584,15 +1590,20 @@ class FarislyAI {
         if (this.isVisible) {
             console.log('📂 Opening panel...');
 
-            // Position panel near icon BEFORE showing
+            // CRITICAL FIX: Make panel visible (but transparent) FIRST so dimensions are calculated
+            // This fixes the first-click positioning issue where offsetWidth/Height return 0
+            this.panel.classList.remove('hidden');
+            this.panel.classList.add('visible');
+            this.panel.style.opacity = '0'; // Keep invisible while positioning
+
+            // Force browser to calculate layout (reflow) so offsetWidth/Height are accurate
+            void this.panel.offsetHeight;
+
+            // NOW position panel with accurate dimensions
             const iconRect = this.iconContainer.getBoundingClientRect();
             this.updatePanelPosition(iconRect.left, iconRect.top);
 
-            // Remove hidden class, add visible class
-            this.panel.classList.remove('hidden');
-            this.panel.classList.add('visible');
-
-            // Trigger opacity transition
+            // Finally, fade in the panel
             requestAnimationFrame(() => {
                 this.panel.style.opacity = '1';
             });

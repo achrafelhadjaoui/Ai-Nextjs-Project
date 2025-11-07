@@ -27,7 +27,14 @@ When clicking the extension icon to open the popup panel, the panel could appear
    - Could end up completely outside viewport
    - No responsive repositioning
 
-5. **Edge Case Scenarios**
+5. **First-Click Timing Issue (CRITICAL)**
+   - **DISCOVERED ISSUE**: Panel appeared outside boundaries on FIRST click only
+   - Root cause: `offsetWidth` and `offsetHeight` return **0** when element has `display: none`
+   - Original code: Called `updatePanelPosition()` BEFORE making panel visible
+   - Result: Positioning calculations used width=0, height=0, causing incorrect placement
+   - This is a classic timing/layout calculation bug in web development
+
+6. **Edge Case Scenarios**
    - Icon positioned at screen edge → panel has no room
    - Very tall panel on small screen → exceeds viewport height
    - Mobile/tablet viewports → constrained space
@@ -157,6 +164,81 @@ this.panel.style.setProperty('top', '10px', 'important');
 - Inline `!important` > CSS `!important` (same specificity, but inline comes later)
 - Ensures JavaScript always has final say over positioning
 - Prevents any future CSS additions from breaking positioning
+
+---
+
+### Part 1.5: First-Click Timing Fix (CRITICAL)
+
+**This fix ensures accurate dimensions are available for positioning calculations.**
+
+#### Problem
+When `togglePanel()` was called for the first time:
+1. Panel had `display: none` (hidden class)
+2. `updatePanelPosition()` was called
+3. `this.panel.offsetWidth` and `this.panel.offsetHeight` returned **0**
+4. Positioning calculations failed, placing panel at incorrect position
+
+This is because **DOM elements with `display: none` have zero dimensions**.
+
+#### File: [extension/content/content-enhanced.js](extension/content/content-enhanced.js:1580-1617)
+
+**The Fix - Correct Sequence:**
+
+```javascript
+togglePanel() {
+    this.isVisible = !this.isVisible;
+
+    if (this.isVisible) {
+        // STEP 1: Make panel visible (but transparent) FIRST
+        this.panel.classList.remove('hidden');  // display: flex
+        this.panel.classList.add('visible');
+        this.panel.style.opacity = '0';  // Keep invisible while positioning
+
+        // STEP 2: Force browser to calculate layout (reflow)
+        void this.panel.offsetHeight;  // Trigger reflow
+
+        // STEP 3: NOW position panel with ACCURATE dimensions
+        const iconRect = this.iconContainer.getBoundingClientRect();
+        this.updatePanelPosition(iconRect.left, iconRect.top);
+
+        // STEP 4: Fade in the panel
+        requestAnimationFrame(() => {
+            this.panel.style.opacity = '1';
+        });
+    }
+}
+```
+
+**Before (WRONG):**
+```javascript
+// ❌ Position BEFORE showing = offsetWidth/Height = 0
+this.updatePanelPosition(iconRect.left, iconRect.top);
+this.panel.classList.remove('hidden');  // Too late!
+```
+
+**After (CORRECT):**
+```javascript
+// ✅ Show FIRST (transparent), THEN position with accurate dimensions
+this.panel.classList.remove('hidden');  // Now offsetWidth/Height are correct
+this.panel.style.opacity = '0';         // Still invisible to user
+void this.panel.offsetHeight;           // Force layout calculation
+this.updatePanelPosition(...);          // Accurate positioning!
+this.panel.style.opacity = '1';         // Fade in at correct position
+```
+
+**Why `void this.panel.offsetHeight;` is needed:**
+- Browsers batch DOM operations for performance
+- Reading `offsetHeight` forces immediate layout calculation (reflow)
+- Ensures dimensions are computed before `updatePanelPosition()` runs
+- `void` keyword prevents any return value issues
+
+**Technical Explanation:**
+1. **display: none** → element not in layout tree → dimensions = 0
+2. **display: flex + opacity: 0** → element in layout tree → dimensions calculated correctly
+3. User sees nothing (opacity=0), but browser has calculated real dimensions
+4. Position calculated accurately, THEN fade in
+
+This is a classic web development pattern for "measure before position."
 
 ---
 
