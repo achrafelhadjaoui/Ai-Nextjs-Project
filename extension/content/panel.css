@@ -11,8 +11,8 @@
 
 #farisly-ai-panel {
   position: fixed !important;
-  top: 20px !important;
-  right: 20px !important;
+  /* Position will be set by JavaScript - no hardcoded top/right/left/bottom */
+  /* This allows smart positioning based on icon location and viewport bounds */
   width: 340px !important;
   min-width: 300px !important;
   max-width: calc(100vw - 40px) !important;
@@ -31,6 +31,10 @@
   line-height: 1.5 !important;
   color: #ffffff !important;
   transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1), opacity 0.3s ease !important;
+
+  /* CSS-based viewport containment as fallback */
+  /* Ensures panel can never go outside viewport bounds */
+  inset: auto; /* Reset inset shorthand */
 }
 
 /* When panel is visible */
@@ -219,12 +223,18 @@
   color: #000000 !important;
 }
 
-/* Panel Content */
+/* Panel Content - Flexible height based on content */
 .farisly-panel-content {
   flex: 1 !important;
   overflow-y: auto !important;
+  overflow-x: hidden !important;
   padding: 12px !important;
   background: #0a0a0a !important;
+  /* Remove fixed height - let content determine height */
+  min-height: 150px !important;
+  max-height: calc(100vh - 180px) !important;
+  display: flex !important;
+  flex-direction: column !important;
 }
 
 .farisly-panel-content::-webkit-scrollbar {
@@ -922,38 +932,150 @@
 @media (max-width: 768px) {
   #farisly-ai-panel {
     width: calc(100vw - 32px) !important;
-    right: 16px !important;
-    top: 16px !important;
+    min-width: 280px !important;
+    /* Position controlled by JavaScript - removed hardcoded right/top */
     max-height: calc(100vh - 32px) !important;
   }
 
   .farisly-ai-actions {
     grid-template-columns: 1fr !important;
+    gap: 10px !important;
   }
 
   .farisly-tab-nav {
     overflow-x: auto !important;
+    scrollbar-width: thin !important;
+    padding: 6px 8px !important;
+    gap: 4px !important;
+  }
+
+  .farisly-tab-btn {
+    flex: 0 0 auto !important;
+    min-width: fit-content !important;
+    padding: 8px 12px !important;
+    font-size: 11px !important;
   }
 
   .farisly-panel-content {
-    max-height: calc(100vh - 200px) !important;
+    max-height: calc(100vh - 180px) !important;
+    padding: 10px !important;
+  }
+
+  .farisly-reply-card {
+    border-radius: 10px !important;
+  }
+
+  .farisly-reply-card-inner {
+    padding: 14px !important;
+  }
+
+  .farisly-reply-title {
+    font-size: 14px !important;
+  }
+
+  .farisly-reply-text {
+    font-size: 12px !important;
+  }
+
+  .farisly-search-input {
+    padding: 10px 14px !important;
+    padding-left: 36px !important;
+    font-size: 13px !important;
   }
 }
 
 @media (max-width: 480px) {
   #farisly-ai-panel {
     width: calc(100vw - 16px) !important;
-    right: 8px !important;
-    top: 8px !important;
+    min-width: 260px !important;
+    /* Position controlled by JavaScript - removed hardcoded right/top */
+    border-radius: 12px !important;
+  }
+
+  .farisly-panel-header {
+    padding: 4px 6px !important;
+    min-height: 28px !important;
+  }
+
+  .farisly-panel-btn {
+    width: 22px !important;
+    height: 22px !important;
+    font-size: 12px !important;
   }
 
   .farisly-panel-title {
-    font-size: 14px !important;
+    font-size: 13px !important;
+  }
+
+  .farisly-tab-nav {
+    padding: 6px 6px !important;
+    gap: 3px !important;
   }
 
   .farisly-tab-btn {
-    padding: 8px 12px !important;
+    padding: 6px 10px !important;
+    font-size: 10px !important;
+    border-radius: 6px !important;
+  }
+
+  .farisly-panel-content {
+    padding: 8px !important;
+    max-height: calc(100vh - 160px) !important;
+  }
+
+  .farisly-ai-actions {
+    gap: 8px !important;
+  }
+
+  .farisly-ai-btn {
+    padding: 10px !important;
     font-size: 12px !important;
+    gap: 6px !important;
+  }
+
+  .farisly-reply-card {
+    border-radius: 8px !important;
+  }
+
+  .farisly-reply-card-inner {
+    padding: 12px !important;
+  }
+
+  .farisly-reply-header {
+    margin-bottom: 10px !important;
+  }
+
+  .farisly-reply-icon {
+    font-size: 16px !important;
+  }
+
+  .farisly-reply-title {
+    font-size: 13px !important;
+  }
+
+  .farisly-reply-text {
+    font-size: 11px !important;
+    line-height: 1.5 !important;
+  }
+
+  .farisly-reply-badge {
+    padding: 3px 8px !important;
+    font-size: 10px !important;
+  }
+
+  .farisly-search-input {
+    padding: 8px 12px !important;
+    padding-left: 32px !important;
+    font-size: 12px !important;
+  }
+
+  .farisly-search-bar {
+    margin-bottom: 12px !important;
+  }
+
+  .farisly-resize-handle {
+    width: 20px !important;
+    height: 20px !important;
   }
 }
 

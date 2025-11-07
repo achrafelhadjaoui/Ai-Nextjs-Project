@@ -351,54 +351,133 @@ class FarislyAI {
     }
 
     /**
-     * Update panel position relative to icon
+     * Update panel position relative to icon with smart viewport boundary detection
+     * Ensures panel never goes outside screen borders
      */
     updatePanelPosition(iconX, iconY) {
+        // Get current dimensions
         const iconWidth = this.iconContainer.offsetWidth;
         const iconHeight = this.iconContainer.offsetHeight;
         const panelWidth = this.panel.offsetWidth;
         const panelHeight = this.panel.offsetHeight;
 
-        const padding = 10;
-        let panelX, panelY;
+        // Get viewport dimensions
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
 
-        // Determine best position for panel based on available space
-        const spaceRight = window.innerWidth - (iconX + iconWidth);
+        // Safe margins from viewport edges
+        const minMargin = 10;
+        const padding = 12; // Space between icon and panel
+
+        // Calculate available space in all directions
+        const spaceRight = viewportWidth - (iconX + iconWidth);
         const spaceLeft = iconX;
-        const spaceBelow = window.innerHeight - (iconY + iconHeight);
+        const spaceBelow = viewportHeight - (iconY + iconHeight);
         const spaceAbove = iconY;
 
-        // Prefer right side, but adjust based on space
-        if (spaceRight >= panelWidth + padding) {
-            // Place to the right of icon
+        let panelX, panelY;
+        let positionStrategy = '';
+
+        // Priority 1: Try placing to the right of icon (preferred position)
+        if (spaceRight >= panelWidth + padding + minMargin) {
             panelX = iconX + iconWidth + padding;
             panelY = iconY;
-        } else if (spaceLeft >= panelWidth + padding) {
-            // Place to the left of icon
+            positionStrategy = 'right';
+        }
+        // Priority 2: Try placing to the left of icon
+        else if (spaceLeft >= panelWidth + padding + minMargin) {
             panelX = iconX - panelWidth - padding;
             panelY = iconY;
-        } else {
-            // Not enough horizontal space, try vertical
-            if (spaceBelow >= panelHeight + padding) {
-                panelX = iconX;
-                panelY = iconY + iconHeight + padding;
+            positionStrategy = 'left';
+        }
+        // Priority 3: Try placing below icon
+        else if (spaceBelow >= panelHeight + padding + minMargin) {
+            panelX = iconX;
+            panelY = iconY + iconHeight + padding;
+            positionStrategy = 'below';
+        }
+        // Priority 4: Try placing above icon
+        else if (spaceAbove >= panelHeight + padding + minMargin) {
+            panelX = iconX;
+            panelY = iconY - panelHeight - padding;
+            positionStrategy = 'above';
+        }
+        // Fallback: Place in best available position and clamp
+        else {
+            // Determine which direction has most space
+            const maxHorizontalSpace = Math.max(spaceRight, spaceLeft);
+            const maxVerticalSpace = Math.max(spaceBelow, spaceAbove);
+
+            if (maxHorizontalSpace > maxVerticalSpace) {
+                // Use horizontal positioning
+                if (spaceRight > spaceLeft) {
+                    panelX = iconX + iconWidth + padding;
+                    positionStrategy = 'right-constrained';
+                } else {
+                    panelX = iconX - panelWidth - padding;
+                    positionStrategy = 'left-constrained';
+                }
+                panelY = iconY;
             } else {
+                // Use vertical positioning
+                if (spaceBelow > spaceAbove) {
+                    panelY = iconY + iconHeight + padding;
+                    positionStrategy = 'below-constrained';
+                } else {
+                    panelY = iconY - panelHeight - padding;
+                    positionStrategy = 'above-constrained';
+                }
                 panelX = iconX;
-                panelY = iconY - panelHeight - padding;
             }
         }
 
-        // Clamp to viewport bounds
-        const maxX = window.innerWidth - panelWidth - 10;
-        const maxY = window.innerHeight - panelHeight - 10;
+        // Strict viewport boundary enforcement
+        const maxX = viewportWidth - panelWidth - minMargin;
+        const maxY = viewportHeight - panelHeight - minMargin;
 
-        const clampedX = Math.max(10, Math.min(panelX, maxX));
-        const clampedY = Math.max(10, Math.min(panelY, maxY));
+        // Clamp X position
+        let finalX = Math.max(minMargin, Math.min(panelX, maxX));
 
-        this.panel.style.left = `${clampedX}px`;
-        this.panel.style.top = `${clampedY}px`;
-        this.panel.style.right = 'auto';
-        this.panel.style.bottom = 'auto';
+        // Clamp Y position
+        let finalY = Math.max(minMargin, Math.min(panelY, maxY));
+
+        // Additional safety check: If panel is still too wide/tall for viewport
+        if (panelWidth > viewportWidth - (minMargin * 2)) {
+            // Panel is wider than viewport - center it horizontally
+            finalX = minMargin;
+            console.warn('⚠️ Panel width exceeds viewport, centering horizontally');
+        }
+
+        if (panelHeight > viewportHeight - (minMargin * 2)) {
+            // Panel is taller than viewport - position at top
+            finalY = minMargin;
+            console.warn('⚠️ Panel height exceeds viewport, positioning at top');
+        }
+
+        // Apply calculated position with !important to override any CSS
+        this.panel.style.setProperty('left', `${finalX}px`, 'important');
+        this.panel.style.setProperty('top', `${finalY}px`, 'important');
+        this.panel.style.setProperty('right', 'auto', 'important');
+        this.panel.style.setProperty('bottom', 'auto', 'important');
+
+        // Verify position is within bounds (debug logging)
+        const actualRect = this.panel.getBoundingClientRect();
+        const isWithinBounds =
+            actualRect.left >= 0 &&
+            actualRect.right <= viewportWidth &&
+            actualRect.top >= 0 &&
+            actualRect.bottom <= viewportHeight;
+
+        if (!isWithinBounds) {
+            console.warn('⚠️ Panel still outside viewport after adjustment', {
+                strategy: positionStrategy,
+                position: { x: finalX, y: finalY },
+                panelRect: actualRect,
+                viewport: { width: viewportWidth, height: viewportHeight }
+            });
+        } else {
+            console.log(`✅ Panel positioned: ${positionStrategy} at (${finalX}, ${finalY})`);
+        }
     }
 
     /**
@@ -538,6 +617,15 @@ class FarislyAI {
 
         // Set initial height (since we removed the fixed CSS height to allow resize)
         this.panel.style.height = '220px';
+
+        // Set safe default position (top-right with margins) using !important
+        // This ensures panel never starts outside viewport even before JS positioning runs
+        const safeMargin = 20;
+        const defaultWidth = 340;
+        this.panel.style.setProperty('top', `${safeMargin}px`, 'important');
+        this.panel.style.setProperty('right', `${safeMargin}px`, 'important');
+        this.panel.style.setProperty('left', 'auto', 'important');
+        this.panel.style.setProperty('bottom', 'auto', 'important');
 
         // Initially hide the panel using CSS class
         this.panel.classList.add('hidden');
@@ -904,6 +992,20 @@ class FarislyAI {
                 });
             }
         }
+
+        // Window resize listener - reposition panel if it goes outside viewport
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            // Debounce resize events
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                if (this.isVisible && this.panel) {
+                    const iconRect = this.iconContainer.getBoundingClientRect();
+                    this.updatePanelPosition(iconRect.left, iconRect.top);
+                    console.log('🔄 Window resized - panel repositioned');
+                }
+            }, 150);
+        });
 
         // Note: Message listeners are set up in setupMessageListeners()
         // which is called early in init(), even if site is not allowed
@@ -1537,6 +1639,97 @@ class FarislyAI {
                 this.showSettingsTab(content);
                 break;
         }
+
+        // Adjust panel height dynamically based on content
+        // Use requestAnimationFrame to ensure DOM has updated
+        requestAnimationFrame(() => {
+            this.adjustPanelHeight();
+        });
+    }
+
+    /**
+     * Dynamically adjust panel height based on content
+     * Each tab can have different optimal heights
+     * Re-positions panel if height change causes viewport overflow
+     */
+    adjustPanelHeight() {
+        if (!this.panel) return;
+
+        const content = this.panel.querySelector('#panel-content');
+        if (!content) return;
+
+        // Store old height for comparison
+        const oldHeight = this.panel.offsetHeight;
+
+        // Get the natural height of the content
+        const contentHeight = content.scrollHeight;
+
+        // Calculate header and tab nav heights
+        const header = this.panel.querySelector('.farisly-panel-header');
+        const tabNav = this.panel.querySelector('.farisly-tab-nav');
+        const headerHeight = header ? header.offsetHeight : 40;
+        const tabNavHeight = tabNav ? tabNav.offsetHeight : 50;
+
+        // Define min and max heights for different tabs
+        const minHeights = {
+            'compose': 280,
+            'quick-replies': 350,
+            'ai-reply': 320,
+            'settings': 400
+        };
+
+        const maxHeights = {
+            'compose': 450,
+            'quick-replies': 600,
+            'ai-reply': 500,
+            'settings': 550
+        };
+
+        // Get appropriate min/max for current tab
+        const minHeight = minHeights[this.currentTab] || 300;
+        const maxHeight = maxHeights[this.currentTab] || 500;
+
+        // Calculate ideal panel height
+        const idealHeight = contentHeight + headerHeight + tabNavHeight + 24; // +24 for padding/borders
+
+        // Constrain to min/max and viewport
+        const viewportMaxHeight = window.innerHeight - 40; // Leave 40px margin
+        let newHeight = Math.max(minHeight, Math.min(idealHeight, maxHeight, viewportMaxHeight));
+
+        // Apply smooth transition
+        this.panel.style.transition = 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+        this.panel.style.height = `${newHeight}px`;
+
+        // Check if new height causes panel to go outside viewport
+        if (this.isVisible && Math.abs(newHeight - oldHeight) > 10) {
+            // Height changed significantly - recheck position
+            requestAnimationFrame(() => {
+                const panelRect = this.panel.getBoundingClientRect();
+
+                // Check if panel bottom is outside viewport
+                if (panelRect.bottom > window.innerHeight) {
+                    const overflow = panelRect.bottom - window.innerHeight + 10; // +10 for margin
+                    const currentTop = parseInt(this.panel.style.top) || panelRect.top;
+                    const newTop = Math.max(10, currentTop - overflow);
+
+                    this.panel.style.setProperty('top', `${newTop}px`, 'important');
+                    console.log(`📐 Panel repositioned: top adjusted from ${currentTop}px to ${newTop}px (height overflow)`);
+                }
+
+                // Check if panel top is outside viewport (negative)
+                if (panelRect.top < 0) {
+                    this.panel.style.setProperty('top', '10px', 'important');
+                    console.log(`📐 Panel repositioned: moved to top (was above viewport)`);
+                }
+            });
+        }
+
+        // Remove transition after animation completes
+        setTimeout(() => {
+            this.panel.style.transition = '';
+        }, 300);
+
+        console.log(`📐 Panel height adjusted to ${newHeight}px for ${this.currentTab} tab`);
     }
 
     /**
@@ -1914,6 +2107,11 @@ class FarislyAI {
                 const listContainer = content.querySelector('#replies-list');
                 listContainer.innerHTML = this.renderReplies(replies, filter);
                 this.attachReplyClickHandlers(listContainer, replies);
+
+                // Adjust panel height after content changes
+                requestAnimationFrame(() => {
+                    this.adjustPanelHeight();
+                });
             });
         }
 
@@ -1931,6 +2129,11 @@ class FarislyAI {
                 const listContainer = content.querySelector('#replies-list');
                 listContainer.innerHTML = this.renderReplies(filtered);
                 this.attachReplyClickHandlers(listContainer, replies);
+
+                // Adjust panel height after content changes
+                requestAnimationFrame(() => {
+                    this.adjustPanelHeight();
+                });
             });
         });
 
