@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '@/lib/db/connect';
+import AppSetting from '@/lib/models/AppSetting';
 
 /**
  * AI Grammar Check API Endpoint
  * Analyzes text for grammar, spelling, and punctuation errors
  * Returns structured error data with positions and suggestions
+ * Uses admin-configured global OpenAI API key
  */
 
 interface GrammarCheckRequest {
   text: string;
-  apiKey?: string;
 }
 
 interface GrammarError {
@@ -23,7 +25,7 @@ interface GrammarError {
 export async function POST(request: NextRequest) {
   try {
     const body: GrammarCheckRequest = await request.json();
-    const { text, apiKey } = body;
+    const { text } = body;
 
     if (!text) {
       return NextResponse.json(
@@ -39,11 +41,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!apiKey) {
+    // Fetch admin-configured OpenAI API key from database
+    await connectDB();
+    const apiKeySetting = await AppSetting.findOne({ key: 'extension.openai_api_key' });
+
+    if (!apiKeySetting || !apiKeySetting.value) {
+      console.error('⚠️ Admin API key not configured');
       return NextResponse.json(
-        { success: false, message: 'OpenAI API key is required. Please set it in the extension settings.' },
         {
-          status: 400,
+          success: false,
+          message: 'AI features are not configured. Please contact your administrator to set up the OpenAI API key.'
+        },
+        {
+          status: 503,
           headers: {
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -52,6 +62,9 @@ export async function POST(request: NextRequest) {
         }
       );
     }
+
+    const apiKey = apiKeySetting.value;
+    console.log('✅ Using admin-configured API key for grammar check');
 
     // Build the prompt for grammar checking
     const systemPrompt = `You are a professional grammar checker. Analyze the given text for grammar, spelling, and punctuation errors.

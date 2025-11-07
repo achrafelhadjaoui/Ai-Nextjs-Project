@@ -14,7 +14,7 @@
   ],
   "host_permissions": [
     "https://api.openai.com/*",
-    "http://localhost:3000/*",
+    "http://localhost:3001/*",
     "https://*.farisly.com/*",
     "<all_urls>"
   ],

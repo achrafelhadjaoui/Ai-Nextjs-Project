@@ -213,6 +213,11 @@ class FarislyAI {
      * Create floating icon (draggable and closable)
      */
     createIcon() {
+        // Remove existing icon if it exists (prevent duplicates)
+        if (this.iconContainer && this.iconContainer.parentNode) {
+            this.iconContainer.parentNode.removeChild(this.iconContainer);
+        }
+
         this.iconContainer = document.createElement('div');
         this.iconContainer.id = 'farisly-ai-icon-container';
         this.iconContainer.style.cssText = `
@@ -452,8 +457,14 @@ class FarislyAI {
 
     /**
      * Create floating panel
+     * @param {boolean} appendToDOM - Whether to append to DOM (false when replacing existing panel)
      */
-    createPanel() {
+    createPanel(appendToDOM = true) {
+        // Remove existing panel from DOM if it exists (prevent duplicates)
+        if (this.panel && this.panel.parentNode) {
+            this.panel.parentNode.removeChild(this.panel);
+        }
+
         this.panel = document.createElement('div');
         this.panel.id = 'farisly-ai-panel';
         this.panel.className = 'farisly-ai-panel';
@@ -532,7 +543,10 @@ class FarislyAI {
         this.panel.classList.add('hidden');
         this.panel.style.opacity = '0';
 
-        document.body.appendChild(this.panel);
+        // Only append to DOM if requested (default: true, false when replacing)
+        if (appendToDOM) {
+            document.body.appendChild(this.panel);
+        }
 
         // Only show tabs if authenticated
         if (this.isAuthenticated) {
@@ -808,16 +822,11 @@ class FarislyAI {
                                 }
 
                                 // Recreate the panel with authenticated UI
-                                const oldPanel = this.panel;
+                                // createPanel() now automatically removes old panel before creating new one
                                 this.createPanel();
 
                                 // Set up event listeners for the new panel
                                 this.setupEventListeners();
-
-                                // Replace old panel with new one
-                                if (oldPanel && oldPanel.parentNode) {
-                                    oldPanel.parentNode.replaceChild(this.panel, oldPanel);
-                                }
 
                                 // Show the panel and default tab
                                 this.panel.classList.remove('hidden');
@@ -1929,7 +1938,7 @@ class FarislyAI {
         const dashboardBtn = content.querySelector('#open-dashboard-btn');
         if (dashboardBtn) {
             dashboardBtn.addEventListener('click', () => {
-                window.open('http://localhost:3000/dashboard', '_blank');
+                window.open('http://localhost:3001/dashboard', '_blank');
             });
         }
 
@@ -2405,7 +2414,7 @@ class FarislyAI {
         if (repliesBtn) {
             repliesBtn.addEventListener('click', () => {
                 // Open Settings panel where Quick Replies are managed
-                window.open('http://localhost:3000/panel', '_blank');
+                window.open('http://localhost:3001/panel', '_blank');
             });
         }
 

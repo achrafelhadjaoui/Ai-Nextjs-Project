@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '@/lib/db/connect';
+import AppSetting from '@/lib/models/AppSetting';
 
 /**
  * AI Reply Generation API Endpoint
  * Generates contextually relevant responses based on conversation history
+ * Uses admin-configured global OpenAI API key
  */
 
 interface ReplyRequest {
   conversationContext: string; // The recent conversation messages
   userInstructions?: string; // Custom AI behavior rules
   tone?: 'professional' | 'friendly' | 'formal' | 'casual';
-  apiKey: string;
   agentName?: string;
   useLineSpacing?: boolean;
 }
@@ -21,7 +23,6 @@ export async function POST(request: NextRequest) {
       conversationContext,
       userInstructions,
       tone,
-      apiKey,
       agentName,
       useLineSpacing
     } = body;
@@ -40,11 +41,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!apiKey) {
+    // Fetch admin-configured OpenAI API key from database
+    await connectDB();
+    const apiKeySetting = await AppSetting.findOne({ key: 'extension.openai_api_key' });
+
+    if (!apiKeySetting || !apiKeySetting.value) {
+      console.error('⚠️ Admin API key not configured');
       return NextResponse.json(
-        { success: false, message: 'OpenAI API key is required. Please set it in the extension settings.' },
         {
-          status: 400,
+          success: false,
+          message: 'AI features are not configured. Please contact your administrator to set up the OpenAI API key.'
+        },
+        {
+          status: 503,
           headers: {
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -53,6 +62,9 @@ export async function POST(request: NextRequest) {
         }
       );
     }
+
+    const apiKey = apiKeySetting.value;
+    console.log('✅ Using admin-configured API key for AI reply generation');
 
     // Build system prompt
     let systemPrompt = `You are a helpful AI assistant that generates contextually appropriate responses to messages.

@@ -4,7 +4,7 @@
  */
 
 // Configuration
-const API_URL = 'http://localhost:3000'; // Change to production URL when deploying
+const API_URL = 'http://localhost:3001'; // Change to production URL when deploying
 const SYNC_INTERVAL = 30; // minutes
 
 // State management

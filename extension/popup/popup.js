@@ -20,21 +20,21 @@ document.addEventListener('DOMContentLoaded', function() {
     openDashboardBtn.addEventListener('click', function() {
         console.log('Opening dashboard');
         statusElement.textContent = 'Opening Dashboard...';
-        chrome.tabs.create({ url: 'http://localhost:3000/dashboard' });
+        chrome.tabs.create({ url: 'http://localhost:3001/dashboard' });
     });
 
     // Panel button
     openPanelBtn.addEventListener('click', function() {
         console.log('Opening panel');
         statusElement.textContent = 'Opening Panel...';
-        chrome.tabs.create({ url: 'http://localhost:3000/panel' });
+        chrome.tabs.create({ url: 'http://localhost:3001/panel' });
     });
 
     // Profile button
     openProfileBtn.addEventListener('click', function() {
         console.log('Opening profile');
         statusElement.textContent = 'Opening Profile...';
-        chrome.tabs.create({ url: 'http://localhost:3000/profile' });
+        chrome.tabs.create({ url: 'http://localhost:3001/profile' });
     });
 
     console.log('Event listeners set up successfully');

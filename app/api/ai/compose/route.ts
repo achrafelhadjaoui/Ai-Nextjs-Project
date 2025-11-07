@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '@/lib/db/connect';
+import AppSetting from '@/lib/models/AppSetting';
 
 /**
  * AI Compose API Endpoint
  * Handles various AI text operations: grammar fix, expand, elaborate, translate, summarize, tone adjustment
+ * Uses admin-configured global OpenAI API key
  *
  * This endpoint accepts requests from the Chrome extension for AI text processing
  */
@@ -12,14 +15,13 @@ interface ComposeRequest {
   action: 'grammar' | 'expand' | 'elaborate' | 'translate' | 'summarize' | 'tone';
   tone?: 'professional' | 'friendly' | 'formal' | 'casual';
   targetLanguage?: string;
-  apiKey?: string;
   userInstructions?: string;
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body: ComposeRequest = await request.json();
-    const { text, action, tone, targetLanguage, apiKey, userInstructions } = body;
+    const { text, action, tone, targetLanguage, userInstructions } = body;
 
     if (!text || !action) {
       return NextResponse.json(
@@ -35,11 +37,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!apiKey) {
+    // Fetch admin-configured OpenAI API key from database
+    await connectDB();
+    const apiKeySetting = await AppSetting.findOne({ key: 'extension.openai_api_key' });
+
+    if (!apiKeySetting || !apiKeySetting.value) {
+      console.error('⚠️ Admin API key not configured');
       return NextResponse.json(
-        { success: false, message: 'OpenAI API key is required. Please set it in the extension settings.' },
         {
-          status: 400,
+          success: false,
+          message: 'AI features are not configured. Please contact your administrator to set up the OpenAI API key.'
+        },
+        {
+          status: 503,
           headers: {
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -48,6 +58,9 @@ export async function POST(request: NextRequest) {
         }
       );
     }
+
+    const apiKey = apiKeySetting.value;
+    console.log(`✅ Using admin-configured API key for compose action: ${action}`);
 
     // Build the prompt based on the action
     let systemPrompt = '';

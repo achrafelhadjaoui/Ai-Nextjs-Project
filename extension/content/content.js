@@ -1160,11 +1160,11 @@ class FarislyAI {
     async loadSettings() {
         try {
             console.log('Loading settings from panel...');
-            
+
             // Fetch from panel API to get the latest settings
-            const response = await fetch('http://localhost:3000/api/settings');
+            const response = await fetch('http://localhost:3001/api/settings');
             const data = await response.json();
-            
+
             console.log('Raw data from panel API:', data);
             
             // Use the settings from the panel
