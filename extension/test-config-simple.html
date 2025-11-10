@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Config Test - Farisly AI</title>
+</head>
+<body>
+    <h1>Testing Config Loading</h1>
+    <div id="results"></div>
+
+    <script src="config.js"></script>
+    <script>
+        const results = document.getElementById('results');
+
+        // Test 1: Check if window.FARISLY_CONFIG exists
+        if (window.FARISLY_CONFIG) {
+            results.innerHTML += '<p style="color: green;">✅ window.FARISLY_CONFIG exists</p>';
+            results.innerHTML += '<p>API_URL: ' + window.FARISLY_CONFIG.API_URL + '</p>';
+        } else {
+            results.innerHTML += '<p style="color: red;">❌ window.FARISLY_CONFIG does NOT exist</p>';
+        }
+
+        // Test 2: Try using it like content-enhanced.js does
+        const API_URL = window.FARISLY_CONFIG?.API_URL || 'http://localhost:3001';
+        results.innerHTML += '<p>Resolved API_URL: ' + API_URL + '</p>';
+
+        // Test 3: Check timing
+        console.log('Config test loaded');
+        console.log('window.FARISLY_CONFIG:', window.FARISLY_CONFIG);
+    </script>
+</body>
+</html>

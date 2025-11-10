@@ -10,14 +10,14 @@
 
 console.log('🚀 Farisly AI Enhanced Content Script Loaded');
 
+// Get API URL from config (loaded from config.js via manifest)
+const API_URL = window.FARISLY_CONFIG?.API_URL || 'http://localhost:3001';
+
 class FarislyAI {
     constructor() {
         this.isVisible = false;
         this.isMinimized = false;
-        this.isDragging = false;
-        this.isIconDragging = false;
-        this.dragOffset = { x: 0, y: 0 };
-        this.iconDragOffset = { x: 0, y: 0 };
+        this.isAnimating = false;  // Lock during panel animations
         this.currentTab = 'compose';
         this.settings = null;
         this.selectedText = '';
@@ -228,6 +228,8 @@ class FarislyAI {
             display: flex !important;
             align-items: flex-start !important;
             gap: 8px !important;
+            pointer-events: auto !important;
+            isolation: isolate !important;
         `;
 
         this.icon = document.createElement('div');
@@ -243,10 +245,13 @@ class FarislyAI {
             align-items: center !important;
             justify-content: center !important;
             font-size: 28px !important;
-            cursor: grab !important;
+            cursor: pointer !important;
             box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3) !important;
             transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1) !important;
             user-select: none !important;
+            pointer-events: auto !important;
+            position: relative !important;
+            z-index: 1 !important;
         `;
 
         // Close button for icon
@@ -267,6 +272,10 @@ class FarislyAI {
             justify-content: center !important;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
             transition: all 0.2s ease !important;
+            pointer-events: none !important;
+            position: relative !important;
+            z-index: 2 !important;
+            flex-shrink: 0 !important;
         `;
 
         this.iconContainer.appendChild(this.icon);
@@ -279,6 +288,8 @@ class FarislyAI {
             this.icon.style.transform = 'scale(1.1)';
             this.icon.style.boxShadow = '0 12px 32px rgba(102, 126, 234, 0.6), 0 6px 16px rgba(0, 0, 0, 0.4)';
             this.closeIconBtn.style.display = 'flex';
+            this.closeIconBtn.style.pointerEvents = 'auto';
+            console.log('👋 Hover enter - close button shown');
         });
 
         this.iconContainer.addEventListener('pointerleave', () => {
@@ -286,6 +297,8 @@ class FarislyAI {
             this.icon.style.transform = 'scale(1)';
             this.icon.style.boxShadow = '0 8px 24px rgba(102, 126, 234, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3)';
             this.closeIconBtn.style.display = 'none';
+            this.closeIconBtn.style.pointerEvents = 'none';
+            console.log('👋 Hover leave - close button hidden');
         });
 
         // Close icon button - use pointerdown for instant response
@@ -295,59 +308,30 @@ class FarislyAI {
             this.hideIcon();
         });
 
-        // Make icon draggable
-        this.setupIconDragging();
+        // Simple click handler - no dragging complexity
+        this.setupSimpleIconClick();
 
         console.log('✨ Icon created');
     }
 
     /**
-     * Setup icon dragging functionality using professional DragManager
+     * Setup simple click handler for icon - opens panel on click
      */
-    setupIconDragging() {
-        this.dragManager = new DragManager(this.icon, {
-            threshold: 3,
+    setupSimpleIconClick() {
+        this.icon.addEventListener('click', (e) => {
+            console.log('👆 Icon clicked!', { target: e.target });
 
-            onDragStart: () => {
-                this.isIconDragging = true;
-                this.icon.style.cursor = 'grabbing';
-                console.log('🎯 Drag started');
-            },
-
-            onDrag: (state) => {
-                // Clamp to viewport
-                const maxX = window.innerWidth - this.iconContainer.offsetWidth;
-                const maxY = window.innerHeight - this.iconContainer.offsetHeight;
-
-                const clampedX = Math.max(0, Math.min(state.currentX, maxX));
-                const clampedY = Math.max(0, Math.min(state.currentY, maxY));
-
-                // Update position
-                this.iconContainer.style.left = `${clampedX}px`;
-                this.iconContainer.style.top = `${clampedY}px`;
-                this.iconContainer.style.right = 'auto';
-                this.iconContainer.style.bottom = 'auto';
-
-                // Move panel with icon if visible
-                if (this.isVisible && this.panel) {
-                    this.updatePanelPosition(clampedX, clampedY);
-                }
-            },
-
-            onDragEnd: () => {
-                this.isIconDragging = false;
-                this.icon.style.cursor = 'grab';
-                console.log('🎯 Drag ended');
-            },
-
-            onClick: (e) => {
-                // Don't click if target is close button
-                if (e.target === this.closeIconBtn) return;
-
-                console.log('👆 Icon clicked - toggling panel');
-                this.togglePanel();
+            // Don't toggle if clicking close button
+            if (e.target === this.closeIconBtn) {
+                console.log('❌ Click was on close button - ignoring');
+                return;
             }
+
+            console.log('✅ Opening/closing panel');
+            this.togglePanel();
         });
+
+        console.log('✅ Simple click handler attached to icon');
     }
 
     /**
@@ -611,18 +595,16 @@ class FarislyAI {
                     <button class="farisly-tab-btn active" data-tab="compose">✏️ Compose</button>
                     <button class="farisly-tab-btn" data-tab="quick-replies">💾 Quick Replies</button>
                     <button class="farisly-tab-btn" data-tab="ai-reply">🤖 AI Reply</button>
-                    <button class="farisly-tab-btn" data-tab="settings">⚙️ Settings</button>
                 </div>
 
                 <div class="farisly-panel-content" id="panel-content">
                     <!-- Content will be loaded dynamically -->
                 </div>
-                <div class="farisly-resize-handle" id="resize-handle" title="Drag to resize"></div>
             `;
         }
 
-        // Set initial height (since we removed the fixed CSS height to allow resize)
-        this.panel.style.height = '220px';
+        // Set initial reasonable height - will be adjusted dynamically when panel opens
+        this.panel.style.height = '280px';
 
         // Set safe default position (top-right with margins) using !important
         // This ensures panel never starts outside viewport even before JS positioning runs
@@ -717,86 +699,6 @@ class FarislyAI {
                 minimizeBtn.innerHTML = '−'; // Minimize icon
                 minimizeBtn.title = 'Minimize';
             }
-        });
-
-        // Resize functionality
-        const resizeHandle = this.panel.querySelector('#resize-handle');
-        if (!resizeHandle) {
-            console.error('❌ Resize handle not found!');
-            return;
-        }
-        console.log('✅ Resize handle found, setting up listeners');
-        this.isResizing = false;
-
-        const handleResizeMove = (e) => {
-            if (this.isResizing) {
-                e.preventDefault();
-                e.stopPropagation();
-
-                const deltaX = e.clientX - this.resizeStartX;
-                const deltaY = e.clientY - this.resizeStartY;
-
-                // Calculate new dimensions
-                let newWidth = this.resizeStartWidth + deltaX;
-                let newHeight = this.resizeStartHeight + deltaY;
-
-                // Apply constraints
-                const minWidth = 300;
-                const maxWidth = window.innerWidth - (this.panel.getBoundingClientRect().left);
-                const minHeight = 200;
-                const maxHeight = window.innerHeight - (this.panel.getBoundingClientRect().top);
-
-                // Clamp to constraints
-                newWidth = Math.max(minWidth, Math.min(newWidth, maxWidth));
-                newHeight = Math.max(minHeight, Math.min(newHeight, maxHeight));
-
-                // Apply new dimensions
-                this.panel.style.width = `${newWidth}px`;
-                this.panel.style.height = `${newHeight}px`;
-
-                console.log(`📏 Resizing to: ${newWidth}px × ${newHeight}px`);
-
-                // Add visual feedback class if at boundaries
-                if (newWidth === minWidth || newHeight === minHeight) {
-                    this.panel.classList.add('at-min-size');
-                } else {
-                    this.panel.classList.remove('at-min-size');
-                }
-            }
-        };
-
-        const handleResizeEnd = () => {
-            if (this.isResizing) {
-                this.isResizing = false;
-                this.panel.classList.remove('dragging');
-                document.removeEventListener('mousemove', handleResizeMove);
-                document.removeEventListener('mouseup', handleResizeEnd);
-            }
-        };
-
-        resizeHandle.addEventListener('mousedown', (e) => {
-            console.log('🖱️ Resize handle mousedown detected');
-            e.preventDefault();
-            e.stopPropagation(); // Prevent dragging when resizing
-
-            this.isResizing = true;
-            const rect = this.panel.getBoundingClientRect();
-            this.resizeStartX = e.clientX;
-            this.resizeStartY = e.clientY;
-            this.resizeStartWidth = rect.width;
-            this.resizeStartHeight = rect.height;
-
-            console.log('📐 Starting resize:', {
-                startX: this.resizeStartX,
-                startY: this.resizeStartY,
-                startWidth: this.resizeStartWidth,
-                startHeight: this.resizeStartHeight
-            });
-
-            this.panel.classList.add('dragging'); // Disable transitions during resize
-
-            document.addEventListener('mousemove', handleResizeMove);
-            document.addEventListener('mouseup', handleResizeEnd);
         });
 
         // Tab switching (only if authenticated and tabs exist)
@@ -1581,11 +1483,17 @@ class FarislyAI {
     }
 
     /**
-     * Toggle panel visibility
+     * Toggle panel visibility - SIMPLE VERSION
      */
     togglePanel() {
-        console.log('🔄 togglePanel called, current state:', this.isVisible);
+        if (!this.panel) {
+            console.error('❌ Panel does not exist!');
+            return;
+        }
+
+        // Simple toggle
         this.isVisible = !this.isVisible;
+        console.log('🔄 Toggling panel. New state:', this.isVisible ? 'OPEN' : 'CLOSED');
 
         if (this.isVisible) {
             console.log('📂 Opening panel...');
@@ -1599,6 +1507,11 @@ class FarislyAI {
             // Force browser to calculate layout (reflow) so offsetWidth/Height are accurate
             void this.panel.offsetHeight;
 
+            // IMPORTANT: Calculate and set the correct height BEFORE showing the panel
+            // This ensures the panel opens with the correct height for the current tab
+            // Use immediate=true to calculate synchronously before panel is shown
+            this.adjustPanelHeightForTab(this.currentTab, true);
+
             // NOW position panel with accurate dimensions
             const iconRect = this.iconContainer.getBoundingClientRect();
             this.updatePanelPosition(iconRect.left, iconRect.top);
@@ -1606,9 +1519,15 @@ class FarislyAI {
             // Finally, fade in the panel
             requestAnimationFrame(() => {
                 this.panel.style.opacity = '1';
+
+                // Unlock after fade-in completes
+                setTimeout(() => {
+                    this.isAnimating = false;
+                    console.log('🔓 Animation lock released (open)');
+                }, 300);
             });
 
-            console.log('✅ Panel opened');
+            console.log('✅ Panel opened with correct height for tab:', this.currentTab);
         } else {
             console.log('📁 Closing panel...');
             this.panel.style.opacity = '0';
@@ -1617,6 +1536,10 @@ class FarislyAI {
                 // Remove visible class, add hidden class
                 this.panel.classList.remove('visible');
                 this.panel.classList.add('hidden');
+
+                // Unlock after fade-out completes
+                this.isAnimating = false;
+                console.log('🔓 Animation lock released (close)');
                 console.log('✅ Panel closed');
             }, 300);
         }
@@ -1646,101 +1569,72 @@ class FarislyAI {
             case 'ai-reply':
                 this.showAIReplyTab(content);
                 break;
-            case 'settings':
-                this.showSettingsTab(content);
-                break;
         }
 
         // Adjust panel height dynamically based on content
+        // Each tab will have its own flexible height
         // Use requestAnimationFrame to ensure DOM has updated
         requestAnimationFrame(() => {
-            this.adjustPanelHeight();
+            this.adjustPanelHeightForTab(tabName);
         });
     }
 
     /**
-     * Dynamically adjust panel height based on content
-     * Each tab can have different optimal heights
-     * Re-positions panel if height change causes viewport overflow
+     * Dynamically adjust panel height based on tab content
+     * Each tab gets flexible height based on its actual content
+     * Panel height adjusts automatically when switching tabs
+     * @param {string} tabName - The name of the current tab
+     * @param {boolean} immediate - If true, calculate immediately without RAF
      */
-    adjustPanelHeight() {
+    adjustPanelHeightForTab(tabName, immediate = false) {
         if (!this.panel) return;
 
         const content = this.panel.querySelector('#panel-content');
         if (!content) return;
 
-        // Store old height for comparison
-        const oldHeight = this.panel.offsetHeight;
+        const calculateAndSetHeight = () => {
+            // Calculate header and tab nav heights
+            const header = this.panel.querySelector('.farisly-panel-header');
+            const tabNav = this.panel.querySelector('.farisly-tab-nav');
+            const headerHeight = header ? header.offsetHeight : 52;
+            const tabNavHeight = tabNav ? tabNav.offsetHeight : 46;
 
-        // Get the natural height of the content
-        const contentHeight = content.scrollHeight;
+            // Get the actual content height
+            const contentHeight = content.scrollHeight;
 
-        // Calculate header and tab nav heights
-        const header = this.panel.querySelector('.farisly-panel-header');
-        const tabNav = this.panel.querySelector('.farisly-tab-nav');
-        const headerHeight = header ? header.offsetHeight : 40;
-        const tabNavHeight = tabNav ? tabNav.offsetHeight : 50;
+            // Calculate total panel height needed
+            const totalHeight = headerHeight + tabNavHeight + contentHeight + 16; // +16 for padding
 
-        // Define min and max heights for different tabs
-        const minHeights = {
-            'compose': 280,
-            'quick-replies': 350,
-            'ai-reply': 320,
-            'settings': 400
+            // Set maximum height to not exceed viewport
+            const viewportMaxHeight = window.innerHeight - 40;
+            const finalHeight = Math.min(totalHeight, viewportMaxHeight);
+
+            // Apply the height (transition is in CSS)
+            this.panel.style.height = `${finalHeight}px`;
+
+            console.log(`📐 Panel height adjusted for ${tabName}: ${finalHeight}px (content: ${contentHeight}px, header: ${headerHeight}px, tabNav: ${tabNavHeight}px)`);
         };
 
-        const maxHeights = {
-            'compose': 450,
-            'quick-replies': 600,
-            'ai-reply': 500,
-            'settings': 550
-        };
-
-        // Get appropriate min/max for current tab
-        const minHeight = minHeights[this.currentTab] || 300;
-        const maxHeight = maxHeights[this.currentTab] || 500;
-
-        // Calculate ideal panel height
-        const idealHeight = contentHeight + headerHeight + tabNavHeight + 24; // +24 for padding/borders
-
-        // Constrain to min/max and viewport
-        const viewportMaxHeight = window.innerHeight - 40; // Leave 40px margin
-        let newHeight = Math.max(minHeight, Math.min(idealHeight, maxHeight, viewportMaxHeight));
-
-        // Apply smooth transition
-        this.panel.style.transition = 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-        this.panel.style.height = `${newHeight}px`;
-
-        // Check if new height causes panel to go outside viewport
-        if (this.isVisible && Math.abs(newHeight - oldHeight) > 10) {
-            // Height changed significantly - recheck position
+        if (immediate) {
+            // Calculate immediately (for initial panel open)
+            calculateAndSetHeight();
+        } else {
+            // Wait for content to render, then measure
+            // Use double requestAnimationFrame to ensure DOM is fully painted
             requestAnimationFrame(() => {
-                const panelRect = this.panel.getBoundingClientRect();
-
-                // Check if panel bottom is outside viewport
-                if (panelRect.bottom > window.innerHeight) {
-                    const overflow = panelRect.bottom - window.innerHeight + 10; // +10 for margin
-                    const currentTop = parseInt(this.panel.style.top) || panelRect.top;
-                    const newTop = Math.max(10, currentTop - overflow);
-
-                    this.panel.style.setProperty('top', `${newTop}px`, 'important');
-                    console.log(`📐 Panel repositioned: top adjusted from ${currentTop}px to ${newTop}px (height overflow)`);
-                }
-
-                // Check if panel top is outside viewport (negative)
-                if (panelRect.top < 0) {
-                    this.panel.style.setProperty('top', '10px', 'important');
-                    console.log(`📐 Panel repositioned: moved to top (was above viewport)`);
-                }
+                requestAnimationFrame(() => {
+                    calculateAndSetHeight();
+                });
             });
         }
+    }
 
-        // Remove transition after animation completes
-        setTimeout(() => {
-            this.panel.style.transition = '';
-        }, 300);
-
-        console.log(`📐 Panel height adjusted to ${newHeight}px for ${this.currentTab} tab`);
+    /**
+     * Legacy function for backward compatibility
+     * Now calls the new adjustPanelHeightForTab
+     */
+    adjustPanelHeight() {
+        this.adjustPanelHeightForTab(this.currentTab);
     }
 
     /**
@@ -1917,24 +1811,14 @@ class FarislyAI {
                         <div class="farisly-empty-icon">🔒</div>
                         <div class="farisly-empty-title">Sign In Required</div>
                         <div class="farisly-empty-text">${this.escapeHtml(loadResult.message || 'Please sign in to access your Quick Replies')}</div>
-                        <button class="farisly-btn-primary" id="goto-settings-btn" style="margin-bottom: 8px;">
-                            Go to Settings
-                        </button>
-                        <button class="farisly-btn-secondary" id="open-dashboard-btn">
-                            Open Dashboard
+                        <button class="farisly-btn-primary" id="open-dashboard-btn">
+                            Open Dashboard to Sign In
                         </button>
                     </div>
                 </div>
             `;
 
-            // Setup button listeners
-            const gotoSettingsBtn = content.querySelector('#goto-settings-btn');
-            if (gotoSettingsBtn) {
-                gotoSettingsBtn.addEventListener('click', () => {
-                    this.showTab('settings');
-                });
-            }
-
+            // Setup button listener
             const dashboardBtn = content.querySelector('#open-dashboard-btn');
             if (dashboardBtn) {
                 dashboardBtn.addEventListener('click', () => {
@@ -2152,7 +2036,7 @@ class FarislyAI {
         const dashboardBtn = content.querySelector('#open-dashboard-btn');
         if (dashboardBtn) {
             dashboardBtn.addEventListener('click', () => {
-                window.open('http://localhost:3001/dashboard', '_blank');
+                window.open(`${API_URL}/dashboard`, '_blank');
             });
         }
 
@@ -2495,179 +2379,6 @@ class FarislyAI {
         }
     }
 
-    /**
-     * Show Settings tab
-     */
-    async showSettingsTab(content) {
-        // Check auth status
-        const authResponse = await chrome.runtime.sendMessage({ type: 'GET_AUTH_STATE' });
-        const isAuthenticated = authResponse?.success && authResponse?.authState?.isAuthenticated;
-        const user = authResponse?.authState?.user;
-
-        content.innerHTML = `
-            <div style="padding: 8px;">
-                <!-- Account Section -->
-                <div class="farisly-settings-section">
-                    <h3>Account</h3>
-
-                    ${isAuthenticated ? `
-                        <div class="farisly-auth-card">
-                            <div class="farisly-user-profile">
-                                <div class="farisly-user-avatar">
-                                    ${user?.name?.charAt(0)?.toUpperCase() || '?'}
-                                </div>
-                                <div class="farisly-user-info">
-                                    <div class="farisly-user-name">${this.escapeHtml(user?.name || 'User')}</div>
-                                    <div class="farisly-user-email">${this.escapeHtml(user?.email || '')}</div>
-                                </div>
-                            </div>
-                            <div class="farisly-auth-status">
-                                <span style="color: #10b981; font-size: 20px;">✓</span>
-                                <span class="farisly-auth-status-success">Signed In</span>
-                            </div>
-                        </div>
-
-                        <button class="farisly-btn-secondary" id="logout-btn">
-                            Sign Out
-                        </button>
-                    ` : `
-                        <div class="farisly-login-prompt">
-                            <div class="farisly-login-icon">🔒</div>
-                            <div class="farisly-login-text">Sign in to access Quick Replies and AI features</div>
-                            <button class="farisly-btn-primary" id="sync-auth-btn">
-                                Sign In with Dashboard
-                            </button>
-                            <div class="farisly-login-hint">
-                                Make sure you're signed in on the web dashboard, then click the button above
-                            </div>
-                        </div>
-                    `}
-                </div>
-
-                <!-- AI Configuration Section -->
-                ${isAuthenticated ? `
-                <div class="farisly-settings-section">
-                    <h3>AI Configuration</h3>
-                    <div style="margin-bottom: 12px;">
-                        <label style="display: block; color: #999; font-size: 12px; margin-bottom: 6px;">
-                            OpenAI API Key
-                        </label>
-                        <input
-                            type="password"
-                            id="openai-api-key"
-                            placeholder="sk-..."
-                            value="${this.escapeHtml(this.settings?.openaiKey || '')}"
-                            style="width: 100%; padding: 10px; background: #111; border: 1px solid #2a2a2a; border-radius: 8px; color: #fff; font-size: 14px; font-family: monospace;"
-                        />
-                        <div style="color: #666; font-size: 11px; margin-top: 4px;">
-                            Required for AI text processing features (Compose & AI Reply)
-                        </div>
-                    </div>
-                    <button class="farisly-btn-primary" id="save-api-key-btn">
-                        Save API Key
-                    </button>
-                </div>
-                ` : ''}
-
-                <!-- Quick Actions Section -->
-                <div class="farisly-settings-section">
-                    <h3>Quick Actions</h3>
-                    <button class="farisly-btn-secondary" id="open-dashboard-settings" style="margin-bottom: 8px;">
-                        📊 Open Dashboard
-                    </button>
-                    <button class="farisly-btn-secondary" id="open-saved-replies">
-                        💾 Manage Quick Replies
-                    </button>
-                </div>
-            </div>
-        `;
-
-        // Setup event listeners
-        const syncAuthBtn = content.querySelector('#sync-auth-btn');
-        if (syncAuthBtn) {
-            syncAuthBtn.addEventListener('click', async () => {
-                syncAuthBtn.disabled = true;
-                syncAuthBtn.textContent = 'Signing in...';
-
-                try {
-                    const response = await chrome.runtime.sendMessage({ type: 'SYNC_AUTH_FROM_WEB' });
-
-                    if (response?.success) {
-                        this.showToast('✓ Signed in successfully!', 'success');
-                        // AUTH_UPDATED broadcast will automatically refresh the UI
-                    } else {
-                        this.showToast('Not signed in on dashboard. Please log in first.', 'error');
-                    }
-                } catch (error) {
-                    console.error('Error syncing auth:', error);
-                    this.showToast('Error signing in', 'error');
-                } finally {
-                    syncAuthBtn.disabled = false;
-                    syncAuthBtn.textContent = 'Sign In with Dashboard';
-                }
-            });
-        }
-
-        const logoutBtn = content.querySelector('#logout-btn');
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', async () => {
-                await chrome.runtime.sendMessage({ type: 'LOGOUT' });
-                this.showToast('Signed out', 'info');
-                // AUTH_UPDATED broadcast will automatically refresh the UI
-            });
-        }
-
-        const dashboardBtn = content.querySelector('#open-dashboard-settings');
-        if (dashboardBtn) {
-            dashboardBtn.addEventListener('click', () => {
-                chrome.runtime.sendMessage({ type: 'OPEN_DASHBOARD' });
-            });
-        }
-
-        const repliesBtn = content.querySelector('#open-saved-replies');
-        if (repliesBtn) {
-            repliesBtn.addEventListener('click', () => {
-                // Open Settings panel where Quick Replies are managed
-                window.open('http://localhost:3001/panel', '_blank');
-            });
-        }
-
-        // API Key save button
-        const saveApiKeyBtn = content.querySelector('#save-api-key-btn');
-        if (saveApiKeyBtn) {
-            saveApiKeyBtn.addEventListener('click', async () => {
-                const apiKeyInput = content.querySelector('#openai-api-key');
-                const apiKey = apiKeyInput.value.trim();
-
-                saveApiKeyBtn.disabled = true;
-                saveApiKeyBtn.textContent = 'Saving...';
-
-                try {
-                    // Send to background to save to server
-                    const response = await chrome.runtime.sendMessage({
-                        type: 'SAVE_API_KEY',
-                        payload: { apiKey }
-                    });
-
-                    if (response?.success) {
-                        this.showToast('✓ API Key saved successfully!', 'success');
-                        // Update local settings
-                        if (this.settings) {
-                            this.settings.openaiKey = apiKey;
-                        }
-                    } else {
-                        this.showToast(response?.message || 'Failed to save API key', 'error');
-                    }
-                } catch (error) {
-                    console.error('Error saving API key:', error);
-                    this.showToast('Error saving API key', 'error');
-                } finally {
-                    saveApiKeyBtn.disabled = false;
-                    saveApiKeyBtn.textContent = 'Save API Key';
-                }
-            });
-        }
-    }
 
     /**
      * Insert text into active element

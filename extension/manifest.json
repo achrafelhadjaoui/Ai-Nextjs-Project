@@ -28,14 +28,13 @@
     }
   },
   "background": {
-    "service_worker": "background/background.js",
-    "type": "module"
+    "service_worker": "background/background.js"
   },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
       "js": [
-        "content/DragManager.js",
+        "config.js",
         "content/QuickRepliesManager.js",
         "content/GrammarChecker.js",
         "content/ConversationDetector.js",

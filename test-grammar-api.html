@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grammar API Test - Professional Detection</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-style: italic;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #667eea;
+        }
+        textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .results {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 6px;
+            display: none;
+        }
+        .results.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            display: block;
+        }
+        .results.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            display: block;
+        }
+        .results.no-errors {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+            display: block;
+        }
+        .error-item {
+            padding: 12px;
+            margin: 10px 0;
+            background: white;
+            border-left: 4px solid #667eea;
+            border-radius: 4px;
+        }
+        .error-type {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+        .error-text {
+            margin: 5px 0;
+        }
+        .original {
+            color: #dc3545;
+            text-decoration: line-through;
+            font-weight: bold;
+        }
+        .suggestion {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .error-message {
+            color: #666;
+            font-size: 14px;
+            font-style: italic;
+            margin-top: 5px;
+        }
+        .stats {
+            text-align: center;
+            margin-top: 20px;
+            padding: 15px;
+            background: #f0f0f0;
+            border-radius: 6px;
+        }
+        .stat-number {
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .loading {
+            text-align: center;
+            color: #667eea;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎓 Professional Grammar Detection Test</h1>
+        <p class="subtitle">Testing GPT-4o-mini with English Professor-level Intelligence</p>
+
+        <div class="test-section">
+            <h3>Test Case 1: Real Grammar Errors (Should Detect)</h3>
+            <textarea id="test1">He don't know the answer. Yesterday I go to the store and buy some apple. Me and him was there. I dont have nothing to say.</textarea>
+            <button onclick="testGrammar('test1', 'result1')">Check Grammar</button>
+            <div id="result1" class="results"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>Test Case 2: Proper Nouns & Technical Terms (Should NOT Detect)</h3>
+            <textarea id="test2">I work at Google with my iPhone. Dr. Smith visited New York to see the Statue of Liberty. The React component uses TypeScript and MongoDB.</textarea>
+            <button onclick="testGrammar('test2', 'result2')">Check Grammar</button>
+            <div id="result2" class="results"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>Test Case 3: Mixed - Real Errors + Proper Nouns</h3>
+            <textarea id="test3">Yesterday I go to Google headquarters in California. Their are many engineers working on AI. Dr. Johnson dont understand the problem.</textarea>
+            <button onclick="testGrammar('test3', 'result3')">Check Grammar</button>
+            <div id="result3" class="results"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>Test Case 4: Perfect Grammar (Should NOT Detect)</h3>
+            <textarea id="test4">The quick brown fox jumps over the lazy dog. She has been working on this project for several months. Everything seems to be functioning correctly.</textarea>
+            <button onclick="testGrammar('test4', 'result4')">Check Grammar</button>
+            <div id="result4" class="results"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>Test Case 5: User's Problematic Example (Should NOT Duplicate Words)</h3>
+            <textarea id="test5">I'll march for Palesti important ortant o joining impor tan cau joining cause ant cause. Important joining cause. ortant joining tcause.portant cause .</textarea>
+            <button onclick="testGrammar('test5', 'result5')">Check Grammar</button>
+            <div id="result5" class="results"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>Test Case 6: Your Custom Text</h3>
+            <textarea id="test6" placeholder="Type or paste your text here to test the grammar checker..."></textarea>
+            <button onclick="testGrammar('test6', 'result6')">Check Grammar</button>
+            <div id="result6" class="results"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3001';
+
+        async function testGrammar(textareaId, resultId) {
+            const textarea = document.getElementById(textareaId);
+            const resultDiv = document.getElementById(resultId);
+            const button = event.target;
+
+            const text = textarea.value.trim();
+
+            if (!text) {
+                resultDiv.className = 'results error';
+                resultDiv.innerHTML = '⚠️ Please enter some text to check.';
+                return;
+            }
+
+            // Show loading state
+            button.disabled = true;
+            button.textContent = 'Checking...';
+            resultDiv.className = 'results';
+            resultDiv.innerHTML = '<p class="loading">🔍 Analyzing text with GPT-4o-mini...</p>';
+            resultDiv.style.display = 'block';
+
+            try {
+                const response = await fetch(`${API_URL}/api/ai/grammar`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    if (data.errors.length === 0) {
+                        // No errors found
+                        resultDiv.className = 'results no-errors';
+                        resultDiv.innerHTML = `
+                            <h4>✨ Perfect! No Grammar Errors Detected</h4>
+                            <p>Your text appears to be grammatically correct. The AI professor found no issues!</p>
+                            <div class="stats">
+                                <div class="stat-number">0</div>
+                                <div>Errors Detected</div>
+                            </div>
+                        `;
+                    } else {
+                        // Errors found
+                        const errorsHtml = data.errors.map(error => `
+                            <div class="error-item">
+                                <div class="error-type">${error.type}</div>
+                                <div class="error-text">
+                                    <span class="original">${error.original}</span>
+                                    →
+                                    <span class="suggestion">${error.suggestion}</span>
+                                </div>
+                                <div class="error-message">${error.message}</div>
+                            </div>
+                        `).join('');
+
+                        resultDiv.className = 'results success';
+                        resultDiv.innerHTML = `
+                            <h4>📝 Grammar Errors Detected</h4>
+                            ${errorsHtml}
+                            <div class="stats">
+                                <div class="stat-number">${data.errors.length}</div>
+                                <div>Error${data.errors.length > 1 ? 's' : ''} Found</div>
+                            </div>
+                        `;
+                    }
+                } else {
+                    // API error
+                    resultDiv.className = 'results error';
+                    resultDiv.innerHTML = `
+                        <h4>❌ Error</h4>
+                        <p>${data.message}</p>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error checking grammar:', error);
+                resultDiv.className = 'results error';
+                resultDiv.innerHTML = `
+                    <h4>❌ Connection Error</h4>
+                    <p>Failed to connect to the grammar API. Make sure the server is running on port 3001.</p>
+                    <p style="font-size: 12px; color: #999;">Error: ${error.message}</p>
+                `;
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Check Grammar';
+            }
+        }
+
+        // Test API connection on load
+        window.addEventListener('load', async () => {
+            console.log('🧪 Grammar API Test Page Loaded');
+            console.log('📍 API URL:', API_URL);
+
+            try {
+                const response = await fetch(`${API_URL}/api/ai/grammar`, {
+                    method: 'OPTIONS'
+                });
+                console.log('✅ API connection successful');
+            } catch (error) {
+                console.error('❌ API connection failed:', error);
+                alert('⚠️ Cannot connect to API at ' + API_URL + '\n\nMake sure:\n1. The Next.js server is running (npm run dev)\n2. The server is on port 3001\n3. CORS is properly configured');
+            }
+        });
+    </script>
+</body>
+</html>

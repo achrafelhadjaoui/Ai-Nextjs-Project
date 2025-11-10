@@ -3,9 +3,24 @@
  * Handles authentication, messaging, alarms, and cross-component communication
  */
 
-// Configuration
-const API_URL = 'http://localhost:3001'; // Change to production URL when deploying
+// Import configuration (auto-generated from .env.local)
+try {
+  importScripts('config.js');
+  console.log('✅ Background: Config loaded successfully');
+} catch (error) {
+  console.error('❌ Background: Failed to load config.js:', error);
+  // Set fallback config
+  self.FARISLY_CONFIG = {
+    API_URL: 'http://localhost:3001'
+  };
+}
+
+// Get API URL from config
+const API_URL = self.FARISLY_CONFIG?.API_URL || 'http://localhost:3001';
 const SYNC_INTERVAL = 30; // minutes
+
+console.log('🚀 Background Service Worker Starting...');
+console.log('📍 API URL:', API_URL);
 
 // State management
 let authState = {
@@ -903,6 +918,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   // Return true to indicate we'll send response asynchronously
   return true;
 });
+
+console.log('✅ Message listener registered successfully');
 
 /**
  * Handle keyboard commands

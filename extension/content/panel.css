@@ -25,12 +25,12 @@
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05) !important;
   z-index: 2147483647 !important;
   overflow: hidden !important;
-  /* Removed display: flex - will be controlled by JavaScript */
+  display: flex !important;
   flex-direction: column !important;
   font-size: 14px !important;
   line-height: 1.5 !important;
   color: #ffffff !important;
-  transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1), opacity 0.3s ease !important;
+  transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1), opacity 0.3s ease, height 0.3s ease !important;
 
   /* CSS-based viewport containment as fallback */
   /* Ensures panel can never go outside viewport bounds */
@@ -48,8 +48,10 @@
 }
 
 #farisly-ai-panel.minimized {
-  transform: translateY(-100%) translateY(60px) !important;
+  /* Removed transform - JavaScript now controls minimize via height adjustment */
+  /* This prevents panel from going outside viewport bounds */
   opacity: 0.95 !important;
+  transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease !important;
 }
 
 #farisly-ai-panel.dragging {
@@ -57,59 +59,7 @@
   cursor: grabbing !important;
 }
 
-/* Visual feedback when at minimum size during resize */
-#farisly-ai-panel.at-min-size {
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 0 2px rgba(102, 126, 234, 0.5) !important;
-}
-
-/* Resize Handle */
-.farisly-resize-handle {
-  position: absolute !important;
-  bottom: 0 !important;
-  right: 0 !important;
-  width: 24px !important;
-  height: 24px !important;
-  cursor: nwse-resize !important;
-  z-index: 100 !important;
-  background: linear-gradient(135deg, transparent 0%, transparent 50%, rgba(102, 126, 234, 0.4) 50%, rgba(102, 126, 234, 0.7) 100%) !important;
-  border-bottom-right-radius: 16px !important;
-  transition: all 0.2s ease !important;
-  opacity: 0.6 !important;
-}
-
-.farisly-resize-handle::before {
-  content: '' !important;
-  position: absolute !important;
-  bottom: 4px !important;
-  right: 4px !important;
-  width: 12px !important;
-  height: 12px !important;
-  background-image:
-    linear-gradient(to bottom, transparent 30%, rgba(255, 255, 255, 0.6) 30%, rgba(255, 255, 255, 0.6) 40%, transparent 40%),
-    linear-gradient(to bottom, transparent 50%, rgba(255, 255, 255, 0.6) 50%, rgba(255, 255, 255, 0.6) 60%, transparent 60%),
-    linear-gradient(to bottom, transparent 70%, rgba(255, 255, 255, 0.6) 70%, rgba(255, 255, 255, 0.6) 80%, transparent 80%) !important;
-  background-size: 3px 12px !important;
-  background-position: 0 0, 4px 0, 8px 0 !important;
-  background-repeat: no-repeat !important;
-  transform: rotate(-45deg) !important;
-  pointer-events: none !important;
-}
-
-.farisly-resize-handle:hover {
-  background: linear-gradient(135deg, transparent 0%, transparent 50%, rgba(102, 126, 234, 0.6) 50%, rgba(102, 126, 234, 0.9) 100%) !important;
-  opacity: 1 !important;
-}
-
-/* Show resize handle more prominently on panel hover */
-#farisly-ai-panel:hover .farisly-resize-handle {
-  opacity: 1 !important;
-}
-
-/* Active resizing state */
-#farisly-ai-panel.dragging .farisly-resize-handle {
-  opacity: 1 !important;
-  background: linear-gradient(135deg, transparent 0%, transparent 50%, rgba(102, 126, 234, 0.7) 50%, #667eea 100%) !important;
-}
+/* Resize functionality removed - panel now uses dynamic height based on content */
 
 /* Panel Header */
 .farisly-panel-header {
@@ -1073,10 +1023,6 @@
     margin-bottom: 12px !important;
   }
 
-  .farisly-resize-handle {
-    width: 20px !important;
-    height: 20px !important;
-  }
 }
 
 /* Dark Mode (already default) */

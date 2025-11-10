@@ -6,6 +6,9 @@ console.log('Content script is executing...');
 console.log('Document ready state:', document.readyState);
 console.log('Document body exists:', !!document.body);
 
+// Get API URL from config (loaded from config.js via manifest)
+const API_URL = window.FARISLY_CONFIG?.API_URL || 'http://localhost:3001';
+
 class FarislyAI {
     constructor() {
         this.isVisible = false;
@@ -1162,7 +1165,7 @@ class FarislyAI {
             console.log('Loading settings from panel...');
 
             // Fetch from panel API to get the latest settings
-            const response = await fetch('http://localhost:3001/api/settings');
+            const response = await fetch(`${API_URL}/api/settings`);
             const data = await response.json();
 
             console.log('Raw data from panel API:', data);

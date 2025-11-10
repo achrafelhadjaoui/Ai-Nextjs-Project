@@ -319,13 +319,18 @@ class GrammarChecker {
                 console.log(`✅ Grammar API returned ${response.errors.length} errors:`, response.errors);
 
                 // Validate error format
-                const validErrors = response.errors.filter(err => {
+                let validErrors = response.errors.filter(err => {
                     return err.start !== undefined && err.end !== undefined && err.suggestion;
                 });
 
                 if (validErrors.length < response.errors.length) {
                     console.warn(`⚠️ Filtered out ${response.errors.length - validErrors.length} invalid errors`);
                 }
+
+                // CRITICAL: Deduplicate and remove overlapping errors
+                validErrors = this.deduplicateErrors(validErrors, text);
+
+                console.log(`✅ After deduplication: ${validErrors.length} unique errors`);
 
                 return validErrors;
             }
@@ -336,6 +341,123 @@ class GrammarChecker {
             console.error('❌ Grammar check API error:', error);
             throw error;
         }
+    }
+
+    /**
+     * Deduplicate and remove overlapping errors
+     * This prevents catastrophic duplication when AI returns multiple fixes for same region
+     * PROFESSIONAL approach: Sort by position, detect overlaps, keep most specific fix
+     */
+    deduplicateErrors(errors, text) {
+        if (!errors || errors.length === 0) return [];
+
+        console.log('🔍 Deduplicating errors...');
+
+        // Step 1: Sort errors by start position, then by length (shorter = more specific)
+        const sorted = [...errors].sort((a, b) => {
+            if (a.start !== b.start) {
+                return a.start - b.start;
+            }
+            // If same start, prefer shorter error (more specific)
+            return (a.end - a.start) - (b.end - b.start);
+        });
+
+        // Step 2: Remove exact duplicates and overlaps
+        const deduplicated = [];
+        const seen = new Set();
+
+        for (const error of sorted) {
+            // Create unique key for this error region
+            const key = `${error.start}-${error.end}`;
+
+            // Skip exact duplicates
+            if (seen.has(key)) {
+                console.log(`  ⚠️ Skipping duplicate error at ${error.start}-${error.end}: "${error.original}"`);
+                continue;
+            }
+
+            // Check for overlaps with already accepted errors
+            const overlaps = deduplicated.some(existing => {
+                // Check if this error overlaps with an existing one
+                const hasOverlap = (
+                    (error.start >= existing.start && error.start < existing.end) ||
+                    (error.end > existing.start && error.end <= existing.end) ||
+                    (error.start <= existing.start && error.end >= existing.end)
+                );
+
+                if (hasOverlap) {
+                    console.log(`  ⚠️ Skipping overlapping error at ${error.start}-${error.end}: "${error.original}" (overlaps with ${existing.start}-${existing.end}: "${existing.original}")`);
+                }
+
+                return hasOverlap;
+            });
+
+            if (!overlaps) {
+                // Verify the error positions match the actual text
+                const actualText = text.substring(error.start, error.end);
+                const originalNormalized = error.original.trim().toLowerCase();
+                const actualNormalized = actualText.trim().toLowerCase();
+
+                if (actualNormalized === originalNormalized || actualText === error.original) {
+                    // Position is correct
+                    deduplicated.push(error);
+                    seen.add(key);
+                    console.log(`  ✅ Keeping error at ${error.start}-${error.end}: "${error.original}" → "${error.suggestion}"`);
+                } else {
+                    // Position mismatch - AI gave wrong position
+                    console.warn(`  ⚠️ Position mismatch at ${error.start}-${error.end}: expected "${error.original}" but found "${actualText}"`);
+
+                    // Try to find the correct position
+                    const correctedError = this.findCorrectPosition(text, error);
+                    if (correctedError) {
+                        // Check if corrected position overlaps
+                        const correctedKey = `${correctedError.start}-${correctedError.end}`;
+                        if (!seen.has(correctedKey)) {
+                            const correctedOverlaps = deduplicated.some(existing => {
+                                return (
+                                    (correctedError.start >= existing.start && correctedError.start < existing.end) ||
+                                    (correctedError.end > existing.start && correctedError.end <= existing.end) ||
+                                    (correctedError.start <= existing.start && correctedError.end >= existing.end)
+                                );
+                            });
+
+                            if (!correctedOverlaps) {
+                                deduplicated.push(correctedError);
+                                seen.add(correctedKey);
+                                console.log(`  ✅ Corrected position to ${correctedError.start}-${correctedError.end}`);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        console.log(`✅ Deduplication complete: ${errors.length} → ${deduplicated.length} errors`);
+        return deduplicated;
+    }
+
+    /**
+     * Find correct position for error when AI gives wrong position
+     */
+    findCorrectPosition(text, error) {
+        const searchText = error.original.trim();
+        const lowerText = text.toLowerCase();
+        const lowerSearch = searchText.toLowerCase();
+
+        // Try case-insensitive search
+        let index = lowerText.indexOf(lowerSearch);
+
+        if (index !== -1) {
+            return {
+                ...error,
+                start: index,
+                end: index + searchText.length
+            };
+        }
+
+        // Not found - skip this error
+        console.warn(`  ❌ Cannot find "${searchText}" in text, skipping error`);
+        return null;
     }
 
     /**
@@ -950,31 +1072,79 @@ class GrammarChecker {
         const text = this.getFieldText(field);
         const { start, end, suggestion } = error;
 
-        // Replace error text with suggestion
-        const newText = text.substring(0, start) + suggestion + text.substring(end);
+        // VALIDATE: Check if error position is still valid in current text
+        if (start < 0 || end > text.length || start >= end) {
+            console.error(`❌ Invalid error position: ${start}-${end} in text of length ${text.length}`);
+            this.showToast('⚠️ Error position is no longer valid', 'error');
+            return;
+        }
 
-        // Set new text
-        if (field.isContentEditable) {
-            field.textContent = newText;
-        } else {
-            field.value = newText;
+        const original = text.substring(start, end);
+
+        // VALIDATE: Check if the text at this position matches the error
+        const expectedOriginal = error.original.trim().toLowerCase();
+        const actualOriginal = original.trim().toLowerCase();
+
+        if (expectedOriginal !== actualOriginal) {
+            console.error(`❌ Position mismatch: expected "${error.original}" but found "${original}" at ${start}-${end}`);
+            console.error(`   Full text: "${text}"`);
+            this.showToast(`⚠️ Text has changed. Expected "${error.original}" but found "${original}"`, 'error');
+
+            // Remove this invalid error from the list
+            this.errors = this.errors.filter(e => e !== error);
+            this.renderErrorMarkers(field);
+            return;
+        }
+
+        // Save cursor position for restoration
+        const cursorPos = this.getCursorPosition(field);
+
+        // CONTEXT-AWARE REPLACEMENT
+        const replacement = this.buildContextAwareReplacement(text, start, end, suggestion, original);
+
+        // Apply the replacement
+        const newText = text.substring(0, start) + replacement + text.substring(end);
+
+        // Set new text preserving formatting
+        this.setFieldText(field, newText);
+
+        // Restore cursor position (adjusted for length change)
+        const lengthDiff = replacement.length - (end - start);
+        if (cursorPos !== null && cursorPos >= start) {
+            const newCursorPos = cursorPos <= end
+                ? start + replacement.length  // Cursor was in replaced text
+                : cursorPos + lengthDiff;      // Cursor was after replaced text
+            this.setCursorPosition(field, newCursorPos);
         }
 
         // Trigger input event
         field.dispatchEvent(new Event('input', { bubbles: true }));
 
-        // Calculate new positions for remaining errors
-        const lengthDiff = suggestion.length - (end - start);
-
         // Update remaining errors' positions
+        // CRITICAL FIX: Properly adjust positions after text modification
         this.errors = this.errors.filter(e => {
             if (e === error) return false; // Remove fixed error
 
-            // Adjust positions of errors after this one
-            if (e.start > end) {
+            // Check if this error overlaps with the fixed region
+            const overlaps = (
+                (e.start >= start && e.start < end) ||  // Starts inside fixed region
+                (e.end > start && e.end <= end) ||       // Ends inside fixed region
+                (e.start <= start && e.end >= end)       // Completely contains fixed region
+            );
+
+            if (overlaps) {
+                // Error overlaps with fixed region - mark as invalid and remove
+                console.warn(`⚠️ Removing overlapping error at ${e.start}-${e.end}: "${e.original}"`);
+                return false;
+            }
+
+            // Adjust positions of errors that come after the fixed region
+            if (e.start >= end) {
                 e.start += lengthDiff;
                 e.end += lengthDiff;
+                console.log(`✓ Adjusted error position: ${e.start - lengthDiff}-${e.end - lengthDiff} → ${e.start}-${e.end}`);
             }
+
             return true;
         });
 
@@ -991,9 +1161,216 @@ class GrammarChecker {
         this.updateBadge(field, this.errors.length);
 
         // Show success toast notification
-        this.showToast(`✓ Grammar fixed: "${error.original}" → "${suggestion}"`, 'success');
+        this.showToast(`✓ Fixed: "${original}" → "${replacement}"`, 'success');
 
-        console.log('✅ Applied fix:', error.original, '→', suggestion);
+        console.log('✅ Applied context-aware fix:', {
+            original,
+            suggestion,
+            replacement,
+            context: {
+                before: text.substring(Math.max(0, start - 10), start),
+                after: text.substring(end, Math.min(text.length, end + 10))
+            }
+        });
+    }
+
+    /**
+     * Build context-aware replacement preserving spaces, punctuation, and capitalization
+     * This is the PROFESSIONAL approach that considers:
+     * 1. Surrounding spaces
+     * 2. Punctuation
+     * 3. Capitalization context (sentence start, proper nouns)
+     * 4. Word boundaries
+     */
+    buildContextAwareReplacement(text, start, end, suggestion, original) {
+        // Get context around the error
+        const beforeChar = start > 0 ? text[start - 1] : '';
+        const afterChar = end < text.length ? text[end] : '';
+        const nextChar = end + 1 < text.length ? text[end + 1] : '';
+
+        // Check if this is start of sentence (for capitalization)
+        const isStartOfSentence = this.isStartOfSentence(text, start);
+
+        // Analyze spacing context
+        const hasSpaceBefore = /\s/.test(beforeChar);
+        const hasSpaceAfter = /\s/.test(afterChar);
+        const needsSpaceBefore = !hasSpaceBefore && start > 0 && !/[(\[\{'"«]/.test(beforeChar);
+        const needsSpaceAfter = !hasSpaceAfter && end < text.length && !/[.,;:!?)}\]'"»]/.test(afterChar);
+
+        // Check if suggestion already has spacing
+        const suggestionStartsWithSpace = /^\s/.test(suggestion);
+        const suggestionEndsWithSpace = /\s$/.test(suggestion);
+
+        // Preserve/match capitalization context
+        let finalSuggestion = suggestion.trim();
+
+        // Smart capitalization handling
+        if (isStartOfSentence && finalSuggestion.length > 0) {
+            // Capitalize first letter if at sentence start
+            finalSuggestion = finalSuggestion.charAt(0).toUpperCase() + finalSuggestion.slice(1);
+        } else if (original.length > 0 && this.isAllCaps(original)) {
+            // Preserve ALL CAPS if original was all caps
+            finalSuggestion = finalSuggestion.toUpperCase();
+        } else if (original.length > 0 && this.isCapitalized(original) && !isStartOfSentence) {
+            // Preserve capitalization if original was capitalized (proper noun)
+            finalSuggestion = finalSuggestion.charAt(0).toUpperCase() + finalSuggestion.slice(1);
+        }
+
+        // Build replacement with proper spacing
+        let replacement = '';
+
+        // Add leading space if needed (and not already in suggestion)
+        if (needsSpaceBefore && !suggestionStartsWithSpace) {
+            replacement += ' ';
+        }
+
+        // Add the suggestion
+        replacement += finalSuggestion;
+
+        // Add trailing space if needed (and not already in suggestion)
+        if (needsSpaceAfter && !suggestionEndsWithSpace) {
+            replacement += ' ';
+        }
+
+        // Handle punctuation absorption (remove double spaces before punctuation)
+        if (replacement.endsWith(' ') && /[.,;:!?)]/.test(afterChar)) {
+            replacement = replacement.trimEnd();
+        }
+
+        return replacement;
+    }
+
+    /**
+     * Check if position is at start of sentence
+     */
+    isStartOfSentence(text, position) {
+        if (position === 0) return true;
+
+        // Look backwards for sentence terminators
+        for (let i = position - 1; i >= 0; i--) {
+            const char = text[i];
+
+            // Found sentence terminator
+            if (/[.!?]/.test(char)) {
+                // Check if followed by space or newline (real sentence end)
+                const nextNonSpace = text.substring(i + 1, position).trim();
+                return nextNonSpace === '';
+            }
+
+            // Found non-whitespace that's not terminator - not sentence start
+            if (!/\s/.test(char)) {
+                return false;
+            }
+        }
+
+        return true; // Reached start of text
+    }
+
+    /**
+     * Check if text is all uppercase
+     */
+    isAllCaps(text) {
+        return text === text.toUpperCase() && text !== text.toLowerCase();
+    }
+
+    /**
+     * Check if text starts with capital letter
+     */
+    isCapitalized(text) {
+        return text.length > 0 && text[0] === text[0].toUpperCase();
+    }
+
+    /**
+     * Get cursor position in field
+     */
+    getCursorPosition(field) {
+        try {
+            if (field.isContentEditable) {
+                const selection = window.getSelection();
+                if (selection.rangeCount > 0) {
+                    const range = selection.getRangeAt(0);
+                    const preCaretRange = range.cloneRange();
+                    preCaretRange.selectNodeContents(field);
+                    preCaretRange.setEnd(range.endContainer, range.endOffset);
+                    return preCaretRange.toString().length;
+                }
+            } else {
+                return field.selectionStart;
+            }
+        } catch (e) {
+            console.warn('Could not get cursor position:', e);
+        }
+        return null;
+    }
+
+    /**
+     * Set cursor position in field
+     */
+    setCursorPosition(field, position) {
+        try {
+            if (field.isContentEditable) {
+                const range = document.createRange();
+                const sel = window.getSelection();
+                let currentPos = 0;
+                let found = false;
+
+                const findPosition = (node) => {
+                    if (found) return;
+
+                    if (node.nodeType === Node.TEXT_NODE) {
+                        const nextPos = currentPos + node.length;
+                        if (position <= nextPos) {
+                            range.setStart(node, position - currentPos);
+                            range.setEnd(node, position - currentPos);
+                            found = true;
+                            return;
+                        }
+                        currentPos = nextPos;
+                    } else {
+                        for (let child of node.childNodes) {
+                            findPosition(child);
+                            if (found) return;
+                        }
+                    }
+                };
+
+                findPosition(field);
+
+                if (found) {
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                }
+            } else {
+                field.selectionStart = field.selectionEnd = position;
+            }
+        } catch (e) {
+            console.warn('Could not set cursor position:', e);
+        }
+    }
+
+    /**
+     * Set field text (helper method)
+     */
+    setFieldText(field, text) {
+        if (field.isContentEditable) {
+            // Preserve cursor position better for contentEditable
+            const selection = window.getSelection();
+            const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+
+            field.textContent = text;
+
+            // Try to restore selection if possible
+            if (range) {
+                try {
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                } catch (e) {
+                    // Selection restoration failed, that's ok
+                }
+            }
+        } else {
+            field.value = text;
+        }
     }
 
     /**

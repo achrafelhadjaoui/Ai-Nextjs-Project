@@ -3,11 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3001",
+    "dev:clean": "bash start-dev.sh",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "init-settings": "ts-node --project tsconfig.json scripts/init-settings.ts"
+    "init-settings": "ts-node --project tsconfig.json scripts/init-settings.ts",
+    "build:extension": "node scripts/build-extension-config.js"
   },
   "dependencies": {
     "@auth/mongodb-adapter": "^3.11.1",
@@ -37,6 +39,7 @@
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "autoprefixer": "^10.4.19",
+    "dotenv": "^17.2.3",
     "eslint": "^8.57.0",
     "eslint-config-next": "^14.2.5",
     "postcss": "^8.4.40",
