@@ -71,7 +71,6 @@ export async function PATCH(
 
     await ticket.save();
 
-    console.log(`✅ Support ticket updated by admin: ${ticket._id} by ${admin.email}`);
 
     // Send email notification to user if admin responded (non-blocking)
     if (message && message.trim().length > 0) {
@@ -83,7 +82,6 @@ export async function PATCH(
         status: ticket.status,
         respondedBy: admin.name || admin.email,
       }).catch((error) => {
-        console.error("Failed to send email notification:", error);
         // Don't fail the request if email fails
       });
     }
@@ -127,7 +125,6 @@ export async function DELETE(
 
     await ticket.deleteOne();
 
-    console.log(`🗑️ Support ticket deleted: ${ticket._id} by admin ${admin.email}`);
 
     return NextResponse.json({
       success: true,

@@ -5,7 +5,6 @@ export async function verifyTokenEdge(token: string) {
   try {
     const JWT_SECRET = process.env.JWT_SECRET;
     if (!JWT_SECRET) {
-      console.error("⚠️ JWT_SECRET not defined");
       return null;
     }
 
@@ -13,7 +12,6 @@ export async function verifyTokenEdge(token: string) {
     const { payload } = await jwtVerify(token, secret);
     return payload;
   } catch (error) {
-    console.error("Edge token verification failed:", error);
     return null;
   }
 }
@@ -32,7 +30,6 @@ export function decodeTokenEdge(token: string) {
     );
     return JSON.parse(jsonPayload);
   } catch (error) {
-    console.error("Edge token decoding failed:", error);
     return null;
   }
 }

@@ -47,14 +47,13 @@ export default function SignupPage() {
       } else {
         toast.error(
           res?.error || t("signup.error") || "❌ Registration failed",
-          { 
+          {
             position: "top-center",
-            autoClose: 5000 
+            autoClose: 5000
           }
         );
       }
     } catch (error: any) {
-      console.error("Signup error:", error);
       toast.error(
         error.message || "An unexpected error occurred",
         { 

@@ -46,7 +46,6 @@ export async function POST(request: NextRequest) {
     const apiKeySetting = await AppSetting.findOne({ key: 'extension.openai_api_key' });
 
     if (!apiKeySetting || !apiKeySetting.value) {
-      console.error('⚠️ Admin API key not configured');
       return NextResponse.json(
         {
           success: false,
@@ -64,7 +63,6 @@ export async function POST(request: NextRequest) {
     }
 
     const apiKey = apiKeySetting.value;
-    console.log('✅ Using admin-configured API key for AI reply generation');
 
     // Build system prompt
     let systemPrompt = `You are a helpful AI assistant that generates contextually appropriate responses to messages.
@@ -115,7 +113,6 @@ Analyze the conversation context and generate a relevant, natural-sounding reply
 
     if (!openaiResponse.ok) {
       const errorData = await openaiResponse.json().catch(() => ({}));
-      console.error('OpenAI API error:', errorData);
 
       return NextResponse.json(
         {
@@ -169,7 +166,6 @@ Analyze the conversation context and generate a relevant, natural-sounding reply
       }
     );
   } catch (error: any) {
-    console.error('Error in AI reply generation:', error);
     return NextResponse.json(
       {
         success: false,

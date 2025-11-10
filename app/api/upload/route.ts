@@ -77,7 +77,6 @@ export async function POST(request: Request) {
     // Generate public URL
     const publicUrl = `/uploads/${folder}/${filename}`;
 
-    console.log(`✅ File uploaded: ${publicUrl} by user ${user.email}`);
 
     return NextResponse.json({
       success: true,
@@ -91,7 +90,6 @@ export async function POST(request: Request) {
       },
     });
   } catch (error: any) {
-    console.error("Upload error:", error);
 
     if (error.message.includes("Unauthorized")) {
       return authErrorResponse(error.message, 401);

@@ -27,7 +27,6 @@ class SavedReplyEventEmitter extends EventEmitter {
   // Emit a saved reply event
   emitReplyEvent(event: SavedReplyEvent) {
     const eventName = `reply:${event.userId}`;
-    console.log(`📡 Broadcasting event: ${eventName}`, event.type);
     this.emit(eventName, event);
   }
 
@@ -35,14 +34,12 @@ class SavedReplyEventEmitter extends EventEmitter {
   onReplyEvent(userId: string, callback: (event: SavedReplyEvent) => void) {
     const eventName = `reply:${userId}`;
     this.on(eventName, callback);
-    console.log(`👂 User ${userId} subscribed to real-time updates`);
   }
 
   // Unsubscribe from events
   offReplyEvent(userId: string, callback: (event: SavedReplyEvent) => void) {
     const eventName = `reply:${userId}`;
     this.off(eventName, callback);
-    console.log(`👋 User ${userId} unsubscribed from real-time updates`);
   }
 }
 

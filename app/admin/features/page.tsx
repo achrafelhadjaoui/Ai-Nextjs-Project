@@ -68,7 +68,6 @@ export default function FeatureManagementPage() {
         toast.error(data.message || "Failed to fetch features");
       }
     } catch (error: any) {
-      console.error("Error fetching features:", error);
       toast.error("Failed to fetch features");
     } finally {
       setLoading(false);
@@ -89,7 +88,6 @@ export default function FeatureManagementPage() {
         toast.error(data.message || "Failed to initialize features");
       }
     } catch (error: any) {
-      console.error("Error initializing features:", error);
       toast.error("Failed to initialize features");
     }
   };
@@ -113,7 +111,6 @@ export default function FeatureManagementPage() {
         toast.error(data.message || "Failed to update feature");
       }
     } catch (error: any) {
-      console.error("Error updating feature:", error);
       toast.error("Failed to update feature");
     }
   };
@@ -137,7 +134,6 @@ export default function FeatureManagementPage() {
         toast.error(data.message || "Failed to update feature");
       }
     } catch (error: any) {
-      console.error("Error updating feature:", error);
       toast.error("Failed to update feature");
     }
   };
@@ -166,7 +162,6 @@ export default function FeatureManagementPage() {
         toast.error(data.message || "Failed to delete feature");
       }
     } catch (error: any) {
-      console.error("Error deleting feature:", error);
       toast.error("Failed to delete feature");
     }
   };

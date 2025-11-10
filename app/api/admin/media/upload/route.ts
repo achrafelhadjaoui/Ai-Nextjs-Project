@@ -87,7 +87,6 @@ export async function POST(request: Request) {
         width = undefined;
         height = undefined;
       } catch (error) {
-        console.log('Could not get image dimensions:', error);
       }
     }
 
@@ -107,7 +106,6 @@ export async function POST(request: Request) {
       height,
     });
 
-    console.log(`✅ File uploaded: ${file.name} by admin ${admin.email}`);
 
     return NextResponse.json({
       success: true,
@@ -115,7 +113,6 @@ export async function POST(request: Request) {
       data: media,
     });
   } catch (error: any) {
-    console.error('Error uploading file:', error);
 
     if (error.message.includes('Unauthorized')) {
       return NextResponse.json(

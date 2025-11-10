@@ -30,7 +30,6 @@ export async function getSettingsMetadata(): Promise<Metadata> {
       },
     };
   } catch (error) {
-    console.error('Error fetching metadata from settings:', error);
     // Return fallback metadata
     return {
       title: 'Farisly AI',
@@ -46,7 +45,6 @@ export async function getServerSetting(key: string, defaultValue: any = null) {
     const setting = await AppSetting.findOne({ key });
     return setting?.value ?? defaultValue;
   } catch (error) {
-    console.error(`Error fetching setting ${key}:`, error);
     return defaultValue;
   }
 }
@@ -62,7 +60,6 @@ export async function getServerSettings(keys: string[]): Promise<Record<string, 
       return acc;
     }, {} as Record<string, any>);
   } catch (error) {
-    console.error('Error fetching settings:', error);
     return {};
   }
 }

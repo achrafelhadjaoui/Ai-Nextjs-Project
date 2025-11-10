@@ -29,7 +29,6 @@ export function useLogout() {
       }, 100);
 
     } catch (error) {
-      console.error('Logout error:', error);
       // Even if there's an error, redirect to login
       window.location.href = '/auth/login';
     }

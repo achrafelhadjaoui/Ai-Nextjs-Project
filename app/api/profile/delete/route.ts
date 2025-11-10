@@ -106,14 +106,12 @@ export async function DELETE(request: Request) {
       }
     );
 
-    console.log(`🗑️ User account deleted: ${user.email}`);
 
     return NextResponse.json({
       success: true,
       message: "Account deleted successfully. You will be logged out.",
     });
   } catch (error: any) {
-    console.error("Account deletion error:", error);
 
     if (error.message.includes("Unauthorized")) {
       return authErrorResponse(error.message, 401);

@@ -88,7 +88,6 @@ export async function POST(request: Request) {
 
     const features = await FeatureToggle.insertMany(defaultFeatures);
 
-    console.log(`✅ Initialized ${features.length} default features by admin ${admin.email}`);
 
     return NextResponse.json({
       success: true,

@@ -45,8 +45,6 @@ export default function DashboardPage() {
   // Monitor session for role changes and deletions
   useSessionMonitor();
 
-  console.log('Translations:', t);
-
   // Redirect to onboarding if not completed
   useEffect(() => {
     const onboardingDone = localStorage.getItem('onboarding_done');
@@ -65,11 +63,9 @@ export default function DashboardPage() {
           if (data.success) {
             setStats(data.data.stats);
             setRecentActivity(data.data.recentActivity);
-            console.log('📊 Dashboard stats loaded:', data.data.stats);
           }
         }
       } catch (error) {
-        console.error('Failed to fetch dashboard stats:', error);
       } finally {
         setLoading(false);
       }
@@ -91,24 +87,19 @@ export default function DashboardPage() {
             const data = JSON.parse(event.data);
 
             if (data.type === 'connected') {
-              console.log('✅ Extension status stream connected');
             } else if (data.type === 'status') {
               setExtensionInstalled(data.data.extensionInstalled);
-              console.log('📊 Extension status updated:', data.data.extensionInstalled ? 'Installed' : 'Not installed');
             }
           } catch (error) {
-            console.error('Error parsing status stream message:', error);
           }
         };
 
         eventSource.onerror = (error) => {
-          console.error('Extension status stream error:', error);
           eventSource?.close();
           // Reconnect after 5 seconds
           setTimeout(connectStatusStream, 5000);
         };
       } catch (error) {
-        console.error('Failed to connect to status stream:', error);
       }
     };
 

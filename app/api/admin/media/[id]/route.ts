@@ -39,14 +39,12 @@ export async function DELETE(
     try {
       await unlink(media.path);
     } catch (error) {
-      console.warn('Could not delete file from filesystem:', error);
       // Continue anyway to clean up database
     }
 
     // Delete from database
     await media.deleteOne();
 
-    console.log(`🗑️ Media deleted: ${media.filename} by admin ${admin.email}`);
 
     return NextResponse.json({
       success: true,
@@ -95,7 +93,6 @@ export async function PATCH(
 
     await media.save();
 
-    console.log(`✅ Media updated: ${media.filename} by admin ${admin.email}`);
 
     return NextResponse.json({
       success: true,

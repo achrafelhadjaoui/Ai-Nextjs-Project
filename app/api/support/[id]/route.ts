@@ -118,7 +118,6 @@ export async function PATCH(
 
     await ticket.save();
 
-    console.log(`✅ Support ticket updated: ${ticket._id} - action: ${action}`);
 
     return NextResponse.json({
       success: true,

@@ -15,7 +15,6 @@
 //     if (!user)
 //       return NextResponse.json({ error: "Invalid or expired token" }, { status: 400 });
 
-//     console.log(user)
 
 //     user.isVerified = true;
 //     user.verificationToken = undefined;
@@ -23,7 +22,6 @@
 
 //     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/auth/verified-success`);
 //   } catch (error) {
-//     console.error("Verification error:", error);
 //     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
 //   }
 // }
@@ -40,7 +38,6 @@
 //     const { searchParams } = new URL(req.url);
 //     const token = searchParams.get("token");
 
-//     console.log("Verification token received:", token);
 
 //     if (!token)
 //       return NextResponse.json({ error: "Invalid or missing token" }, { status: 400 });
@@ -56,11 +53,9 @@
 //     if (!updatedUser)
 //       return NextResponse.json({ error: "Invalid or expired token" }, { status: 400 });
 
-//     console.log("✅ User verified:", updatedUser.email);
 
 //     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/auth/verified-success`);
 //   } catch (error) {
-//     console.error("Verification error:", error);
 //     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
 //   }
 // }
@@ -78,7 +73,6 @@
 //     const { searchParams } = new URL(req.url);
 //     const token = searchParams.get("token");
 
-//     console.log("🔹 Verification token received:", token);
 
 //     if (!token)
 //       return NextResponse.json({ error: "Invalid or missing token" }, { status: 400 });
@@ -88,7 +82,6 @@
 //     const user = await User.findOne({ verificationToken: token });
 
 //     if (!user) {
-//       console.warn("❌ No user found with token:", token);
 //       return NextResponse.json({ error: "Invalid or expired token" }, { status: 400 });
 //     }
 
@@ -98,11 +91,9 @@
 
 //     await user.save();
 
-//     console.log("✅ User verified successfully:", user.email);
 
 //     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/auth/verify`);
 //   } catch (error) {
-//     console.error("💥 Verification error:", error);
 //     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
 //   }
 // }
@@ -114,11 +105,9 @@
 // export async function GET(req: Request) {
 //   try {
 
-//     console.log("🔹 Starting verification process =============== ");
 //     const { searchParams } = new URL(req.url);
 //     const token = searchParams.get("token");
 
-//     console.log("🔹 Verification token received:", token);
 
 //     if (!token) {
 //       return NextResponse.json({ error: "Invalid or missing token" }, { status: 400 });
@@ -128,7 +117,6 @@
 
 //     const user = await User.findOne({ verificationToken: token });
 //     if (!user) {
-//       console.warn("❌ No user found for token:", token);
 //       return NextResponse.json({ error: "Invalid or expired token" }, { status: 400 });
 //     }
 
@@ -138,11 +126,9 @@
 //       { $set: { isVerified: true, verificationToken: null } }
 //     );
 
-//     console.log("✅ User verified:", user.email);
 
 //     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/auth/login`);
 //   } catch (error) {
-//     console.error("💥 Verification error:", error);
 //     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
 //   }
 // }
@@ -157,7 +143,6 @@
 
 // export async function GET(req: Request) {
 //   try {
-//     console.log("🔹 Starting verification process...");
 //     const { searchParams } = new URL(req.url);
 //     const token = searchParams.get("token");
 
@@ -174,15 +159,12 @@
 //     );
 
 //     if (!updatedUser) {
-//       console.warn("❌ Invalid or expired token:", token);
 //       return NextResponse.json({ error: "Invalid or expired token" }, { status: 400 });
 //     }
 
-//     console.log("✅ User verified successfully:", updatedUser.email);
 
 //     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/auth/verified-success`);
 //   } catch (error) {
-//     console.error("💥 Verification error:", error);
 //     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
 //   }
 // }
@@ -196,10 +178,8 @@
 
 // export async function GET(req: Request) {
 //   try {
-//     console.log("🔹 Starting verification process...");
 //     const { searchParams } = new URL(req.url);
 //     const token = searchParams.get("token");
-//     console.log("thiis is token", token)
 
 //     if (!token) {
 //       return NextResponse.json({ success: false, message: "Invalid or missing token" }, { status: 400 });
@@ -208,15 +188,12 @@
 //     await connectDB();
 
 //     const user = await User.findOne({ verificationToken: token });
-//     console.log("this is the user============", user);
 
 //     if (!user) {
-//       console.warn("❌ No user found for token:", token);
 //       return NextResponse.json({ success: false, message: "Invalid or expired token" }, { status: 400 });
 //     }
 
 //     if (user.isVerified) {
-//       console.log("⚠️ User already verified:", user.email);
 //       return NextResponse.json({ success: true, message: "Your email is already verified" }, { status: 200 });
 //     }
 
@@ -225,11 +202,9 @@
 //     // user.verificationToken = null;
 //     await user.save();
 
-//     console.log("✅ User verified successfully:", user.email);
 
 //     return NextResponse.json({ success: true, message: "Email verified successfully" }, { status: 200 });
 //   } catch (error) {
-//     console.error("💥 Verification error:", error);
 //     return NextResponse.json({ success: false, message: "Internal server error" }, { status: 500 });
 //   }
 // }

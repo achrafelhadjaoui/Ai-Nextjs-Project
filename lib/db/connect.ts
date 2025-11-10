@@ -17,11 +17,9 @@ export async function connectDB() {
         bufferCommands: false,
       })
       .then((mongoose) => {
-        console.log("✅ Connected to MongoDB Atlas");
         return mongoose;
       })
       .catch((error) => {
-        console.error("❌ MongoDB connection error:", error.message);
         throw error;
       });
   }

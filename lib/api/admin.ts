@@ -12,7 +12,6 @@ export async function getUsers() {
 
     return await res.json();
   } catch (error: any) {
-    console.error("💥 Error fetching users:", error);
     return { success: false, message: error.message || "Failed to load users" };
   }
 }
@@ -29,7 +28,6 @@ export async function deleteUser(id: string) {
 
     return await res.json();
   } catch (error: any) {
-    console.error("💥 Error deleting user:", error);
     return { success: false, message: error.message || "Failed to delete user" };
   }
 }
@@ -46,7 +44,6 @@ export async function getUser(id: string) {
 
     return await res.json();
   } catch (error: any) {
-    console.error("💥 Error fetching user:", error);
     return { success: false, message: error.message || "Failed to fetch user" };
   }
 }
@@ -60,8 +57,6 @@ export async function updateUser(id: string, updates: Record<string, any>) {
       body: JSON.stringify(updates),
     });
 
-    console.log("ttttttttttttttttttt: ", res);
-
     if (!res.ok) {
       const errorData = await res.json();
       throw new Error(errorData.message || "Failed to update user");
@@ -69,7 +64,6 @@ export async function updateUser(id: string, updates: Record<string, any>) {
 
     return await res.json();
   } catch (error: any) {
-    console.error("💥 Error updating user:", error);
     return { success: false, message: error.message || "Failed to update user" };
   }
 }
@@ -96,7 +90,6 @@ export async function createUser(userData: {
 
     return await res.json();
   } catch (error: any) {
-    console.error("💥 Error creating user:", error);
     return { success: false, message: error.message || "Failed to create user" };
   }
 }

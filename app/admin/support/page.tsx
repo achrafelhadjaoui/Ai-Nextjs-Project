@@ -94,7 +94,6 @@ export default function AdminSupportPage() {
         toast.error(data.message || "Failed to fetch tickets");
       }
     } catch (error) {
-      console.error("Error fetching tickets:", error);
       toast.error("Failed to fetch tickets");
     } finally {
       setLoading(false);
@@ -141,7 +140,6 @@ export default function AdminSupportPage() {
         toast.error(data.message || "Failed to update ticket");
       }
     } catch (error) {
-      console.error("Error updating ticket:", error);
       toast.error("Failed to update ticket");
     } finally {
       setIsSubmitting(false);
@@ -168,7 +166,6 @@ export default function AdminSupportPage() {
         toast.error(data.message || "Failed to delete ticket");
       }
     } catch (error) {
-      console.error("Error deleting ticket:", error);
       toast.error("Failed to delete ticket");
     }
   };

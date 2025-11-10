@@ -12,7 +12,6 @@ export async function getFeatureRequests() {
 
     return await res.json();
   } catch (error: any) {
-    console.error("💥 Error fetching feature requests:", error);
     return { success: false, message: error.message || "Failed to load feature requests" };
   }
 }
@@ -36,7 +35,6 @@ export async function createFeatureRequest(data: {
 
     return await res.json();
   } catch (error: any) {
-    console.error("💥 Error creating feature request:", error);
     return { success: false, message: error.message || "Failed to create feature request" };
   }
 }
@@ -55,7 +53,6 @@ export async function toggleVote(id: string) {
 
     return await res.json();
   } catch (error: any) {
-    console.error("💥 Error toggling vote:", error);
     return { success: false, message: error.message || "Failed to toggle vote" };
   }
 }
@@ -82,7 +79,6 @@ export async function updateFeatureRequest(
 
     return await res.json();
   } catch (error: any) {
-    console.error("💥 Error updating feature request:", error);
     return { success: false, message: error.message || "Failed to update feature request" };
   }
 }
@@ -101,7 +97,6 @@ export async function deleteFeatureRequest(id: string) {
 
     return await res.json();
   } catch (error: any) {
-    console.error("💥 Error deleting feature request:", error);
     return { success: false, message: error.message || "Failed to delete feature request" };
   }
 }

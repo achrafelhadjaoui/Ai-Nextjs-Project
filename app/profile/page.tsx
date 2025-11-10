@@ -147,7 +147,6 @@ export default function ProfilePage() {
         toast.error(data.message || "Failed to load profile");
       }
     } catch (error) {
-      console.error("Error fetching profile:", error);
       toast.error("Failed to load profile");
     } finally {
       setLoading(false);
@@ -204,7 +203,6 @@ export default function ProfilePage() {
         toast.error(data.message || "Failed to upload image");
       }
     } catch (error) {
-      console.error("Error uploading image:", error);
       toast.error("Failed to upload image");
     } finally {
       setUploadingImage(false);
@@ -246,7 +244,6 @@ export default function ProfilePage() {
               (window as any).chrome.runtime.sendMessage({ type: 'SYNC_EXTENSION_CONFIG' }, (response: any) => {
                 if ((window as any).chrome.runtime.lastError) {
                   const error = (window as any).chrome.runtime.lastError.message;
-                  console.log('Extension sync attempt failed:', error);
 
                   // Retry up to 2 times with increasing delays
                   if (retryCount < 2) {
@@ -257,13 +254,11 @@ export default function ProfilePage() {
                     toast.info('Extension will sync automatically within 2 seconds (real-time)');
                   }
                 } else if (response && response.success) {
-                  console.log('✅ Extension config synced immediately');
                   if (!syncSuccessful) {
                     syncSuccessful = true;
                     toast.success('Extension settings synced immediately!');
                   }
                 } else {
-                  console.warn('Extension sync returned error:', response?.message);
                   toast.info('Extension will sync automatically within 2 seconds (real-time)');
                 }
               });
@@ -274,14 +269,12 @@ export default function ProfilePage() {
             toast.info('Settings saved. Install the browser extension to use them.');
           }
         } catch (err) {
-          console.log('Chrome extension API not available');
           toast.info('Settings saved. Install the browser extension to use them.');
         }
       } else {
         toast.error(data.message || "Failed to update profile");
       }
     } catch (error) {
-      console.error("Error updating profile:", error);
       toast.error("Failed to update profile");
     } finally {
       setIsSaving(false);
@@ -328,7 +321,6 @@ export default function ProfilePage() {
         toast.error(data.message || "Failed to change password");
       }
     } catch (error) {
-      console.error("Error changing password:", error);
       toast.error("Failed to change password");
     } finally {
       setChangingPassword(false);
@@ -361,7 +353,6 @@ export default function ProfilePage() {
         toast.error(data.message || "Failed to delete account");
       }
     } catch (error) {
-      console.error("Error deleting account:", error);
       toast.error("Failed to delete account");
     } finally {
       setDeletingAccount(false);

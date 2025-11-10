@@ -42,7 +42,6 @@ export async function POST(request: NextRequest) {
     const apiKeySetting = await AppSetting.findOne({ key: 'extension.openai_api_key' });
 
     if (!apiKeySetting || !apiKeySetting.value) {
-      console.error('⚠️ Admin API key not configured');
       return NextResponse.json(
         {
           success: false,
@@ -60,7 +59,6 @@ export async function POST(request: NextRequest) {
     }
 
     const apiKey = apiKeySetting.value;
-    console.log(`✅ Using admin-configured API key for compose action: ${action}`);
 
     // Build the prompt based on the action
     let systemPrompt = '';
@@ -156,7 +154,6 @@ export async function POST(request: NextRequest) {
 
     if (!openaiResponse.ok) {
       const errorData = await openaiResponse.json().catch(() => ({}));
-      console.error('OpenAI API error:', errorData);
 
       return NextResponse.json(
         {
@@ -211,7 +208,6 @@ export async function POST(request: NextRequest) {
       }
     );
   } catch (error: any) {
-    console.error('Error in AI compose:', error);
     return NextResponse.json(
       {
         success: false,

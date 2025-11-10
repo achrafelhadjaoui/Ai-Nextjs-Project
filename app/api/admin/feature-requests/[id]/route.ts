@@ -62,7 +62,6 @@ export async function PUT(
       { status: 200 }
     );
   } catch (error: any) {
-    console.error("💥 Error updating feature request:", error);
 
     if (error.message?.includes("Unauthorized")) {
       return authErrorResponse(error.message);
@@ -118,7 +117,6 @@ export async function DELETE(
       { status: 200 }
     );
   } catch (error: any) {
-    console.error("💥 Error deleting feature request:", error);
 
     if (error.message?.includes("Unauthorized")) {
       return authErrorResponse(error.message);

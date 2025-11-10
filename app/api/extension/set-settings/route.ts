@@ -18,7 +18,6 @@ export async function POST(request: NextRequest) {
       aiInstructions: aiInstructions || ''
     });
 
-    console.log('Extension settings received:', {
       repliesCount: savedReplies?.length || 0,
       hasInstructions: !!aiInstructions,
       userId
@@ -51,10 +50,8 @@ export async function POST(request: NextRequest) {
           }));
 
           await SavedReply.insertMany(repliesToCreate);
-          console.log(`✅ Synced ${newReplies.length} new replies to database for user ${userId}`);
         }
       } catch (dbError) {
-        console.error('Database sync error (non-critical):', dbError);
         // Don't fail the request if DB sync fails
       }
     }
@@ -71,7 +68,6 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error('Error setting extension settings:', error);
     return NextResponse.json(
       {
         success: false,

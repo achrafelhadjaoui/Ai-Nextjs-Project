@@ -129,8 +129,6 @@ export async function PATCH(request: Request) {
     userProfile.updatedAt = new Date();
     await userProfile.save();
 
-    console.log(`✅ Profile updated: ${userProfile.email}`);
-
     // If extension settings were updated, emit event for instant sync
     if (extensionSettings !== undefined) {
       configEvents.emitConfigEvent({
@@ -144,7 +142,6 @@ export async function PATCH(request: Request) {
         },
         timestamp: Date.now()
       });
-      console.log(`📡 Config change event emitted for user: ${user.id}`);
     }
 
     // Return updated profile without sensitive fields
@@ -158,7 +155,6 @@ export async function PATCH(request: Request) {
       data: updatedProfile,
     });
   } catch (error: any) {
-    console.error("Profile update error:", error);
 
     if (error.message.includes("Unauthorized")) {
       return authErrorResponse(error.message, 401);

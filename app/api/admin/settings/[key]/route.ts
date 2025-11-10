@@ -70,7 +70,6 @@ export async function PUT(
 
     await setting.save();
 
-    console.log(`✅ Setting updated: ${params.key} by admin ${admin.email}`);
 
     return NextResponse.json({
       success: true,
@@ -109,7 +108,6 @@ export async function DELETE(
       );
     }
 
-    console.log(`🗑️ Setting deleted: ${params.key} by admin ${admin.email}`);
 
     return NextResponse.json({
       success: true,

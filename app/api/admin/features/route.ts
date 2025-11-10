@@ -87,7 +87,6 @@ export async function POST(request: Request) {
       updatedBy: admin.email,
     });
 
-    console.log(`✅ Feature created: ${featureName} by admin ${admin.email}`);
 
     return NextResponse.json({
       success: true,

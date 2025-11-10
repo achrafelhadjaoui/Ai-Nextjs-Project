@@ -56,7 +56,6 @@
 //         const parsedSettings = JSON.parse(saved);
 //         setSettings({ ...defaultSettings, ...parsedSettings });
 //       } catch (error) {
-//         console.error('Error parsing saved settings:', error);
 //         setSettings(defaultSettings);
 //       }
 //     }
@@ -67,7 +66,6 @@
 //     setSettings(prev => ({ ...prev, [key]: value }));
 //   };
 
-//   console.log("this is settings: ", settings.quickReplies)
 
 //   // Track changes to enable/disable save button
 //   useEffect(() => {
@@ -122,9 +120,7 @@
 //             .join('\n')
 //         })
 //       });
-//       console.log('Settings saved to extension:', settings);
 //     } catch (error) {
-//       console.error('Error saving to extension:', error);
 //     }
     
 //     // Update state to reflect saved settings

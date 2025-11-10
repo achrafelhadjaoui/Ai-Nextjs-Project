@@ -60,14 +60,9 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
     */
 
     // For development/testing - just log
-    console.log("📧 Email would be sent:");
-    console.log("To:", options.to);
-    console.log("Subject:", options.subject);
-    console.log("---");
 
     return true;
   } catch (error) {
-    console.error("Error sending email:", error);
     return false;
   }
 }

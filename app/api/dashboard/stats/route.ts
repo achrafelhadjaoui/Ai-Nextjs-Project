@@ -71,7 +71,6 @@ export async function GET(request: NextRequest) {
       }
     });
   } catch (error: any) {
-    console.error('Error fetching dashboard stats:', error);
     return NextResponse.json(
       { success: false, message: error.message || 'Failed to fetch dashboard stats' },
       { status: 500 }

@@ -33,7 +33,6 @@ export async function GET() {
       ? sharedSettings 
       : settings;
     
-    console.log('API returning settings:', currentSettings);
     
     return NextResponse.json(currentSettings, {
       headers: {

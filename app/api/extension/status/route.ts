@@ -35,7 +35,6 @@ export async function GET(request: NextRequest) {
       }
     });
   } catch (error: any) {
-    console.error('Error checking extension status:', error);
     return NextResponse.json(
       { success: false, message: error.message || 'Failed to check extension status' },
       { status: 500 }

@@ -73,14 +73,12 @@ export async function POST(request: Request) {
 
     await userProfile.save();
 
-    console.log(`✅ Password changed: ${userProfile.email}`);
 
     return NextResponse.json({
       success: true,
       message: "Password changed successfully",
     });
   } catch (error: any) {
-    console.error("Password change error:", error);
 
     if (error.message.includes("Unauthorized")) {
       return authErrorResponse(error.message, 401);

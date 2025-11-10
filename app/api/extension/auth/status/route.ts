@@ -9,16 +9,13 @@ import { sign } from 'jsonwebtoken';
  */
 export async function GET(request: NextRequest) {
   try {
-    console.log('🔐 Extension auth status request received');
 
     // Get origin from request for proper CORS with credentials
     const origin = request.headers.get('origin') || '*';
 
     const session = await getServerSession(authOptions as any);
-    console.log('📋 Session:', session ? { email: session.user?.email, id: session.user?.id } : 'null');
 
     if (!session || !session.user) {
-      console.log('⚠️ No session found - user not authenticated');
       return NextResponse.json(
         {
           success: false,
@@ -80,7 +77,6 @@ export async function GET(request: NextRequest) {
       }
     );
   } catch (error: any) {
-    console.error('Error in extension auth status:', error);
     const origin = request.headers.get('origin') || '*';
     return NextResponse.json(
       { success: false, message: error.message || 'Internal server error' },

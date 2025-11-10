@@ -166,22 +166,16 @@ const defaultSettings = [
 
 async function initSettings() {
   try {
-    console.log('🔌 Connecting to database...');
     await connectDB();
 
-    console.log('🗑️  Clearing existing settings...');
     await AppSetting.deleteMany({});
 
-    console.log('📝 Creating default settings...');
     for (const setting of defaultSettings) {
       await AppSetting.create(setting);
-      console.log(`✅ Created: ${setting.key}`);
     }
 
-    console.log(`\n✨ Successfully initialized ${defaultSettings.length} settings!`);
     process.exit(0);
   } catch (error) {
-    console.error('❌ Error initializing settings:', error);
     process.exit(1);
   }
 }

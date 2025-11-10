@@ -27,7 +27,6 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ valid: true, role: user.role });
   } catch (error) {
-    console.error("Error in /api/auth/validate:", error);
     return NextResponse.json({ valid: false }, { status: 500 });
   }
 }

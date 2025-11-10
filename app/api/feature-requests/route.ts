@@ -17,7 +17,6 @@ export async function GET() {
       { status: 200 }
     );
   } catch (error: any) {
-    console.error("💥 Error fetching feature requests:", error);
     return NextResponse.json(
       { success: false, message: error.message || "Server error while fetching feature requests" },
       { status: 500 }
@@ -83,7 +82,6 @@ export async function POST(request: Request) {
       { status: 201 }
     );
   } catch (error: any) {
-    console.error("💥 Error creating feature request:", error);
 
     if (error.message?.includes("Unauthorized")) {
       return authErrorResponse(error.message);

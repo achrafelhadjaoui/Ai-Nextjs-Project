@@ -42,7 +42,6 @@ export default function AdminDashboardPage() {
         setError(res.error || 'Failed to fetch users');
       }
     } catch (err) {
-      console.error('Error fetching users:', err);
       setError('Server error occurred while fetching users');
     } finally {
       setDataLoading(false);
@@ -62,7 +61,6 @@ export default function AdminDashboardPage() {
             showToast.error(res.message || 'Failed to delete user');
           }
         } catch (err) {
-          console.error('Error deleting user:', err);
           showToast.error('Server error occurred while deleting user');
         }
       }

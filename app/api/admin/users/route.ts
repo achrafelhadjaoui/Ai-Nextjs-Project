@@ -17,8 +17,7 @@ export async function GET() {
 
     return NextResponse.json({ success: true, data: users }, { status: 200 });
   } catch (error: any) {
-    console.error("💥 Error fetching users:", error);
-    
+
     if (error.message === "Unauthorized") {
       return authErrorResponse();
     }
@@ -107,7 +106,6 @@ export async function POST(request: Request) {
       { status: 201 }
     );
   } catch (error: any) {
-    console.error("💥 Error creating user:", error);
 
     if (error.message?.includes("Unauthorized")) {
       return authErrorResponse();

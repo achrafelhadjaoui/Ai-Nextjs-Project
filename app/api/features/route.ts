@@ -56,7 +56,6 @@ export async function GET(request: Request) {
       features: features, // Also provide array format
     });
   } catch (error: any) {
-    console.error("Error fetching features:", error);
     return NextResponse.json(
       { success: false, message: error.message || "Failed to fetch features" },
       { status: 500 }

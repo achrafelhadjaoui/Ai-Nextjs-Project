@@ -52,7 +52,6 @@ export async function GET(request: NextRequest) {
           image: dbUser.image,
         };
       } catch (error) {
-        console.error('Token verification error:', error);
         return NextResponse.json(
           { success: false, error: "Invalid or expired token" },
           { status: 401 }
@@ -93,7 +92,6 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Error in /api/auth/me:", error);
     return NextResponse.json(
       { success: false, error: "Internal server error" },
       { status: 500 }

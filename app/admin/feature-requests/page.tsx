@@ -49,7 +49,6 @@ export default function AdminFeatureRequestsPage() {
         setFeatureRequests(result.data);
       }
     } catch (error) {
-      console.error('Error fetching feature requests:', error);
     } finally {
       setLoading(false);
     }
@@ -82,7 +81,6 @@ export default function AdminFeatureRequestsPage() {
         setEditForm({ status: 'pending', adminResponse: '' });
       }
     } catch (error) {
-      console.error('Error updating feature request:', error);
     } finally {
       setIsUpdating(false);
     }
@@ -96,7 +94,6 @@ export default function AdminFeatureRequestsPage() {
         setDeleteConfirmId(null);
       }
     } catch (error) {
-      console.error('Error deleting feature request:', error);
     }
   };
 

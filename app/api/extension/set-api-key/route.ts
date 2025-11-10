@@ -7,7 +7,6 @@ export async function POST(request: NextRequest) {
     
     // In a real app, you would store this securely
     // For now, we'll just return success
-    console.log('API key received for extension');
     
     return NextResponse.json({ success: true }, {
       headers: {

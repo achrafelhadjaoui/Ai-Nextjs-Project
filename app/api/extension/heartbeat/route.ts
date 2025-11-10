@@ -44,7 +44,6 @@ export async function POST(request: NextRequest) {
       }
     );
   } catch (error: any) {
-    console.error('Error recording heartbeat:', error);
     return NextResponse.json(
       { success: false, message: error.message || 'Failed to record heartbeat' },
       {

@@ -16,7 +16,6 @@ async function handleResponse<T>(res: Response): Promise<ApiResponse<T>> {
 
     return { success: true, data };
   } catch (err) {
-    console.error("❌ Response handling error:", err);
     return { success: false, error: "Invalid response format" };
   }
 }
@@ -33,7 +32,6 @@ export async function registerUser(data: { name: string; email: string; password
     });
     return await handleResponse(res);
   } catch (error: any) {
-    console.error("❌ Signup request error:", error);
     return { success: false, error: error.message || "Network error during signup" };
   }
 }
@@ -52,7 +50,6 @@ export async function resetPassword(data: { token: string; newPassword: string }
     });
     return await handleResponse(res);
   } catch (error: any) {
-    console.error("❌ Reset password request error:", error);
     return { success: false, error: error.message || "Network error during password reset" };
   }
 }
@@ -66,7 +63,6 @@ export async function forgotPassword(data: { email: string }): Promise<ApiRespon
     });
     return await handleResponse(res);
   } catch (error: any) {
-    console.error("❌ Forgot password request error:", error);
     return { success: false, error: error.message || "Network error during forgot password" };
   }
 }

@@ -188,7 +188,6 @@ export async function POST(request: Request) {
       }))
     );
 
-    console.log(`✨ Initialized ${created.length} default settings by admin ${admin.email}`);
 
     return NextResponse.json({
       success: true,

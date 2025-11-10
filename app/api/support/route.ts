@@ -90,7 +90,6 @@ export async function POST(request: Request) {
       ],
     });
 
-    console.log(`✅ Support ticket created: ${ticket._id} by user ${user.email}`);
 
     // Send email notification to support team (non-blocking)
     sendNewTicketNotificationToAdmin({
@@ -103,7 +102,6 @@ export async function POST(request: Request) {
       priority,
       createdAt: ticket.createdAt,
     }).catch((error) => {
-      console.error("Failed to send email notification:", error);
       // Don't fail the request if email fails
     });
 

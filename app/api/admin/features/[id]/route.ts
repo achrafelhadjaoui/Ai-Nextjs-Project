@@ -84,7 +84,6 @@ export async function PATCH(
     feature.updatedBy = admin.email;
     await feature.save();
 
-    console.log(`✅ Feature updated: ${feature.featureName} by admin ${admin.email}`);
 
     return NextResponse.json({
       success: true,
@@ -136,7 +135,6 @@ export async function DELETE(
 
     await feature.deleteOne();
 
-    console.log(`🗑️ Feature deleted: ${feature.featureName} by admin ${admin.email}`);
 
     return NextResponse.json({
       success: true,

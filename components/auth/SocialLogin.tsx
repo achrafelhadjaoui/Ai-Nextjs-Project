@@ -34,7 +34,6 @@ export default function SocialLogin({ redirectTo }: SocialLoginProps) {
 
       // This code won't execute because redirect:true redirects before it returns
     } catch (error) {
-      console.error("Google authentication error:", error);
       toast.error("Failed to connect to Google. Please try again.", {
         position: "top-center",
       });

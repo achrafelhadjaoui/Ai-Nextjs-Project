@@ -16,7 +16,6 @@ export function AdminRedirect() {
     if (loading) return;
 
     if (user?.role === 'admin') {
-      console.log('[AdminRedirect] Admin user detected, redirecting to /admin/dashboard');
       router.replace('/admin/dashboard');
     }
   }, [user, loading, router]);

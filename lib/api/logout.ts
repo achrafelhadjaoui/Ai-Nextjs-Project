@@ -25,11 +25,9 @@ export async function logoutUser() {
       window.location.href = '/auth/login';
       return { success: true };
     } else {
-      console.error('Logout failed:', data.error);
       return { success: false, error: data.error };
     }
   } catch (error) {
-    console.error('Logout error:', error);
     // Even on error, redirect to login
     window.location.href = '/auth/login';
     return { success: false, error: 'Network error' };

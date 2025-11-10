@@ -47,7 +47,6 @@ export default function UserEditModal({ isOpen, onClose, userId, onUserUpdated }
       }
     } catch (err) {
       setError('Error fetching user data');
-      console.error('Error fetching user:', err);
     } finally {
       setLoading(false);
     }
@@ -88,7 +87,6 @@ export default function UserEditModal({ isOpen, onClose, userId, onUserUpdated }
       }
     } catch (err) {
       setError('Error updating user');
-      console.error('Error updating user:', err);
     } finally {
       setSaving(false);
     }

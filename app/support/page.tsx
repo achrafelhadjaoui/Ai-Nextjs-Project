@@ -74,7 +74,6 @@ export default function SupportPage() {
         toast.error(data.message || "Failed to fetch tickets");
       }
     } catch (error) {
-      console.error("Error fetching tickets:", error);
       toast.error("Failed to fetch tickets");
     } finally {
       setLoading(false);
@@ -112,7 +111,6 @@ export default function SupportPage() {
         toast.error(data.message || "Failed to upload file");
       }
     } catch (error) {
-      console.error("Error uploading file:", error);
       toast.error("Failed to upload file");
     } finally {
       setUploadingFile(false);
@@ -160,7 +158,6 @@ export default function SupportPage() {
         toast.error(data.message || "Failed to submit ticket");
       }
     } catch (error) {
-      console.error("Error submitting ticket:", error);
       toast.error("Failed to submit ticket");
     } finally {
       setIsSubmitting(false);

@@ -29,7 +29,6 @@ class ConfigEventEmitter extends EventEmitter {
 
   emitConfigEvent(event: ConfigEvent) {
     const eventName = `config:${event.userId}`;
-    console.log(`📡 [CONFIG EVENT] Broadcasting to ${eventName}:`, event.type);
     this.emit(eventName, event);
   }
 

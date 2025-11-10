@@ -66,7 +66,6 @@ export async function POST(
       { status: 200 }
     );
   } catch (error: any) {
-    console.error("💥 Error toggling vote:", error);
 
     if (error.message?.includes("Unauthorized")) {
       return authErrorResponse(error.message);

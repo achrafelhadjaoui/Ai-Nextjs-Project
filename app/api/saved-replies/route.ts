@@ -43,7 +43,6 @@ export async function GET(request: NextRequest) {
       data: savedReplies
     });
   } catch (error: any) {
-    console.error('Error fetching saved replies:', error);
     return NextResponse.json(
       { success: false, message: error.message || 'Failed to fetch saved replies' },
       { status: 500 }
@@ -115,7 +114,6 @@ export async function POST(request: NextRequest) {
       data: newReply
     }, { status: 201 });
   } catch (error: any) {
-    console.error('Error creating saved reply:', error);
     return NextResponse.json(
       { success: false, message: error.message || 'Failed to create saved reply' },
       { status: 500 }
@@ -212,7 +210,6 @@ export async function PATCH(request: NextRequest) {
       data: savedReply
     });
   } catch (error: any) {
-    console.error('Error updating saved reply:', error);
     return NextResponse.json(
       { success: false, message: error.message || 'Failed to update saved reply' },
       { status: 500 }
@@ -259,7 +256,6 @@ export async function DELETE(request: NextRequest) {
       message: 'Saved reply deleted successfully'
     });
   } catch (error: any) {
-    console.error('Error deleting saved reply:', error);
     return NextResponse.json(
       { success: false, message: error.message || 'Failed to delete saved reply' },
       { status: 500 }

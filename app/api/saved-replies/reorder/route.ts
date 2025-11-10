@@ -46,7 +46,6 @@ export async function PATCH(request: NextRequest) {
       message: 'Quick Reply order updated successfully'
     });
   } catch (error: any) {
-    console.error('Error updating Quick Reply order:', error);
     return NextResponse.json(
       { success: false, message: error.message || 'Failed to update order' },
       { status: 500 }

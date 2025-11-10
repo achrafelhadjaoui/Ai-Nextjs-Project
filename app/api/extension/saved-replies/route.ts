@@ -11,7 +11,6 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
 
-    console.log('📥 Extension saved-replies request - userId:', userId);
 
     if (!userId) {
       return NextResponse.json(
@@ -37,7 +36,6 @@ export async function GET(request: NextRequest) {
       .select('title content category keywords usageCount order')
       .lean();
 
-    console.log(`✅ Found ${savedReplies.length} saved replies for user ${userId}`);
 
     // Transform to extension-compatible format
     const extensionReplies = savedReplies.map((reply: any) => ({
@@ -65,7 +63,6 @@ export async function GET(request: NextRequest) {
       }
     );
   } catch (error: any) {
-    console.error('Error fetching extension saved replies:', error);
     return NextResponse.json(
       { success: false, message: error.message || 'Failed to fetch saved replies' },
       {
@@ -139,7 +136,6 @@ export async function POST(request: NextRequest) {
       }
     );
   } catch (error: any) {
-    console.error('Error updating usage count:', error);
     return NextResponse.json(
       { success: false, message: error.message || 'Failed to update usage count' },
       {

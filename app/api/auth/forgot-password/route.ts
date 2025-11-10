@@ -23,7 +23,6 @@
 //   const resetLink = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password?token=${resetToken}`;
 
 //   // ⚠️ In a real app → send this link via email
-//   console.log("RESET LINK:", resetLink);
 
 //   return NextResponse.json({ message: "Reset link sent to email" });
 // }
@@ -61,7 +60,6 @@ export async function POST(req: Request) {
     await sendPasswordResetEmail(user.email, resetLink);
     return NextResponse.json({ message: "Password reset link sent to your email" });
   } catch (error) {
-    console.error("Email error:", error);
     return NextResponse.json({ message: "Failed to send email" }, { status: 500 });
   }
 }

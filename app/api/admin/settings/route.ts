@@ -71,7 +71,6 @@ export async function POST(request: Request) {
       updatedBy: admin.id,
     });
 
-    console.log(`✅ Setting created: ${key} by admin ${admin.email}`);
 
     return NextResponse.json({
       success: true,
@@ -121,7 +120,6 @@ export async function PUT(request: Request) {
       })
     );
 
-    console.log(`✅ ${updates.length} settings updated by admin ${admin.email}`);
 
     return NextResponse.json({
       success: true,

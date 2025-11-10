@@ -25,13 +25,11 @@ export async function GET(request: NextRequest) {
           userId = decoded.id || decoded.sub;
         }
       } catch (err) {
-        console.warn('[Extension Config] Invalid token:', err);
       }
     }
 
     // If no valid user ID, return default settings (enabled on all sites)
     if (!userId) {
-      console.log('[Extension Config] No authenticated user, returning default settings');
       return NextResponse.json({
         success: true,
         settings: {
@@ -52,7 +50,6 @@ export async function GET(request: NextRequest) {
     const user = await User.findById(userId).select('extensionSettings');
 
     if (!user) {
-      console.warn('[Extension Config] User not found:', userId);
       return NextResponse.json({
         success: true,
         settings: {
@@ -75,7 +72,6 @@ export async function GET(request: NextRequest) {
       openaiApiKey: user.extensionSettings?.openaiApiKey ?? ''
     };
 
-    console.log('[Extension Config] Returning user settings for:', userId, settings);
 
     return NextResponse.json({
       success: true,
@@ -89,7 +85,6 @@ export async function GET(request: NextRequest) {
       }
     });
   } catch (error: any) {
-    console.error('Error fetching extension config:', error);
     return NextResponse.json(
       {
         success: false,

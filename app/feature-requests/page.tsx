@@ -51,7 +51,6 @@ export default function FeatureRequestsPage() {
         setFeatureRequests(data.data);
       }
     } catch (error) {
-      console.error('Error fetching feature requests:', error);
     } finally {
       setLoading(false);
     }
@@ -84,7 +83,6 @@ export default function FeatureRequestsPage() {
         );
       }
     } catch (error) {
-      console.error('Error voting:', error);
     } finally {
       setVotingInProgress(null);
     }

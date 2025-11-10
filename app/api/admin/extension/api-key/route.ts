@@ -35,7 +35,6 @@ export async function GET(request: NextRequest) {
       }
     });
   } catch (error: any) {
-    console.error('Error fetching admin API key:', error);
 
     if (error.message.includes('Unauthorized')) {
       return NextResponse.json(
@@ -113,7 +112,6 @@ export async function PUT(request: NextRequest) {
       { upsert: true, new: true }
     );
 
-    console.log(`✅ Admin API key updated by: ${user.email} (${user.id})`);
 
     return NextResponse.json({
       success: true,
@@ -124,7 +122,6 @@ export async function PUT(request: NextRequest) {
       }
     });
   } catch (error: any) {
-    console.error('Error updating admin API key:', error);
 
     if (error.message.includes('Unauthorized')) {
       return NextResponse.json(
@@ -161,7 +158,6 @@ export async function DELETE(request: NextRequest) {
     // Remove the API key setting
     await AppSetting.deleteOne({ key: 'extension.openai_api_key' });
 
-    console.log(`⚠️ Admin API key removed by: ${user.email} (${user.id})`);
 
     return NextResponse.json({
       success: true,
@@ -171,7 +167,6 @@ export async function DELETE(request: NextRequest) {
       }
     });
   } catch (error: any) {
-    console.error('Error deleting admin API key:', error);
 
     if (error.message.includes('Unauthorized')) {
       return NextResponse.json(
