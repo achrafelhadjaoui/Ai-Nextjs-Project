@@ -11,13 +11,9 @@ class GrammarChecker {
     constructor() {
         this.activeField = null;
         this.errors = [];
-        this.checkTimeout = null;
         this.isEnabled = false;
         this.isChecking = false;
         this.apiKey = null;
-
-        // Debounce settings
-        this.DEBOUNCE_DELAY = 2000; // Wait 2 seconds after user stops typing
 
         // Monitored fields - store field-specific data
         this.monitoredFields = new WeakMap();
@@ -25,17 +21,18 @@ class GrammarChecker {
         // Active popup
         this.activePopup = null;
 
-        console.log('📝 GrammarChecker initialized');
+        // Queue for pending checks (field -> pending text)
+        this.pendingChecks = new Map();
     }
 
     /**
      * Enable grammar checking
+     * Note: API key is NOT required - server uses admin-configured key
      */
-    enable(apiKey) {
+    enable(apiKey = null) {
         this.isEnabled = true;
-        this.apiKey = apiKey;
+        this.apiKey = apiKey; // Optional - server will use admin key if not provided
         this.injectStyles();
-        console.log('✅ Grammar checker enabled');
     }
 
     /**
@@ -44,7 +41,6 @@ class GrammarChecker {
     disable() {
         this.isEnabled = false;
         this.cleanup();
-        console.log('⏹️ Grammar checker disabled');
     }
 
     /**
@@ -52,19 +48,14 @@ class GrammarChecker {
      */
     monitorField(field) {
         if (!this.isEnabled) {
-            console.log('⚠️ Grammar checker NOT enabled, skipping field monitoring');
             return;
         }
         if (!field) {
-            console.log('⚠️ No field provided to monitor');
             return;
         }
         if (this.monitoredFields.has(field)) {
-            console.log('✅ Field already monitored, skipping');
             return; // Already monitoring
         }
-
-        console.log('👁️ Monitoring field:', field.tagName, field.id || field.className, 'API Key:', this.apiKey ? '✅ Set' : '❌ Missing');
 
         // Initialize field data with container for error markers
         const container = document.createElement('div');
@@ -90,7 +81,6 @@ class GrammarChecker {
         const isContentEditable = field.isContentEditable || field.getAttribute('contenteditable') === 'true';
 
         if (isContentEditable) {
-            console.log('📝 ContentEditable field detected - adding multiple event listeners');
             // Primary events
             field.addEventListener('input', handleInput, true);  // Use capture phase
             field.addEventListener('keyup', handleInput);        // Backup for contentEditable
@@ -99,7 +89,6 @@ class GrammarChecker {
             // Also listen to the mutation events
             field.addEventListener('DOMSubtreeModified', handleInput);
         } else {
-            console.log('📝 Standard input field detected - adding input listener');
             field.addEventListener('input', handleInput);
         }
 
@@ -142,24 +131,18 @@ class GrammarChecker {
      */
     onFieldFocus(field) {
         this.activeField = field;
-        console.log('👁️ Field focused:', field.tagName, field.id || field.className);
 
         // Re-render error markers if they exist
         const fieldData = this.monitoredFields.get(field);
         if (fieldData && fieldData.errors && fieldData.errors.length > 0) {
             this.errors = fieldData.errors;
-            console.log('📍 Re-rendering existing errors:', fieldData.errors.length);
             this.renderErrorMarkers(field);
         }
 
         // Check immediately if field has content
         const text = this.getFieldText(field);
-        console.log('📝 Field text length:', text ? text.length : 0, 'Text:', text ? text.substring(0, 50) : 'empty');
         if (text && text.length > 10) {
-            console.log('✅ Scheduling grammar check for focused field');
             this.scheduleCheck(field);
-        } else {
-            console.log('⚠️ Text too short for grammar check (minimum 10 characters)');
         }
     }
 
@@ -167,53 +150,46 @@ class GrammarChecker {
      * Field blurred - update markers if needed
      */
     onFieldBlur(field) {
-        console.log('👋 Field blurred:', field.tagName);
         // Keep markers visible even after blur
         // User might want to click on them
     }
 
     /**
-     * Field input changed - schedule grammar check
+     * Field input changed - immediate grammar check (no debounce)
      */
     onFieldInput(field) {
         const text = this.getFieldText(field);
-        console.log('⌨️ Input detected in field:', field.tagName, 'Text length:', text ? text.length : 0);
 
-        // Clear old markers immediately when user types
+        // ALWAYS clear old markers first when user types
+        // This prevents stale error markers from being clickable after text changes
+        this.clearMarkers(field);
+        this.removeBadge(field);
+
         if (text && text.length > 0) {
-            this.scheduleCheck(field);
-        } else {
-            // If field is empty, clear everything
-            this.clearMarkers(field);
-            this.removeBadge(field);
-        }
-    }
-
-    /**
-     * Schedule grammar check with debounce
-     */
-    scheduleCheck(field) {
-        clearTimeout(this.checkTimeout);
-        console.log(`⏱️ Grammar check scheduled (${this.DEBOUNCE_DELAY}ms delay)...`);
-
-        this.checkTimeout = setTimeout(() => {
-            console.log('⏰ Debounce timer expired, starting grammar check...');
+            // IMMEDIATE CHECK - No debounce, call performCheck directly for real-time detection
             this.performCheck(field);
-        }, this.DEBOUNCE_DELAY);
+        }
     }
 
     /**
      * Perform grammar check
+     * Handles queuing if a check is already in progress
      */
     async performCheck(field) {
         const text = this.getFieldText(field);
 
-        // Don't check if text is too short or already checking
-        if (!text || text.length < 10 || this.isChecking) {
+        // Don't check if text is too short
+        // Minimum 3 characters to avoid checking single letters
+        if (!text || text.length < 3) {
             return;
         }
 
-        console.log('🔍 Checking grammar for:', text.substring(0, 50) + '...');
+        // If already checking THIS field, queue the new text
+        if (this.isChecking) {
+            this.pendingChecks.set(field, text);
+            return;
+        }
+
         this.isChecking = true;
 
         // Show checking indicator
@@ -234,7 +210,6 @@ class GrammarChecker {
                 this.renderErrorMarkers(field);
                 this.updateBadge(field, errors.length);
                 this.showErrorNotification(errors.length);
-                console.log(`✅ Found ${errors.length} grammar errors`);
             } else {
                 this.errors = [];
 
@@ -246,10 +221,8 @@ class GrammarChecker {
 
                 this.clearMarkers(field);
                 this.removeBadge(field);
-                console.log('✅ No grammar errors found');
             }
         } catch (error) {
-            console.error('❌ Grammar check failed:', error);
 
             // Show appropriate error message based on error type
             if (error.message.includes('API key')) {
@@ -264,35 +237,45 @@ class GrammarChecker {
         } finally {
             this.isChecking = false;
             this.hideCheckingIndicator(field);
+
+            // Check if there's a pending check for this field
+            if (this.pendingChecks.has(field)) {
+                const pendingText = this.pendingChecks.get(field);
+                const currentText = this.getFieldText(field);
+
+                // Only check if the pending text matches current text
+                // (user might have typed more while we were processing)
+                if (pendingText === currentText) {
+                    this.pendingChecks.delete(field);
+                    // Recursively call performCheck for the pending text
+                    this.performCheck(field);
+                } else {
+                    // Text changed again, clear pending and check current
+                    this.pendingChecks.delete(field);
+                    this.performCheck(field);
+                }
+            }
         }
     }
 
     /**
      * Check grammar using AI
+     * Server will use admin-configured API key (no client key needed)
      */
     async checkGrammar(text) {
-        if (!this.apiKey) {
-            throw new Error('No API key configured');
-        }
-
         // Validate text length
         if (text.length > 5000) {
-            console.warn('⚠️ Text too long, truncating to 5000 characters');
             text = text.substring(0, 5000);
         }
 
         try {
-            console.log('📤 Sending grammar check request:', { type: 'CHECK_GRAMMAR', textLength: text.length });
-
             const response = await chrome.runtime.sendMessage({
                 type: 'CHECK_GRAMMAR',
                 payload: {
-                    text: text,
-                    apiKey: this.apiKey
+                    text: text
+                    // Note: API key not sent - server uses admin-configured key
                 }
             });
-
-            console.log('📥 Received grammar check response:', response);
 
             // Handle various error responses
             if (!response) {
@@ -302,7 +285,6 @@ class GrammarChecker {
             if (response.success === false) {
                 // API returned an error
                 const errorMsg = response.message || 'Unknown error';
-                console.error('❌ API error:', errorMsg);
 
                 if (errorMsg.includes('API key') || errorMsg.includes('api_key')) {
                     throw new Error('Invalid API key. Please check your OpenAI API key in settings.');
@@ -316,29 +298,19 @@ class GrammarChecker {
             }
 
             if (response.success && response.errors) {
-                console.log(`✅ Grammar API returned ${response.errors.length} errors:`, response.errors);
-
                 // Validate error format
                 let validErrors = response.errors.filter(err => {
                     return err.start !== undefined && err.end !== undefined && err.suggestion;
                 });
 
-                if (validErrors.length < response.errors.length) {
-                    console.warn(`⚠️ Filtered out ${response.errors.length - validErrors.length} invalid errors`);
-                }
-
                 // CRITICAL: Deduplicate and remove overlapping errors
                 validErrors = this.deduplicateErrors(validErrors, text);
-
-                console.log(`✅ After deduplication: ${validErrors.length} unique errors`);
 
                 return validErrors;
             }
 
-            console.log('⚠️ No errors in response or unsuccessful response');
             return [];
         } catch (error) {
-            console.error('❌ Grammar check API error:', error);
             throw error;
         }
     }
@@ -350,8 +322,6 @@ class GrammarChecker {
      */
     deduplicateErrors(errors, text) {
         if (!errors || errors.length === 0) return [];
-
-        console.log('🔍 Deduplicating errors...');
 
         // Step 1: Sort errors by start position, then by length (shorter = more specific)
         const sorted = [...errors].sort((a, b) => {
@@ -372,7 +342,6 @@ class GrammarChecker {
 
             // Skip exact duplicates
             if (seen.has(key)) {
-                console.log(`  ⚠️ Skipping duplicate error at ${error.start}-${error.end}: "${error.original}"`);
                 continue;
             }
 
@@ -384,10 +353,6 @@ class GrammarChecker {
                     (error.end > existing.start && error.end <= existing.end) ||
                     (error.start <= existing.start && error.end >= existing.end)
                 );
-
-                if (hasOverlap) {
-                    console.log(`  ⚠️ Skipping overlapping error at ${error.start}-${error.end}: "${error.original}" (overlaps with ${existing.start}-${existing.end}: "${existing.original}")`);
-                }
 
                 return hasOverlap;
             });
@@ -402,11 +367,8 @@ class GrammarChecker {
                     // Position is correct
                     deduplicated.push(error);
                     seen.add(key);
-                    console.log(`  ✅ Keeping error at ${error.start}-${error.end}: "${error.original}" → "${error.suggestion}"`);
                 } else {
                     // Position mismatch - AI gave wrong position
-                    console.warn(`  ⚠️ Position mismatch at ${error.start}-${error.end}: expected "${error.original}" but found "${actualText}"`);
-
                     // Try to find the correct position
                     const correctedError = this.findCorrectPosition(text, error);
                     if (correctedError) {
@@ -424,7 +386,6 @@ class GrammarChecker {
                             if (!correctedOverlaps) {
                                 deduplicated.push(correctedError);
                                 seen.add(correctedKey);
-                                console.log(`  ✅ Corrected position to ${correctedError.start}-${correctedError.end}`);
                             }
                         }
                     }
@@ -432,7 +393,6 @@ class GrammarChecker {
             }
         }
 
-        console.log(`✅ Deduplication complete: ${errors.length} → ${deduplicated.length} errors`);
         return deduplicated;
     }
 
@@ -456,7 +416,6 @@ class GrammarChecker {
         }
 
         // Not found - skip this error
-        console.warn(`  ❌ Cannot find "${searchText}" in text, skipping error`);
         return null;
     }
 
@@ -487,34 +446,23 @@ class GrammarChecker {
         this.clearMarkers(field);
 
         if (!this.errors || this.errors.length === 0) {
-            console.log('⚠️ No errors to render');
             return;
         }
 
         const fieldData = this.monitoredFields.get(field);
         if (!fieldData) {
-            console.error('❌ Field not monitored, cannot render markers');
             return;
         }
 
-        console.log(`📍 Rendering ${this.errors.length} error markers for field:`, field);
-
         // For each error, create a marker
         this.errors.forEach((error, index) => {
-            console.log(`  Creating marker ${index + 1}/${this.errors.length}:`, error);
             const marker = this.createErrorMarker(error, field, index);
             if (marker) {
                 fieldData.markers.push(marker);
-                console.log(`  ✅ Marker ${index + 1} created and added to DOM`);
-            } else {
-                console.error(`  ❌ Failed to create marker ${index + 1}`);
             }
         });
 
-        console.log(`📍 Total markers created: ${fieldData.markers.length}`);
-
         // Update positions
-        console.log('📐 Updating marker positions...');
         this.updateMarkerPositions(field);
 
         // Setup position update on scroll/resize
@@ -522,7 +470,6 @@ class GrammarChecker {
             fieldData.updatePositionBound = () => this.updateMarkerPositions(field);
             window.addEventListener('scroll', fieldData.updatePositionBound, true);
             window.addEventListener('resize', fieldData.updatePositionBound);
-            console.log('✅ Position update listeners added');
         }
     }
 
@@ -581,7 +528,6 @@ class GrammarChecker {
     updateMarkerPositions(field) {
         const fieldData = this.monitoredFields.get(field);
         if (!fieldData || !fieldData.markers || fieldData.markers.length === 0) {
-            console.log('⚠️ No markers to update positions for');
             return;
         }
 
@@ -596,10 +542,6 @@ class GrammarChecker {
         const lineHeight = parseFloat(style.lineHeight) || fontSize * 1.2;
         const paddingLeft = parseFloat(style.paddingLeft) || 0;
         const paddingTop = parseFloat(style.paddingTop) || 0;
-
-        console.log(`📐 Updating positions for ${fieldData.markers.length} markers:`, {
-            fontSize, lineHeight, paddingLeft, paddingTop, rectWidth: rect.width, rectHeight: rect.height
-        });
 
         fieldData.markers.forEach((marker, idx) => {
             const start = parseInt(marker.dataset.errorStart);
@@ -621,10 +563,8 @@ class GrammarChecker {
                 marker.style.top = position.top + 'px';
                 marker.style.width = position.width + 'px';
                 marker.style.display = 'block';
-                console.log(`  Marker ${idx + 1} positioned at:`, { left: position.left, top: position.top, width: position.width });
             } else {
                 marker.style.display = 'none';
-                console.log(`  Marker ${idx + 1} hidden (out of bounds)`);
             }
         });
     }
@@ -641,7 +581,6 @@ class GrammarChecker {
             try {
                 return this.calculatePositionWithRange(field, start, end, scrollTop, scrollLeft);
             } catch (error) {
-                console.warn('⚠️ Range API failed, falling back to estimation:', error.message);
                 // Fall through to estimation method
             }
         }
@@ -1074,7 +1013,6 @@ class GrammarChecker {
 
         // VALIDATE: Check if error position is still valid in current text
         if (start < 0 || end > text.length || start >= end) {
-            console.error(`❌ Invalid error position: ${start}-${end} in text of length ${text.length}`);
             this.showToast('⚠️ Error position is no longer valid', 'error');
             return;
         }
@@ -1086,8 +1024,6 @@ class GrammarChecker {
         const actualOriginal = original.trim().toLowerCase();
 
         if (expectedOriginal !== actualOriginal) {
-            console.error(`❌ Position mismatch: expected "${error.original}" but found "${original}" at ${start}-${end}`);
-            console.error(`   Full text: "${text}"`);
             this.showToast(`⚠️ Text has changed. Expected "${error.original}" but found "${original}"`, 'error');
 
             // Remove this invalid error from the list
@@ -1134,7 +1070,6 @@ class GrammarChecker {
 
             if (overlaps) {
                 // Error overlaps with fixed region - mark as invalid and remove
-                console.warn(`⚠️ Removing overlapping error at ${e.start}-${e.end}: "${e.original}"`);
                 return false;
             }
 
@@ -1142,7 +1077,6 @@ class GrammarChecker {
             if (e.start >= end) {
                 e.start += lengthDiff;
                 e.end += lengthDiff;
-                console.log(`✓ Adjusted error position: ${e.start - lengthDiff}-${e.end - lengthDiff} → ${e.start}-${e.end}`);
             }
 
             return true;
@@ -1162,16 +1096,6 @@ class GrammarChecker {
 
         // Show success toast notification
         this.showToast(`✓ Fixed: "${original}" → "${replacement}"`, 'success');
-
-        console.log('✅ Applied context-aware fix:', {
-            original,
-            suggestion,
-            replacement,
-            context: {
-                before: text.substring(Math.max(0, start - 10), start),
-                after: text.substring(end, Math.min(text.length, end + 10))
-            }
-        });
     }
 
     /**
@@ -1298,7 +1222,6 @@ class GrammarChecker {
                 return field.selectionStart;
             }
         } catch (e) {
-            console.warn('Could not get cursor position:', e);
         }
         return null;
     }
@@ -1344,7 +1267,6 @@ class GrammarChecker {
                 field.selectionStart = field.selectionEnd = position;
             }
         } catch (e) {
-            console.warn('Could not set cursor position:', e);
         }
     }
 

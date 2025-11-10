@@ -6,9 +6,7 @@
 // Import configuration (auto-generated from .env.local)
 try {
   importScripts('config.js');
-  console.log('✅ Background: Config loaded successfully');
 } catch (error) {
-  console.error('❌ Background: Failed to load config.js:', error);
   // Set fallback config
   self.FARISLY_CONFIG = {
     API_URL: 'http://localhost:3001'
@@ -18,9 +16,6 @@ try {
 // Get API URL from config
 const API_URL = self.FARISLY_CONFIG?.API_URL || 'http://localhost:3001';
 const SYNC_INTERVAL = 30; // minutes
-
-console.log('🚀 Background Service Worker Starting...');
-console.log('📍 API URL:', API_URL);
 
 // State management
 let authState = {
@@ -48,16 +43,8 @@ async function getSessionCookie() {
       '__Host-next-auth.session-token',   // Most secure (HTTPS with path=/)
     ];
 
-    console.log('🔍 Searching for NextAuth session cookie...');
-    console.log('🌐 API URL:', API_URL);
-
     // Get all cookies from the dashboard domain
     const allCookies = await chrome.cookies.getAll({ url: API_URL });
-    console.log(`📊 Found ${allCookies.length} total cookies for domain`);
-
-    if (allCookies.length > 0) {
-      console.log('🍪 Available cookies:', allCookies.map(c => c.name).join(', '));
-    }
 
     // Try each possible cookie name
     for (const cookieName of cookieNames) {
@@ -67,17 +54,12 @@ async function getSessionCookie() {
       });
 
       if (cookies && cookies.length > 0 && cookies[0].value) {
-        console.log(`✅ Found NextAuth session cookie: ${cookieName}`);
-        console.log(`📋 Cookie details: domain=${cookies[0].domain}, secure=${cookies[0].secure}, httpOnly=${cookies[0].httpOnly}`);
         return { name: cookieName, value: cookies[0].value };
       }
     }
 
-    console.log('⚠️ No NextAuth session cookie found');
-    console.log('💡 User might not be signed in on dashboard, or cookies are not accessible');
     return null;
   } catch (error) {
-    console.error('❌ Error getting session cookie:', error);
     return null;
   }
 }
@@ -86,8 +68,6 @@ async function getSessionCookie() {
  * Initialize extension on install
  */
 chrome.runtime.onInstalled.addListener(async (details) => {
-  console.log('🚀 Farisly AI Extension installed/updated', details.reason);
-
   if (details.reason === 'install') {
     // First time install - fetch settings from server
     await syncExtensionConfig();
@@ -113,7 +93,6 @@ chrome.runtime.onInstalled.addListener(async (details) => {
  * Handle extension startup
  */
 chrome.runtime.onStartup.addListener(async () => {
-  console.log('🔄 Extension started');
   await loadAuthState();
   await syncExtensionConfig(); // Sync config first
   await syncDataWithServer();
@@ -124,8 +103,6 @@ chrome.runtime.onStartup.addListener(async () => {
  */
 async function syncExtensionConfig() {
   try {
-    console.log('🔄 Syncing extension config from server...');
-
     // Prepare headers with auth token if available
     const headers = {
       'Accept': 'application/json'
@@ -133,9 +110,6 @@ async function syncExtensionConfig() {
 
     if (authState.isAuthenticated && authState.token) {
       headers['Authorization'] = `Bearer ${authState.token}`;
-      console.log('📤 Fetching user-specific config');
-    } else {
-      console.log('📤 Fetching default config (not authenticated)');
     }
 
     const response = await fetch(`${API_URL}/api/extension/config`, { headers });
@@ -157,12 +131,6 @@ async function syncExtensionConfig() {
 
       await chrome.storage.local.set({ settings: updatedSettings });
 
-      console.log('✅ Extension config synced:', {
-        enableOnAllSites: updatedSettings.enableOnAllSites,
-        allowedSites: updatedSettings.allowedSites,
-        lastConfigSync: new Date(updatedSettings.lastConfigSync).toISOString()
-      });
-
       // Notify all tabs to reload if necessary
       broadcastMessage({
         type: 'CONFIG_UPDATED',
@@ -175,11 +143,9 @@ async function syncExtensionConfig() {
 
       return true;
     } else {
-      console.error('Failed to sync config:', data.message);
       return false;
     }
   } catch (error) {
-    console.error('❌ Error syncing extension config:', error);
     // Set default safe config on error
     const result = await chrome.storage.local.get('settings');
     if (!result.settings) {
@@ -209,7 +175,6 @@ async function syncExtensionConfig() {
 async function connectConfigStream() {
   // Close existing connection if any
   if (sseConnection) {
-    console.log('🔌 Closing existing SSE connection');
     sseConnection.close();
     sseConnection = null;
   }
@@ -222,11 +187,8 @@ async function connectConfigStream() {
 
   // Only connect if authenticated
   if (!authState.isAuthenticated || !authState.token) {
-    console.log('⏸️  Not authenticated, skipping SSE connection');
     return;
   }
-
-  console.log('🌐 Connecting to config stream (SSE)...');
 
   try {
     // Use fetch with ReadableStream for SSE
@@ -240,8 +202,6 @@ async function connectConfigStream() {
     if (!response.ok) {
       throw new Error(`SSE connection failed: ${response.status}`);
     }
-
-    console.log('✅ SSE connection established');
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
@@ -259,7 +219,6 @@ async function connectConfigStream() {
       const { done, value } = await reader.read();
 
       if (done) {
-        console.log('📡 SSE stream ended');
         break;
       }
 
@@ -280,16 +239,11 @@ async function connectConfigStream() {
             const data = JSON.parse(dataMatch[1]);
 
             if (data.type === 'connected') {
-              console.log('✅ SSE Config stream connected:', data.message);
             } else if (data.type === 'config') {
               // Check if config actually changed
               const currentUpdate = data.settings?.updatedAt || Date.now();
 
               if (lastConfigUpdate === null || currentUpdate > lastConfigUpdate) {
-                console.log('🔄 Config changed! Syncing...', {
-                  enableOnAllSites: data.settings.enableOnAllSites,
-                  allowedSitesCount: data.settings.allowedSites?.length || 0
-                });
                 lastConfigUpdate = currentUpdate;
 
                 // Update local storage
@@ -315,30 +269,23 @@ async function connectConfigStream() {
                     lastConfigSync: updatedSettings.lastConfigSync
                   }
                 });
-
-                console.log('✅ Config synced via SSE - instant broadcast sent to all tabs');
               } else {
                 // Config unchanged - this should never happen with event-based system
-                console.log('⏭️  Config unchanged, skipping broadcast');
               }
             } else if (data.type === 'heartbeat') {
               // Just keep connection alive, no action needed
-              // console.log('💓 SSE heartbeat'); // Commented out to reduce console noise
             }
           } catch (err) {
-            console.error('Error parsing SSE message:', err);
           }
         }
       }
     }
   } catch (error) {
-    console.error('❌ SSE connection error:', error);
   }
 
   // Connection closed or errored, reconnect after 5 seconds
   sseConnection = null;
   if (authState.isAuthenticated) {
-    console.log('🔄 Reconnecting SSE in 5 seconds...');
     sseReconnectTimeout = setTimeout(() => connectConfigStream(), 5000);
   }
 }
@@ -348,7 +295,6 @@ async function connectConfigStream() {
  */
 function disconnectConfigStream() {
   if (sseConnection) {
-    console.log('🔌 Disconnecting config stream');
     sseConnection.close();
     sseConnection = null;
   }
@@ -377,14 +323,11 @@ async function loadAuthState() {
           token: result.authToken,
           expiresAt: result.tokenExpiry
         };
-        console.log('✅ Auth state loaded:', authState.user?.email);
       } else {
-        console.log('⚠️  Token expired, clearing auth');
         await clearAuthState();
       }
     }
   } catch (error) {
-    console.error('❌ Error loading auth state:', error);
   }
 }
 
@@ -406,8 +349,6 @@ async function saveAuthState(user, token, expiresIn = 86400000) {
     user: user,
     tokenExpiry: expiresAt
   });
-
-  console.log('✅ Auth state saved for:', user.email);
 }
 
 /**
@@ -422,7 +363,6 @@ async function clearAuthState() {
   };
 
   await chrome.storage.local.remove(['authToken', 'user', 'tokenExpiry']);
-  console.log('🔒 Auth state cleared');
 }
 
 /**
@@ -451,11 +391,9 @@ async function verifyUserExists() {
     }
 
     // User doesn't exist or token invalid
-    console.log('⚠️  User verification failed');
     await clearAuthState();
     return false;
   } catch (error) {
-    console.error('❌ Error verifying user:', error);
     return false;
   }
 }
@@ -465,12 +403,10 @@ async function verifyUserExists() {
  */
 async function syncDataWithServer() {
   if (!authState.isAuthenticated || !authState.user) {
-    console.log('⏭️  Skipping sync - not authenticated');
     return;
   }
 
   try {
-    console.log('🔄 Syncing data with server...');
 
     // Fetch saved replies from database
     const repliesResponse = await fetch(
@@ -493,7 +429,6 @@ async function syncDataWithServer() {
         };
 
         await chrome.storage.local.set({ settings: updatedSettings });
-        console.log(`✅ Synced ${repliesData.data?.length || 0} saved replies`);
 
         // Notify all tabs about the update
         broadcastMessage({
@@ -503,7 +438,6 @@ async function syncDataWithServer() {
       }
     }
   } catch (error) {
-    console.error('❌ Sync error:', error);
   }
 }
 
@@ -523,8 +457,6 @@ async function broadcastMessage(message) {
  * Handle alarms (periodic tasks)
  */
 chrome.alarms.onAlarm.addListener(async (alarm) => {
-  console.log('⏰ Alarm triggered:', alarm.name);
-
   if (alarm.name === 'syncData') {
     await syncDataWithServer();
   }
@@ -535,8 +467,6 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
  * Handle messages from content scripts and popup
  */
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  console.log('📨 Message received:', request.type, 'from', sender.tab ? 'content' : 'popup');
-
   // Handle async responses
   (async () => {
     try {
@@ -565,22 +495,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         case 'SYNC_AUTH_FROM_WEB':
           // Sync authentication from web dashboard
           try {
-            console.log('🔄 Syncing auth from web dashboard...');
-
             // Get the session cookie from the browser
             const sessionCookie = await getSessionCookie();
 
             if (!sessionCookie) {
-              console.warn('⚠️ No session cookie found - user not logged in on dashboard');
               sendResponse({
                 success: false,
                 message: 'Not signed in on dashboard. Please sign in first.'
               });
               break;
             }
-
-            console.log('🍪 Session cookie found, verifying with server...');
-            console.log(`📋 Detected cookie: ${sessionCookie.name}=${sessionCookie.value.substring(0, 20)}...`);
 
             // Make the request - browser will automatically include cookies with credentials: 'include'
             // Note: Cannot manually set Cookie header in extensions due to security restrictions
@@ -592,13 +516,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
               }
             });
 
-            console.log('📡 Auth response status:', authResponse.status);
-
             const authData = await authResponse.json();
-            console.log('📦 Auth response data:', authData);
 
             if (authData.success && authData.authenticated) {
-              console.log('✅ Authentication successful, saving state...');
               await saveAuthState(authData.user, authData.token, authData.expiresIn);
               await syncExtensionConfig(); // Sync user-specific config
               await syncDataWithServer();
@@ -615,11 +535,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
               sendResponse({ success: true, user: authData.user });
             } else {
-              console.warn('⚠️ Not authenticated on web:', authData.message);
               sendResponse({ success: false, message: authData.message || 'Session expired. Please sign in again.' });
             }
           } catch (error) {
-            console.error('❌ Error syncing auth from web:', error);
             sendResponse({ success: false, message: error.message || 'Failed to sync authentication' });
           }
           break;
@@ -650,13 +568,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
         case 'SYNC_EXTENSION_CONFIG':
           // Manually trigger extension config sync
-          console.log('📨 Manual config sync requested');
           try {
             await syncExtensionConfig();
-            console.log('✅ Manual config sync completed successfully');
             sendResponse({ success: true, message: 'Config synced successfully' });
           } catch (error) {
-            console.error('❌ Manual config sync failed:', error);
             sendResponse({ success: false, message: error.message || 'Config sync failed' });
           }
           break;
@@ -693,7 +608,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
         case 'SAVE_API_KEY':
           // Save API key to server (user profile)
-          console.log('💾 Saving API key to server...');
           try {
             if (!authState.isAuthenticated || !authState.token) {
               sendResponse({ success: false, message: 'Please sign in first' });
@@ -727,14 +641,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 }
               });
 
-              console.log('✅ API key saved successfully');
               sendResponse({ success: true, message: 'API key saved successfully' });
             } else {
-              console.error('❌ Failed to save API key:', data.message);
               sendResponse({ success: false, message: data.message || 'Failed to save API key' });
             }
           } catch (error) {
-            console.error('❌ Error saving API key:', error);
             sendResponse({ success: false, message: error.message || 'Error saving API key' });
           }
           break;
@@ -747,16 +658,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
         case 'GET_SAVED_REPLIES':
           // Fetch saved replies from database OR return cached data
-          console.log('📨 GET_SAVED_REPLIES request received');
-          console.log('Auth state:', {
-            isAuthenticated: authState.isAuthenticated,
-            hasUser: !!authState.user,
-            userId: authState.user?.id
-          });
-
           // If not authenticated, return empty array and prompt to log in
           if (!authState.isAuthenticated || !authState.user) {
-            console.warn('⚠️ Not authenticated - user needs to log in');
             sendResponse({
               success: false,
               message: 'Please sign in to access Quick Replies',
@@ -768,7 +671,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
           try {
             const url = `${API_URL}/api/extension/saved-replies?userId=${authState.user.id}`;
-            console.log('🔗 Fetching from:', url);
 
             const repliesResponse = await fetch(url, {
               headers: {
@@ -776,14 +678,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
               }
             });
 
-            console.log('📡 Response status:', repliesResponse.status);
-
             if (repliesResponse.ok) {
               const repliesData = await repliesResponse.json();
-              console.log('📦 Response data:', repliesData);
 
               if (repliesData.success) {
-                console.log(`✅ Got ${repliesData.data?.length || 0} replies from server`);
 
                 // Update local storage cache
                 const settings = await chrome.storage.local.get('settings');
@@ -795,12 +693,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
                 sendResponse({ success: true, replies: repliesData.data || [] });
               } else {
-                console.error('❌ API returned error:', repliesData.message);
                 sendResponse({ success: false, message: repliesData.message, replies: [] });
               }
             } else if (repliesResponse.status === 401 || repliesResponse.status === 403) {
               // Unauthorized - clear auth and prompt re-login
-              console.error('❌ Authentication failed - clearing auth state');
               await clearAuthState();
               sendResponse({
                 success: false,
@@ -810,7 +706,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
               });
             } else {
               const errorText = await repliesResponse.text();
-              console.error('❌ HTTP error:', repliesResponse.status, errorText);
               sendResponse({
                 success: false,
                 message: `Failed to fetch replies (${repliesResponse.status})`,
@@ -818,7 +713,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
               });
             }
           } catch (error) {
-            console.error('❌ Error fetching saved replies:', error);
             sendResponse({
               success: false,
               message: 'Network error. Please check your connection.',
@@ -877,7 +771,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
         case 'CHECK_GRAMMAR':
           // Forward to Grammar Check API
-          console.log('📝 Checking grammar via API...');
           try {
             const grammarResponse = await fetch(`${API_URL}/api/ai/grammar`, {
               method: 'POST',
@@ -891,7 +784,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             const grammarData = await grammarResponse.json();
             sendResponse(grammarData);
           } catch (error) {
-            console.error('❌ Grammar check failed:', error);
             sendResponse({ success: false, message: error.message, errors: [] });
           }
           break;
@@ -910,7 +802,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           sendResponse({ success: false, message: 'Unknown message type' });
       }
     } catch (error) {
-      console.error('❌ Error handling message:', error);
       sendResponse({ success: false, message: error.message });
     }
   })();
@@ -919,14 +810,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   return true;
 });
 
-console.log('✅ Message listener registered successfully');
-
 /**
  * Handle keyboard commands
  */
 chrome.commands.onCommand.addListener(async (command) => {
-  console.log('⌨️  Command triggered:', command);
-
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
   if (command === 'toggle-panel') {
@@ -974,7 +861,6 @@ let savedRepliesEventSource = null;
 
 async function connectSavedRepliesStream() {
   if (!authState.isAuthenticated || !authState.user?.id) {
-    console.log('⏭️ Skipping saved replies stream - not authenticated');
     return;
   }
 
@@ -984,18 +870,15 @@ async function connectSavedRepliesStream() {
   }
 
   const streamUrl = `${API_URL}/api/extension/saved-replies/stream?userId=${authState.user.id}`;
-  console.log('🔌 Connecting to saved replies real-time stream...');
 
   savedRepliesEventSource = new EventSource(streamUrl);
 
   savedRepliesEventSource.onopen = () => {
-    console.log('✅ Connected to saved replies real-time stream');
   };
 
   savedRepliesEventSource.onmessage = async (event) => {
     try {
       const data = JSON.parse(event.data);
-      console.log('📨 Received real-time update:', data.type);
 
       // Handle different event types
       if (data.type === 'connected' || data.type === 'heartbeat') {
@@ -1004,24 +887,19 @@ async function connectSavedRepliesStream() {
       }
 
       if (data.type === 'created' || data.type === 'updated' || data.type === 'deleted') {
-        console.log(`🔄 Quick Reply ${data.type}:`, data.replyId);
-
         // Re-sync saved replies from server
         await syncSavedReplies();
       }
     } catch (error) {
-      console.error('Error processing saved replies stream event:', error);
     }
   };
 
   savedRepliesEventSource.onerror = (error) => {
-    console.error('❌ Saved replies stream error:', error);
     savedRepliesEventSource.close();
 
     // Retry connection after 5 seconds
     setTimeout(() => {
       if (authState.isAuthenticated) {
-        console.log('🔄 Reconnecting to saved replies stream...');
         connectSavedRepliesStream();
       }
     }, 5000);
@@ -1055,7 +933,6 @@ async function syncSavedReplies() {
         };
 
         await chrome.storage.local.set({ settings: updatedSettings });
-        console.log(`✅ Real-time sync: ${data.data?.length || 0} quick replies updated`);
 
         // Notify all tabs about the update
         broadcastMessage({
@@ -1065,51 +942,42 @@ async function syncSavedReplies() {
       }
     }
   } catch (error) {
-    console.error('❌ Error syncing saved replies:', error);
   }
 }
 
 // Load auth state immediately when service worker starts
 (async () => {
-  console.log('🎯 Farisly AI Background Service Worker initialized');
   await loadAuthState();
-  console.log('✅ Auth state loaded on initialization:', {
-    isAuthenticated: authState.isAuthenticated,
-    userEmail: authState.user?.email
-  });
 
   // Sync extension config on startup
   await syncExtensionConfig();
-  console.log('✅ Extension config synced on initialization');
 
   // Connect to real-time config stream if authenticated
   if (authState.isAuthenticated) {
     await connectConfigStream();
-    console.log('✅ Real-time config stream connected');
 
     // Connect to real-time saved replies stream
     await connectSavedRepliesStream();
-    console.log('✅ Real-time saved replies stream connected');
 
     // Start heartbeat to indicate extension is installed
     startHeartbeat();
-    console.log('✅ Extension heartbeat started');
   }
 })();
 
 /**
- * Send heartbeat to server every 30 seconds to indicate extension is active
+ * Send heartbeat to server every 5 minutes (optimized)
+ * Server-side SSE already checks heartbeat every 15s, so this just needs to update timestamp
  */
 function startHeartbeat() {
   // Send initial heartbeat
   sendHeartbeat();
 
-  // Send heartbeat every 30 seconds
+  // Send heartbeat every 5 minutes (much less aggressive)
   setInterval(() => {
     if (authState.isAuthenticated) {
       sendHeartbeat();
     }
-  }, 30000); // 30 seconds
+  }, 300000); // 5 minutes
 }
 
 /**
@@ -1122,8 +990,7 @@ async function sendHeartbeat() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId: authState.user.id })
     });
-    console.log('💓 Heartbeat sent');
   } catch (error) {
-    console.error('❌ Failed to send heartbeat:', error);
+    // Silent - no need to log every heartbeat failure
   }
 }

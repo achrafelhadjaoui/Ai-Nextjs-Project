@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grammar Checker Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        h1 {
+            color: #667eea;
+        }
+        .test-section {
+            margin: 30px 0;
+            padding: 20px;
+            background: #2a2a2a;
+            border-radius: 8px;
+        }
+        textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 15px;
+            font-size: 16px;
+            border: 2px solid #444;
+            border-radius: 8px;
+            background: #1a1a1a;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .instructions {
+            background: #333;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+        .instructions h3 {
+            margin-top: 0;
+            color: #667eea;
+        }
+        .instructions ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .instructions li {
+            margin: 8px 0;
+        }
+        .error-examples {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #ef4444;
+        }
+        .error-examples h4 {
+            margin-top: 0;
+            color: #ef4444;
+        }
+        .error-examples code {
+            background: #1a1a1a;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #10b981;
+        }
+        .console-check {
+            background: #1a3a1a;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #10b981;
+            margin-top: 15px;
+        }
+        .console-check h4 {
+            margin-top: 0;
+            color: #10b981;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Farisly AI - Grammar Checker Test Page</h1>
+
+    <div class="instructions">
+        <h3>📝 How to Test:</h3>
+        <ol>
+            <li><strong>Open Browser Console</strong> (F12 or Cmd+Option+I)</li>
+            <li><strong>Look for initialization logs</strong> in console</li>
+            <li><strong>Type text with errors</strong> in the text areas below</li>
+            <li><strong>Watch for red underlines</strong> to appear</li>
+            <li><strong>Click on underlines</strong> to see fix suggestions</li>
+        </ol>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Area 1: Multiple Errors Test</h2>
+        <div class="error-examples">
+            <h4>🎯 PRIMARY TEST - Type this exact text:</h4>
+            <ul>
+                <li><code>I don't nows waht happen</code> → Should detect: "dont", "nows", "waht"</li>
+            </ul>
+            <h4>More test examples:</h4>
+            <ul>
+                <li><code>He dont like it</code> → Subject-verb agreement</li>
+                <li><code>The apple are red</code> → Plural/singular mismatch</li>
+                <li><code>Yesterday I go to school</code> → Verb tense error</li>
+            </ul>
+        </div>
+        <textarea placeholder="Type: I don't nows waht happen"></textarea>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Area 2: Another Textarea</h2>
+        <textarea placeholder="Test multiple fields..."></textarea>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Area 3: ContentEditable</h2>
+        <div contenteditable="true" style="min-height: 100px; padding: 15px; background: #1a1a1a; border: 2px solid #444; border-radius: 8px;">
+            Click here and type with grammar errors...
+        </div>
+    </div>
+
+    <div class="console-check">
+        <h4>✅ Expected Console Logs:</h4>
+        <pre style="background: #0a0a0a; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 12px;">
+📝 GrammarChecker initialized (IMMEDIATE detection mode)
+✅ Grammar checker enabled (using server-side API key)
+👁️ Starting field monitoring for grammar checking...
+👁️ Monitoring field: TEXTAREA ...
+⌨️ Input detected in field: TEXTAREA Text length: 15
+⚡ Starting immediate grammar check (no delay)...
+📤 Sending grammar check request: {type: 'CHECK_GRAMMAR', textLength: 15}
+📥 Received grammar check response: {success: true, errors: [...]}
+✅ Found 1 grammar errors
+📍 Rendering 1 error markers for field
+🖱️ Error marker clicked! Showing popup for: "dont"
+💬 showPopup called: {error: {...}, hasMarker: true, hasField: true}
+✅ Popup created and added to DOM
+✅ Popup animation applied, should be visible now
+        </pre>
+    </div>
+
+    <div class="console-check" style="background: #3a1a1a; border-left-color: #ef4444;">
+        <h4>❌ If You See These Errors:</h4>
+        <pre style="background: #0a0a0a; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 12px;">
+⚠️ Grammar checker NOT enabled - no API key found
+❌ this.grammarChecker is undefined
+❌ No response from background script
+❌ Grammar check failed
+
+→ This means you're NOT authenticated!
+→ Click the Farisly AI icon and log in first!
+        </pre>
+    </div>
+</body>
+</html>

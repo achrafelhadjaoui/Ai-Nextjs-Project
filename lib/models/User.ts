@@ -30,6 +30,13 @@ export interface IUser extends Document {
   };
   extensionInstalled?: boolean; // Whether extension is currently installed
   lastExtensionHeartbeat?: Date; // Last time extension pinged
+  onboardingCompleted?: boolean; // Whether user completed onboarding
+  onboardingData?: {
+    businessType?: string;
+    teamSize?: string;
+    useCases?: string[];
+    completedAt?: Date;
+  };
   createdAt: Date;
   updatedAt?: Date;
 }
@@ -64,6 +71,13 @@ const UserSchema = new Schema<IUser>({
   },
   extensionInstalled: { type: Boolean, default: false },
   lastExtensionHeartbeat: { type: Date },
+  onboardingCompleted: { type: Boolean, default: false },
+  onboardingData: {
+    businessType: { type: String },
+    teamSize: { type: String },
+    useCases: { type: [String], default: [] },
+    completedAt: { type: Date },
+  },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date },
 });

@@ -13,8 +13,6 @@ export async function GET(request: NextRequest) {
   try {
     const user = await requireAuth();
 
-    console.log('[SSE EXTENSION STATUS] Client connected:', user.id);
-
     const encoder = new TextEncoder();
     const stream = new TransformStream();
     const writer = stream.writable.getWriter();
@@ -24,7 +22,6 @@ export async function GET(request: NextRequest) {
         const message = `data: ${JSON.stringify(data)}\n\n`;
         await writer.write(encoder.encode(message));
       } catch (error) {
-        console.error('[SSE EXTENSION STATUS] Error sending message:', error);
       }
     };
 
@@ -44,7 +41,6 @@ export async function GET(request: NextRequest) {
           lastHeartbeat: userData?.lastExtensionHeartbeat || null
         };
       } catch (error) {
-        console.error('[SSE EXTENSION STATUS] Error checking status:', error);
         return {
           extensionInstalled: false,
           lastHeartbeat: null
@@ -63,7 +59,6 @@ export async function GET(request: NextRequest) {
         type: 'status',
         data: status
       });
-      console.log('[SSE EXTENSION STATUS] Initial status sent:', status.extensionInstalled);
     })();
 
     // Check status every 15 seconds (server-side only, client receives instantly)
@@ -74,7 +69,6 @@ export async function GET(request: NextRequest) {
 
       // Only send update if status actually changed
       if (lastStatus !== status.extensionInstalled) {
-        console.log('[SSE EXTENSION STATUS] Status changed:', status.extensionInstalled);
         await sendMessage({
           type: 'status',
           data: status
@@ -90,7 +84,6 @@ export async function GET(request: NextRequest) {
 
     // Clean up on disconnect
     request.signal.addEventListener('abort', () => {
-      console.log('[SSE EXTENSION STATUS] Client disconnected:', user.id);
       clearInterval(statusCheckInterval);
       clearInterval(heartbeatInterval);
       writer.close();
@@ -105,7 +98,6 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error('[SSE EXTENSION STATUS] Error:', error);
     return new Response('Unauthorized', { status: 401 });
   }
 }

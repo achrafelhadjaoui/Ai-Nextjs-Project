@@ -20,7 +20,6 @@ export function useSessionMonitor() {
 
     // If unauthenticated, redirect to login
     if (status === 'unauthenticated') {
-      console.log('🔒 Session invalidated - redirecting to login');
       router.push('/auth/login');
       return;
     }
@@ -38,13 +37,11 @@ export function useSessionMonitor() {
 
       // If admin is on user pages, redirect to admin dashboard
       if (isAdmin && !isAdminPath && currentPath.startsWith('/dashboard')) {
-        console.log('🔄 Admin detected on user dashboard - redirecting');
         router.push('/admin/dashboard');
       }
 
       // If non-admin is on admin pages, redirect to user dashboard
       if (!isAdmin && isAdminPath) {
-        console.log('⛔ Non-admin on admin page - redirecting');
         router.push('/dashboard');
       }
     }

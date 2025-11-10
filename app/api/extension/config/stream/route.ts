@@ -24,15 +24,12 @@ export async function GET(request: NextRequest) {
         userId = decoded.id || decoded.sub;
       }
     } catch (err) {
-      console.warn('[SSE CONFIG] Invalid token:', err);
     }
   }
 
   if (!userId) {
     return new Response('Unauthorized', { status: 401 });
   }
-
-  console.log('[SSE CONFIG] Client connected:', userId);
 
   // Create a TransformStream for SSE
   const encoder = new TextEncoder();
@@ -45,7 +42,6 @@ export async function GET(request: NextRequest) {
       const message = `data: ${JSON.stringify(data)}\n\n`;
       await writer.write(encoder.encode(message));
     } catch (error) {
-      console.error('[SSE CONFIG] Error sending message:', error);
     }
   };
 
@@ -68,19 +64,12 @@ export async function GET(request: NextRequest) {
       });
 
       await sendMessage({ type: 'config', settings });
-      console.log('[SSE CONFIG] Initial config sent:', {
-        userId,
-        enableOnAllSites: settings.enableOnAllSites,
-        allowedSitesCount: settings.allowedSites.length
-      });
     } catch (error) {
-      console.error('[SSE CONFIG] Error sending initial config:', error);
     }
   })();
 
   // Listen for config change events (event-driven, no polling!)
   const eventHandler = async (event: ConfigEvent) => {
-    console.log('[SSE CONFIG] Config changed, broadcasting to client:', userId);
     await sendMessage({
       type: 'config',
       settings: event.settings
@@ -96,7 +85,6 @@ export async function GET(request: NextRequest) {
 
   // Clean up on disconnect
   request.signal.addEventListener('abort', () => {
-    console.log('[SSE CONFIG] Client disconnected:', userId);
     clearInterval(heartbeatInterval);
     configEvents.offConfigEvent(userId, eventHandler);
     writer.close();

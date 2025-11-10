@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 
 interface SettingsContextType {
   settings: Record<string, any>;
@@ -16,6 +16,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchSettings = async () => {
     try {
@@ -23,7 +25,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       setError(null);
 
       const res = await fetch('/api/app-settings', {
-        cache: 'no-store', // Always get fresh settings
+        cache: 'no-store',
       });
 
       if (!res.ok) {
@@ -38,7 +40,6 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         throw new Error(data.message || 'Failed to load settings');
       }
     } catch (err: any) {
-      console.error('Error loading settings:', err);
       setError(err.message);
       // Set default fallback settings
       setSettings({
@@ -51,13 +52,64 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Connect to real-time settings updates via SSE
+  const connectToStream = () => {
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+    }
+
+    const eventSource = new EventSource('/api/app-settings/stream');
+    eventSourceRef.current = eventSource;
+
+    eventSource.onopen = () => {
+      setError(null);
+    };
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+
+        if (data.type === 'connected') {
+          // Connection established
+          setLoading(false);
+        } else if (data.type === 'settings') {
+          // Real-time settings update
+          setSettings(data.data || {});
+          setLoading(false);
+          setError(null);
+        } else if (data.type === 'error') {
+          setError(data.message);
+        }
+        // Ignore heartbeat messages
+      } catch (err) {
+        // Invalid message format - ignore
+      }
+    };
+
+    eventSource.onerror = () => {
+      eventSource.close();
+      eventSourceRef.current = null;
+      setError('Connection lost. Reconnecting...');
+
+      // Reconnect after 5 seconds
+      reconnectTimeoutRef.current = setTimeout(() => {
+        connectToStream();
+      }, 5000);
+    };
+  };
+
   useEffect(() => {
-    fetchSettings();
+    // Connect to real-time stream instead of polling
+    connectToStream();
 
-    // Refresh settings every 5 minutes to catch admin changes
-    const interval = setInterval(fetchSettings, 5 * 60 * 1000);
-
-    return () => clearInterval(interval);
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+      }
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+    };
   }, []);
 
   const get = (key: string, defaultValue: any = null) => {

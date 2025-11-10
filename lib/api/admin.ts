@@ -1,36 +1,3 @@
-// // /lib/api/admin.ts
-// export async function getUsers() {
-//     try {
-//         const res = await fetch("/api/admin/users", { cache: "no-store" });
-//         console.log("tthuis is second users", res)
-//       return await res.json();
-//     } catch (error) {
-//       console.error("Error fetching users:", error);
-//       return { success: false, message: "Failed to load users" };
-//     }
-//   }
-  
-//   export async function deleteUser(id: string) {
-//     try {
-//       const res = await fetch(`/api/admin/users/${id}`, {
-//         method: "DELETE",
-//       });
-//       return await res.json();
-//     } catch (error) {
-//       console.error("Error deleting user:", error);
-//       return { success: false, message: "Failed to delete user" };
-//     }
-//   }
-  
-
-
-
-
-
-
-
-
-
 // /lib/api/admin.ts
 
 // 🧩 Get all users

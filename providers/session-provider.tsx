@@ -1,18 +1,3 @@
-// "use client";
-// import { SessionProvider } from "next-auth/react";
-
-// export default function SessionProviderWrapper({ children }: { children: React.ReactNode }) {
-//   return <SessionProvider>{children}</SessionProvider>;
-// }
-
-
-
-
-
-
-
-
-
 // providers/session-provider.tsx (Updated for server session)
 "use client";
 import { SessionProvider } from "next-auth/react";

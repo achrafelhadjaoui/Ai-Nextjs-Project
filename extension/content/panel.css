@@ -50,8 +50,11 @@
 #farisly-ai-panel.minimized {
   /* Removed transform - JavaScript now controls minimize via height adjustment */
   /* This prevents panel from going outside viewport bounds */
-  opacity: 0.95 !important;
-  transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease !important;
+  opacity: 0.98 !important;
+  transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease, box-shadow 0.3s ease !important;
+  min-height: 28px !important; /* Override default min-height to allow ultra-compact minimized state */
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.08) !important; /* Softer shadow when minimized */
+  backdrop-filter: blur(8px) !important; /* Subtle blur effect for modern look */
 }
 
 #farisly-ai-panel.dragging {
@@ -110,10 +113,15 @@
   padding: 0 !important;
 }
 
-/* Hide minimize button by default */
+/* Enhanced minimize button with professional animations */
 .farisly-minimize-btn {
   opacity: 0 !important;
   pointer-events: none !important;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              background 0.2s ease,
+              opacity 0.2s ease,
+              color 0.2s ease !important;
+  font-size: 16px !important;
 }
 
 /* Show minimize button when hovering over panel */
@@ -122,8 +130,44 @@
   pointer-events: auto !important;
 }
 
+/* Minimized state - always show button and update header cursor */
+#farisly-ai-panel.minimized .farisly-minimize-btn {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+#farisly-ai-panel.minimized .farisly-panel-header {
+  border-bottom: none !important;
+  cursor: pointer !important;
+  padding: 4px 12px !important; /* Professional padding - balanced */
+  min-height: 20px !important; /* Ultra-minimal - just icon size */
+  line-height: 1 !important;
+  border-radius: 16px !important; /* Match panel border radius for seamless look */
+  background: linear-gradient(135deg, #1f1f1f 0%, #1a1a1a 100%) !important; /* Subtle gradient */
+  transition: background 0.2s ease !important;
+}
+
+/* Hover effect on minimized panel - indicates it's interactive */
+#farisly-ai-panel.minimized .farisly-panel-header:hover {
+  background: linear-gradient(135deg, #252525 0%, #1f1f1f 100%) !important; /* Lighter on hover */
+}
+
+/* Button styling in minimized state */
+#farisly-ai-panel.minimized .farisly-minimize-btn {
+  font-size: 14px !important;
+  padding: 2px 6px !important;
+  border-radius: 6px !important;
+  transition: all 0.2s ease !important;
+}
+
+#farisly-ai-panel.minimized .farisly-minimize-btn:hover {
+  background: rgba(102, 126, 234, 0.2) !important; /* Brand color tint on hover */
+  transform: scale(1.15) !important;
+}
+
 .farisly-panel-btn:hover {
-  background: #3a3a3a !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  transform: scale(1.1) !important;
 }
 
 .farisly-panel-btn:active {

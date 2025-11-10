@@ -17,7 +17,6 @@ class QuickRepliesManager {
         document.addEventListener('focusin', (e) => {
             if (this.isValidInput(e.target)) {
                 this.lastFocusedInput = e.target;
-                console.log('📝 Input focused:', e.target.tagName, e.target.type || 'contentEditable');
             }
         });
 
@@ -100,7 +99,6 @@ class QuickRepliesManager {
                 const elements = document.querySelectorAll(selector);
                 for (const element of elements) {
                     if (this.isVisible(element) && this.isValidInput(element)) {
-                        console.log('🎯 Auto-detected input:', selector);
                         this.lastFocusedInput = element;
                         return element;
                     }
@@ -110,7 +108,6 @@ class QuickRepliesManager {
             }
         }
 
-        console.warn('⚠️ No suitable input found');
         return null;
     }
 
@@ -136,7 +133,6 @@ class QuickRepliesManager {
         const input = target || this.findBestInput();
 
         if (!input) {
-            console.error('❌ No input field found');
             return { success: false, error: 'No input field found' };
         }
 
@@ -156,10 +152,8 @@ class QuickRepliesManager {
             input.dispatchEvent(new Event('input', { bubbles: true }));
             input.dispatchEvent(new Event('change', { bubbles: true }));
 
-            console.log('✅ Text inserted successfully');
             return { success: true, target: input };
         } catch (error) {
-            console.error('❌ Error inserting text:', error);
             return { success: false, error: error.message };
         }
     }
@@ -212,7 +206,6 @@ class QuickRepliesManager {
      */
     updateReplies(replies) {
         this.replies = replies || [];
-        console.log(`📋 Updated ${this.replies.length} quick replies`);
     }
 
     /**
@@ -245,9 +238,7 @@ class QuickRepliesManager {
                 type: 'TRACK_REPLY_USAGE',
                 payload: { replyId }
             });
-            console.log('📊 Usage tracked for reply:', replyId);
         } catch (error) {
-            console.error('Error tracking usage:', error);
         }
     }
 

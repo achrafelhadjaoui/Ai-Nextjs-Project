@@ -20,7 +20,6 @@ class ConversationDetector {
         };
 
         this.currentPlatform = this.detectPlatform();
-        console.log('🔍 Conversation Detector initialized for:', this.currentPlatform || 'generic platform');
     }
 
     /**
@@ -42,20 +41,15 @@ class ConversationDetector {
      * Auto-detect and extract conversation from current page
      */
     detectConversation() {
-        console.log('🔍 Starting conversation detection...');
-
         // Try platform-specific parser first
         if (this.currentPlatform && this.platformParsers[this.currentPlatform]) {
-            console.log(`📍 Using ${this.currentPlatform} parser`);
             const result = this.platformParsers[this.currentPlatform]();
             if (result && result.messages && result.messages.length > 0) {
-                console.log(`✅ Detected ${result.messages.length} messages on ${this.currentPlatform}`);
                 return result;
             }
         }
 
         // Fallback to generic detection
-        console.log('🔄 Using generic conversation detection');
         return this.parseGeneric();
     }
 
@@ -78,8 +72,6 @@ class ConversationDetector {
             const messageElements = document.querySelectorAll(selector);
 
             if (messageElements.length > 0) {
-                console.log(`📧 Found ${messageElements.length} Upwork messages using: ${selector}`);
-
                 messageElements.forEach(el => {
                     const sender = this.extractSender(el, [
                         '[data-test="sender-name"]',
@@ -134,8 +126,6 @@ class ConversationDetector {
         // Gmail message selectors
         const messageElements = document.querySelectorAll('.h7, .gs, [role="listitem"]');
 
-        console.log(`📧 Found ${messageElements.length} Gmail messages`);
-
         messageElements.forEach(el => {
             const sender = this.extractSender(el, [
                 '.gD',
@@ -181,8 +171,6 @@ class ConversationDetector {
 
         const messageElements = document.querySelectorAll('.msg-s-message-list__event, .msg-s-event-listitem');
 
-        console.log(`💼 Found ${messageElements.length} LinkedIn messages`);
-
         messageElements.forEach(el => {
             const sender = this.extractSender(el, [
                 '.msg-s-message-group__profile-link',
@@ -227,8 +215,6 @@ class ConversationDetector {
 
         const messageElements = document.querySelectorAll('[role="article"], .message, [data-scope="messages_table"]');
 
-        console.log(`👥 Found ${messageElements.length} Facebook messages`);
-
         messageElements.forEach(el => {
             const sender = this.extractSender(el, [
                 '[role="link"]',
@@ -270,8 +256,6 @@ class ConversationDetector {
 
         const messageElements = document.querySelectorAll('[role="row"]');
 
-        console.log(`💬 Found ${messageElements.length} Messenger messages`);
-
         messageElements.forEach(el => {
             const text = this.extractMessageText(el, [
                 '[dir="auto"]',
@@ -308,8 +292,6 @@ class ConversationDetector {
         const messages = [];
 
         const tweetElements = document.querySelectorAll('[data-testid="tweet"]');
-
-        console.log(`🐦 Found ${tweetElements.length} tweets`);
 
         tweetElements.forEach(el => {
             const sender = this.extractSender(el, [
@@ -351,8 +333,6 @@ class ConversationDetector {
 
         const messageElements = document.querySelectorAll('.c-message_kit__message, .c-virtual_list__item');
 
-        console.log(`💼 Found ${messageElements.length} Slack messages`);
-
         messageElements.forEach(el => {
             const sender = this.extractSender(el, [
                 '.c-message__sender_button',
@@ -393,8 +373,6 @@ class ConversationDetector {
 
         const messageElements = document.querySelectorAll('[id^="chat-messages-"] li, [class*="message-"]');
 
-        console.log(`🎮 Found ${messageElements.length} Discord messages`);
-
         messageElements.forEach(el => {
             const sender = this.extractSender(el, [
                 '[class*="username"]',
@@ -433,8 +411,6 @@ class ConversationDetector {
         const messages = [];
 
         const commentElements = document.querySelectorAll('[data-testid="comment"], .Comment');
-
-        console.log(`🗨️ Found ${commentElements.length} Reddit comments`);
 
         commentElements.forEach(el => {
             const sender = this.extractSender(el, [
@@ -475,8 +451,6 @@ class ConversationDetector {
         const messages = [];
 
         const messageElements = document.querySelectorAll('.message-in, .message-out, [class*="message"]');
-
-        console.log(`💚 Found ${messageElements.length} WhatsApp messages`);
 
         messageElements.forEach(el => {
             const isFromMe = el.classList.contains('message-out');
@@ -524,8 +498,6 @@ class ConversationDetector {
             const elements = document.querySelectorAll(selector);
 
             if (elements.length > 2) { // At least 3 messages for a conversation
-                console.log(`📝 Found ${elements.length} potential messages using: ${selector}`);
-
                 elements.forEach(el => {
                     const text = el.innerText || el.textContent;
 
@@ -628,7 +600,6 @@ class ConversationDetector {
             try {
                 const field = document.querySelector(selector);
                 if (field && this.isVisible(field)) {
-                    console.log('📝 Detected reply field:', selector);
                     return field;
                 }
             } catch (e) {

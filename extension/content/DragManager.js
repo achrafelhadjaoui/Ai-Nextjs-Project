@@ -41,12 +41,6 @@ class DragManager {
     }
 
     handlePointerDown(e) {
-        console.log('🖱️ Pointer down detected on icon', {
-            pointerId: e.pointerId,
-            target: e.target,
-            button: e.button
-        });
-
         // Capture the pointer
         this.element.setPointerCapture(e.pointerId);
         this.pointerId = e.pointerId;
@@ -118,29 +112,16 @@ class DragManager {
     }
 
     handlePointerUp(e) {
-        console.log('🖱️ Pointer up detected', {
-            isDragging: this.state.isDragging,
-            pointerId: e.pointerId,
-            expectedPointerId: this.pointerId,
-            match: e.pointerId === this.pointerId
-        });
-
         // CRITICAL FIX: Always cleanup, even if state validation fails
         // This prevents deadlock where pointer remains captured forever
         const shouldProcessEvent = this.state.isDragging && e.pointerId === this.pointerId;
-
-        if (!shouldProcessEvent) {
-            console.warn('⚠️ Pointer up - state mismatch, but cleaning up anyway');
-        }
 
         // ALWAYS release pointer capture (even on mismatch)
         try {
             if (this.element.hasPointerCapture(e.pointerId)) {
                 this.element.releasePointerCapture(e.pointerId);
-                console.log('✅ Pointer capture released');
             }
         } catch (err) {
-            console.warn('⚠️ Could not release pointer capture:', err);
         }
 
         // ALWAYS cleanup move listeners (even on mismatch)
@@ -151,14 +132,11 @@ class DragManager {
         // Only process callbacks if state was valid
         if (shouldProcessEvent) {
             const wasDrag = this.state.hasMoved;
-            console.log(`🎯 Pointer up complete - wasDrag: ${wasDrag}, hasMoved: ${this.state.hasMoved}`);
 
             // Call appropriate callback
             if (wasDrag) {
-                console.log('🔄 Triggering onDragEnd callback');
                 this.options.onDragEnd(this.state);
             } else {
-                console.log('👆 Triggering onClick callback');
                 this.options.onClick(e);
             }
         }
@@ -172,11 +150,6 @@ class DragManager {
     }
 
     handlePointerCancel(e) {
-        console.log('⚠️ Pointer cancel detected', {
-            pointerId: e.pointerId,
-            expectedPointerId: this.pointerId
-        });
-
         // CRITICAL FIX: Always cleanup on cancel, even if pointer ID doesn't match
         const shouldCallCallback = e.pointerId === this.pointerId;
 
@@ -184,10 +157,8 @@ class DragManager {
         try {
             if (this.element.hasPointerCapture(e.pointerId)) {
                 this.element.releasePointerCapture(e.pointerId);
-                console.log('✅ Pointer capture released (cancel)');
             }
         } catch (err) {
-            console.warn('⚠️ Could not release pointer capture on cancel:', err);
         }
 
         // ALWAYS cleanup listeners
@@ -220,7 +191,6 @@ class DragManager {
                 }
             } catch (err) {
                 // Pointer capture may have already been released
-                console.debug('[DragManager] Pointer capture already released');
             }
         }
     }

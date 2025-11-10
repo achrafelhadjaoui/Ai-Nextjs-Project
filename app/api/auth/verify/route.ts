@@ -243,10 +243,8 @@ import User from "@/lib/models/User";
 
 export async function GET(req: Request) {
   try {
-    console.log("🔹 Starting verification process...");
     const { searchParams } = new URL(req.url);
     const token = searchParams.get("token");
-    console.log("this is token", token);
 
     if (!token) {
       return NextResponse.json({ success: false, message: "Invalid or missing token" }, { status: 400 });
@@ -255,43 +253,35 @@ export async function GET(req: Request) {
     await connectDB();
 
     const user = await User.findOne({ verificationToken: token });
-    console.log("this is the user============", user);
 
     if (!user) {
-      console.warn("❌ No user found for token:", token);
       return NextResponse.json({ success: false, message: "Invalid or expired token" }, { status: 400 });
     }
 
     if (user.isVerified) {
-      console.log("⚠️ User already verified:", user.email);
       return NextResponse.json({ success: true, message: "Your email is already verified" }, { status: 200 });
     }
 
-   
 
-    console.log("✅ User verified successfully:", user.email);
 
     // ✅ Set delay before clearing verification token (e.g., 5 seconds)
     setTimeout(async () => {
       try {
-      
+
         if (user && !user.isVerified) {
           user.isVerified = true;
           await user.save();
-          console.log("✅ Verification token cleared after delay");
         }
       } catch (error) {
-        console.error("❌ Error during delayed token cleanup:", error);
       }
     }, 5000); // 5 seconds delay
 
-    return NextResponse.json({ 
-      success: true, 
-      message: "Email verified successfully. Token will be cleared shortly." 
+    return NextResponse.json({
+      success: true,
+      message: "Email verified successfully. Token will be cleared shortly."
     }, { status: 200 });
 
   } catch (error) {
-    console.error("💥 Verification error:", error);
     return NextResponse.json({ success: false, message: "Internal server error" }, { status: 500 });
   }
 }

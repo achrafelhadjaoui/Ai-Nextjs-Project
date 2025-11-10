@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 
 interface FeatureData {
@@ -34,6 +34,8 @@ export function FeatureProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { data: session, status } = useSession();
+  const eventSourceRef = useRef<EventSource | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchFeatures = async () => {
     try {
@@ -52,23 +54,72 @@ export function FeatureProvider({ children }: { children: React.ReactNode }) {
         setError(data.message || "Failed to fetch features");
       }
     } catch (err: any) {
-      console.error("Error fetching features:", err);
       setError(err.message || "Failed to fetch features");
     } finally {
       setLoading(false);
     }
   };
 
+  // Connect to real-time feature updates via SSE
+  const connectToStream = () => {
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+    }
+
+    const eventSource = new EventSource('/api/features/stream');
+    eventSourceRef.current = eventSource;
+
+    eventSource.onopen = () => {
+      setError(null);
+    };
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+
+        if (data.type === 'connected') {
+          // Connection established
+          setLoading(false);
+        } else if (data.type === 'features') {
+          // Real-time feature update
+          setFeatures(data.data || {});
+          setLoading(false);
+          setError(null);
+        } else if (data.type === 'error') {
+          setError(data.message);
+        }
+        // Ignore heartbeat messages
+      } catch (err) {
+        // Invalid message format - ignore
+      }
+    };
+
+    eventSource.onerror = () => {
+      eventSource.close();
+      eventSourceRef.current = null;
+      setError('Connection lost. Reconnecting...');
+
+      // Reconnect after 5 seconds
+      reconnectTimeoutRef.current = setTimeout(() => {
+        connectToStream();
+      }, 5000);
+    };
+  };
+
   useEffect(() => {
-    // Wait for session to load
     if (status === "loading") return;
 
-    fetchFeatures();
+    // Connect to real-time stream instead of polling
+    connectToStream();
 
-    // Refresh features every 5 minutes
-    const interval = setInterval(fetchFeatures, 5 * 60 * 1000);
-
-    return () => clearInterval(interval);
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+      }
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+    };
   }, [status]);
 
   /**

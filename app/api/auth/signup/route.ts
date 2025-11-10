@@ -85,6 +85,7 @@ export async function POST(req: Request) {
       email,
       password: hashedPassword,
       verificationToken,
+      onboardingCompleted: false, // Force onboarding for new users
     });
 
     const verifyLink = `${process.env.NEXT_PUBLIC_APP_URL}/auth/verify?token=${verificationToken}`;
@@ -95,7 +96,6 @@ export async function POST(req: Request) {
       { status: 201 }
     );
   } catch (err) {
-    console.error("Signup error:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

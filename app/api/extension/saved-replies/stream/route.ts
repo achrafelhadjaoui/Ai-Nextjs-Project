@@ -20,8 +20,6 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  console.log(`🔄 SSE connection opened for user: ${userId}`);
-
   // Create a TransformStream for SSE
   const stream = new TransformStream();
   const writer = stream.writable.getWriter();
@@ -34,7 +32,6 @@ export async function GET(request: NextRequest) {
         encoder.encode(`data: ${JSON.stringify(data)}\n\n`)
       );
     } catch (error) {
-      console.error('Error writing to SSE stream:', error);
     }
   };
 
@@ -62,7 +59,6 @@ export async function GET(request: NextRequest) {
 
   // Clean up on connection close
   request.signal.addEventListener('abort', () => {
-    console.log(`❌ SSE connection closed for user: ${userId}`);
     clearInterval(heartbeatInterval);
     savedReplyEvents.offReplyEvent(userId, eventHandler);
     writer.close();

@@ -29,9 +29,6 @@ interface GrammarError {
 function deduplicateErrors(errors: GrammarError[], text: string): GrammarError[] {
   if (!errors || errors.length === 0) return [];
 
-  console.log('🔍 Server-side deduplication:', errors.length, 'errors');
-
-  // Sort by start position, then by length (prefer shorter/more specific)
   const sorted = [...errors].sort((a, b) => {
     if (a.start !== b.start) return a.start - b.start;
     return (a.end - a.start) - (b.end - b.start);
@@ -43,31 +40,25 @@ function deduplicateErrors(errors: GrammarError[], text: string): GrammarError[]
   for (const error of sorted) {
     const key = `${error.start}-${error.end}`;
 
-    // Skip exact duplicates
     if (seen.has(key)) {
-      console.log(`  ⚠️ Skipping duplicate at ${key}`);
       continue;
     }
 
-    // Check for overlaps
     const hasOverlap = deduplicated.some(existing => {
-      return (
-        (error.start >= existing.start && error.start < existing.end) ||
-        (error.end > existing.start && error.end <= existing.end) ||
-        (error.start <= existing.start && error.end >= existing.end)
+      const overlaps = (
+        (error.start < existing.end && error.end > existing.start)
       );
+
+      return overlaps;
     });
 
     if (!hasOverlap) {
       deduplicated.push(error);
       seen.add(key);
-      console.log(`  ✅ Keeping: "${error.original}" → "${error.suggestion}"`);
     } else {
-      console.log(`  ⚠️ Skipping overlapping: "${error.original}" at ${error.start}-${error.end}`);
     }
   }
 
-  console.log(`✅ Deduplication: ${errors.length} → ${deduplicated.length}`);
   return deduplicated;
 }
 
@@ -95,7 +86,6 @@ export async function POST(request: NextRequest) {
     const apiKeySetting = await AppSetting.findOne({ key: 'extension.openai_api_key' });
 
     if (!apiKeySetting || !apiKeySetting.value) {
-      console.error('⚠️ Admin API key not configured');
       return NextResponse.json(
         {
           success: false,
@@ -113,18 +103,25 @@ export async function POST(request: NextRequest) {
     }
 
     const apiKey = apiKeySetting.value;
-    console.log('✅ Using admin-configured API key for grammar check');
 
-    // Build the PROFESSIONAL prompt for grammar checking (English Professor level)
-    const systemPrompt = `You are an expert English professor specializing in grammar, syntax, and linguistics. Your task is to analyze text with the precision of a professional editor.
+    // Build the COMPREHENSIVE GRAMMARLY-LIKE prompt
+    const systemPrompt = `You are Grammarly AI - the world's most comprehensive and thorough grammar checking system. Your mission is to find EVERY SINGLE grammar, spelling, and punctuation error in the text, no matter how many there are.
 
-## Your Expertise:
-- Deep understanding of English grammar rules (syntax, morphology, semantics)
-- Recognition of proper nouns, technical terms, and domain-specific language
-- Context-aware error detection (not just pattern matching)
-- Understanding of informal vs formal writing styles
+## Core Principle: COMPREHENSIVE DETECTION
+- Analyze the ENTIRE text from start to finish
+- Check EVERY word, EVERY punctuation mark, EVERY grammar structure
+- DO NOT stop after finding a few errors - keep checking until the end
+- Return ALL errors you find, not just a sample or the most obvious ones
+- Think of yourself as Grammarly - users expect you to find EVERYTHING
 
-## Detection Rules - BE SELECTIVE AND INTELLIGENT:
+## Your Analysis Process:
+1. Read the entire text carefully
+2. Go through word by word, checking each one
+3. Check grammar, spelling, punctuation, word choice for EVERY sentence
+4. Count and return ALL errors found
+5. **CRITICAL**: Character-level position accuracy (you must count every character precisely)
+
+## Detection Rules - BE COMPREHENSIVE AND THOROUGH:
 
 ### ✅ DETECT These Real Grammar Errors:
 1. **Subject-Verb Agreement**: "He don't" → "He doesn't"
@@ -172,27 +169,75 @@ Return ONLY a valid JSON object with an "errors" array. Each error MUST be a gen
 
 If there are NO real errors, return: {"errors": []}
 
+## CRITICAL REMINDERS:
+- **DO NOT STOP EARLY**: Check the entire text, not just the first paragraph or first few sentences
+- **FIND ALL ERRORS**: If there are 10 errors, return all 10. If there are 50 errors, return all 50.
+- **BE THOROUGH LIKE GRAMMARLY**: Users expect comprehensive checking of every word
+- **NO ARBITRARY LIMITS**: Don't limit yourself to "a few" or "the most important" errors
+
 ### Quality Checks Before Returning:
-1. Is this a REAL error or just uncommon usage?
-2. Could this be a proper noun, technical term, or abbreviation?
-3. Does the correction actually improve the text meaningfully?
+1. Did you check THE ENTIRE TEXT from beginning to end?
+2. Did you check EVERY WORD for spelling errors?
+3. Did you check EVERY SENTENCE for grammar errors?
 4. Are start/end positions EXACT (not approximate)?
 5. **CRITICAL**: Verify each error does NOT overlap with others - each word should only have ONE error
 6. **CRITICAL**: Count characters carefully - start/end positions must be EXACT character indices
-7. **CRITICAL**: If uncertain, DO NOT flag it - better to miss an error than create a false positive
+7. Is this a proper noun? If uncertain but looks like misspelling, FLAG IT (user can ignore if needed)
 
-### Position Accuracy Rules:
-- Start position = index of first character of the error
-- End position = index AFTER the last character (so error text = text[start:end])
+### Position Accuracy Rules - CRITICAL FOR CORRECTIONS TO WORK:
+- Start position = index of first character of the error (0-based indexing)
+- End position = index AFTER the last character (so error text = text.substring(start, end))
+- **YOU MUST COUNT EVERY CHARACTER** including spaces, punctuation, newlines
 - Test your positions: text.substring(start, end) MUST exactly equal the "original" text
 - NO OVERLAPS: Each character position can only be in ONE error range
 - Sort errors by start position and verify no overlaps exist
 
+### Position Calculation Examples:
+Text: "Hello world I dont know"
+Error: "dont" should be "don't"
+Counting: H=0, e=1, l=2, l=3, o=4, space=5, w=6, o=7, r=8, l=9, d=10, space=11, I=12, space=13, d=14, o=15, n=16, t=17
+Correct position: start=14, end=18 (text.substring(14,18) = "dont")
+
+Text: "The apple are red"
+Error: "are" should be "is"
+Counting: T=0, h=1, e=2, space=3, a=4, p=5, p=6, l=7, e=8, space=9, a=10, r=11, e=12
+Correct position: start=10, end=13 (text.substring(10,13) = "are")
+
+### VERIFICATION CHECKLIST Before Returning JSON:
+1. ✓ Count characters manually - no approximations
+2. ✓ Include ALL characters (spaces, punctuation) in your count
+3. ✓ Verify: text.substring(start, end) === original
+4. ✓ Check NO errors overlap (sort by start, verify end[i] <= start[i+1])
+5. ✓ Only flag REAL errors, not proper nouns or style choices
+6. ✓ Each suggestion MUST be grammatically correct and contextually appropriate
+
 Return ONLY the JSON object. No markdown, no explanations, just pure JSON.`;
 
-    const userPrompt = `Analyze this text for REAL grammar, spelling, and punctuation errors. Be selective - only flag genuine mistakes, not style choices or proper nouns:\n\n"${text}"
+    const userPrompt = `You are Grammarly. Analyze this ENTIRE text and find EVERY SINGLE error:\n\n"${text}"
 
-Remember: Be an intelligent professor, not a simple spell-checker. Context matters!`;
+## YOUR MISSION:
+Go through this text WORD BY WORD and find EVERY error:
+- Check spelling of EVERY word: "nows" → "knows", "waht" → "what", "dont" → "don't", "uusers" → "users", "iit" → "it", etc.
+- Check grammar of EVERY sentence: verb agreement, tenses, articles, pronouns
+- Check punctuation of EVERY sentence
+- DO NOT STOP after finding a few errors - CHECK THE ENTIRE TEXT
+- Return EVERY error you find, even if there are many
+
+## EXAMPLES OF WHAT TO DETECT:
+- Misspellings: "happened" (correct) vs "happenedd" (wrong)
+- Double letters: "many" (correct) vs "manyy" (wrong)
+- Missing apostrophes: "don't" (correct) vs "dont" (wrong)
+- Wrong words: "know" (correct) vs "nows" (wrong)
+- Any word that doesn't look right - FLAG IT
+
+## CRITICAL:
+- Read from START to END - check every single word
+- If you find 20 errors, return all 20
+- If you find 50 errors, return all 50
+- Count character positions EXACTLY (including ALL spaces)
+- This is Grammarly - users expect COMPREHENSIVE checking
+
+Start analyzing now and find EVERYTHING wrong with this text!`;
 
     // Call OpenAI API with GPT-4 for better accuracy
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -202,20 +247,19 @@ Remember: Be an intelligent professor, not a simple spell-checker. Context matte
         'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini', // Using GPT-4o-mini - better than 3.5, more affordable than GPT-4
+        model: 'gpt-4o', // Using GPT-4o for maximum accuracy and precision
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
-        temperature: 0.2, // Very low temperature for consistent, conservative detection
-        max_tokens: 2000, // More tokens for detailed analysis
+        temperature: 0.15, // Slightly increased for more thorough detection (not too conservative)
+        max_tokens: 4000, // INCREASED: More tokens to handle many errors in detailed JSON
         response_format: { type: "json_object" } // Force JSON response
       }),
     });
 
     if (!openaiResponse.ok) {
       const errorData = await openaiResponse.json().catch(() => ({}));
-      console.error('OpenAI API error:', errorData);
 
       return NextResponse.json(
         {
@@ -264,7 +308,6 @@ Remember: Be an intelligent professor, not a simple spell-checker. Context matte
         // Fallback: if API returns array directly (shouldn't happen with json_object mode)
         errors = parsedResponse;
       } else {
-        console.warn('AI returned unexpected response format:', resultText);
         errors = [];
       }
 
@@ -272,21 +315,39 @@ Remember: Be an intelligent professor, not a simple spell-checker. Context matte
       errors = errors.map((error, index) => {
         // If start/end positions are not provided, try to find them
         if (error.start === undefined || error.end === undefined) {
-          const position = text.toLowerCase().indexOf(error.original.toLowerCase());
+          // Case-insensitive search for the error text
+          const lowerText = text.toLowerCase();
+          const lowerOriginal = error.original.toLowerCase();
+          const position = lowerText.indexOf(lowerOriginal);
+
           if (position !== -1) {
             error.start = position;
             error.end = position + error.original.length;
           } else {
-            // If we can't find the error, skip it
             return null;
           }
         }
 
         // Verify positions are valid and match the text
         const actualText = text.substring(error.start, error.end);
-        if (actualText.toLowerCase().trim() !== error.original.toLowerCase().trim()) {
-          console.warn(`⚠️ Position mismatch: expected "${error.original}" at ${error.start}-${error.end}, found "${actualText}"`);
-          return null;
+        const actualLower = actualText.toLowerCase().trim();
+        const expectedLower = error.original.toLowerCase().trim();
+
+        // More forgiving comparison - allow minor whitespace differences
+        if (actualLower !== expectedLower) {
+
+          // Try to find the correct position within a small window
+          const windowStart = Math.max(0, error.start - 5);
+          const windowEnd = Math.min(text.length, error.end + 5);
+          const window = text.substring(windowStart, windowEnd);
+          const relativePos = window.toLowerCase().indexOf(error.original.toLowerCase());
+
+          if (relativePos !== -1) {
+            error.start = windowStart + relativePos;
+            error.end = error.start + error.original.length;
+          } else {
+            return null;
+          }
         }
 
         return {
@@ -303,20 +364,9 @@ Remember: Be an intelligent professor, not a simple spell-checker. Context matte
       errors = deduplicateErrors(errors, text);
 
     } catch (parseError) {
-      console.error('❌ Failed to parse AI response as JSON');
-      console.error('Raw response:', resultText);
-      console.error('Parse error:', parseError);
 
       // If parsing fails, return empty array (no errors found)
       errors = [];
-    }
-
-    // Log detailed results for debugging
-    console.log(`✅ Grammar check complete: ${errors.length} errors found`);
-    if (errors.length > 0) {
-      console.log('Detected errors:', errors.map(e => `"${e.original}" → "${e.suggestion}" (${e.type})`).join(', '));
-    } else {
-      console.log('✨ No grammar errors detected - text looks good!');
     }
 
     return NextResponse.json(
@@ -334,7 +384,6 @@ Remember: Be an intelligent professor, not a simple spell-checker. Context matte
       }
     );
   } catch (error: any) {
-    console.error('Error in grammar check:', error);
     return NextResponse.json(
       {
         success: false,

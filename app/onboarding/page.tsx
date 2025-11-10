@@ -39,11 +39,8 @@ export default function OnboardingPage() {
       return;
     }
 
-    // Check if already onboarded
-    const done = localStorage.getItem('onboarding_done');
-    if (done) {
-      router.push('/dashboard');
-    }
+    // Middleware handles onboarding redirect based on database
+    // No need to check localStorage anymore
   }, [router, user, loading]);
 
   const steps: Step[] = [
@@ -224,14 +221,30 @@ export default function OnboardingPage() {
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
-      // Save onboarding data to backend (optional)
-      console.log('Onboarding data:', formData);
+      // Save onboarding data to database
+      try {
+        const res = await fetch('/api/user/onboarding', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...formData,
+            completedAt: new Date(),
+          }),
+        });
 
-      // Mark onboarding as complete
-      localStorage.setItem('onboarding_done', 'true');
+        const data = await res.json();
 
-      // Redirect to dashboard
-      router.push('/dashboard');
+        if (data.success) {
+          // Redirect to dashboard - middleware will now allow access
+          router.push('/dashboard');
+        } else {
+          // Still redirect but log the error
+          router.push('/dashboard');
+        }
+      } catch (error) {
+        // Still redirect even if save fails
+        router.push('/dashboard');
+      }
     }
   };
 
@@ -241,8 +254,21 @@ export default function OnboardingPage() {
     }
   };
 
-  const skip = () => {
-    localStorage.setItem('onboarding_done', 'true');
+  const skip = async () => {
+    // Save empty onboarding data to mark as completed
+    try {
+      await fetch('/api/user/onboarding', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          businessType: '',
+          teamSize: '',
+          useCases: [],
+          completedAt: new Date(),
+        }),
+      });
+    } catch (error) {
+    }
     router.push('/dashboard');
   };
 

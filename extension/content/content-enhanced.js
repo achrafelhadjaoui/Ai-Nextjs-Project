@@ -8,8 +8,6 @@
  * - Text selection detection for grammar fix, rewrite, etc.
  */
 
-console.log('🚀 Farisly AI Enhanced Content Script Loaded');
-
 // Get API URL from config (loaded from config.js via manifest)
 const API_URL = window.FARISLY_CONFIG?.API_URL || 'http://localhost:3001';
 
@@ -34,48 +32,32 @@ class FarislyAI {
     }
 
     async init() {
-        console.log('🔧 Initializing Farisly AI...');
-        console.log('Current URL:', window.location.href);
 
         // CRITICAL: Always set up message listeners first
         this.setupMessageListeners();
 
         // STEP 1: Check authentication FIRST before anything else
         await this.checkAuthentication();
-        console.log('🔐 Authentication status:', this.isAuthenticated);
 
         // Check if extension should work on this site
         const isAllowed = await this.checkSiteAllowed();
-        console.log('Is site allowed?', isAllowed);
 
         if (!isAllowed) {
-            console.log('⏭️  Extension not allowed on this site');
-            console.log('👉 Please add this site in your Extension Settings or enable "All Sites"');
-            console.log('⚡ Listening for config updates to auto-enable when permission granted');
             return;
         }
 
         this.isEnabled = true;
 
         // Load settings first (needed for UI)
-        console.log('Loading settings...');
         await this.loadSettings();
 
         // Create icon and panel (UI always shown)
-        console.log('Creating icon...');
         this.createIcon();
-
-        console.log('Creating panel...');
         this.createPanel();
 
         // If authenticated, enable full features
         if (this.isAuthenticated) {
-            console.log('✅ User authenticated - enabling full features');
-
-            console.log('Initializing Quick Replies Manager...');
             this.quickRepliesManager = new QuickRepliesManager();
-
-            console.log('Initializing Grammar Checker...');
             this.grammarChecker = new GrammarChecker();
 
             // Enable grammar checker if API key is available
@@ -83,19 +65,14 @@ class FarislyAI {
                 this.grammarChecker.enable(this.settings.openaiKey);
                 this.startMonitoringFields();
             }
-
-            console.log('Setting up event listeners...');
             this.setupEventListeners();
             this.setupTextSelectionDetection();
             this.eventListenersSetup = true;
         } else {
-            console.log('🔒 User not authenticated - showing auth gate');
             // Only setup panel events, no feature events
             this.setupEventListeners();
             this.eventListenersSetup = true;
         }
-
-        console.log('✅ Farisly AI initialized successfully');
     }
 
     /**
@@ -111,12 +88,10 @@ class FarislyAI {
             if (response && response.success && response.authState && response.authState.isAuthenticated) {
                 this.authState = response.authState;
                 this.isAuthenticated = true;
-                console.log('✅ User authenticated via extension:', response.authState.user?.email);
                 return;
             }
 
             // If extension auth not found, try to sync from dashboard session cookie
-            console.log('🔍 Extension not authenticated, checking dashboard session...');
             const syncResult = await chrome.runtime.sendMessage({ type: 'SYNC_AUTH_FROM_WEB' });
 
             if (syncResult && syncResult.success) {
@@ -125,13 +100,10 @@ class FarislyAI {
                     user: syncResult.user
                 };
                 this.isAuthenticated = true;
-                console.log('✅ User authenticated via dashboard session:', syncResult.user?.email);
             } else {
                 this.isAuthenticated = false;
-                console.log('🔒 User not authenticated on extension or dashboard');
             }
         } catch (error) {
-            console.error('Error checking authentication:', error);
             this.isAuthenticated = false;
         }
     }
@@ -144,29 +116,17 @@ class FarislyAI {
             const currentUrl = window.location.href;
             const currentDomain = window.location.hostname;
 
-            console.log('Checking site permission for:', currentDomain);
-
             // Get settings from background
             const response = await chrome.runtime.sendMessage({ type: 'GET_SETTINGS' });
 
-            console.log('Settings response:', response);
-
             if (!response.success) {
-                console.log('Failed to get settings from background');
                 return false;
             }
 
             const settings = response.settings;
 
-            console.log('Extension settings:', {
-                enableOnAllSites: settings.enableOnAllSites,
-                allowedSites: settings.allowedSites,
-                lastConfigSync: settings.lastConfigSync ? new Date(settings.lastConfigSync).toISOString() : 'never'
-            });
-
             // If enabled on all sites
             if (settings.enableOnAllSites) {
-                console.log('✅ Extension enabled on all sites');
                 return true;
             }
 
@@ -178,18 +138,13 @@ class FarislyAI {
                 );
 
                 if (isAllowed) {
-                    console.log('✅ Site found in allowed list');
                 } else {
-                    console.log('❌ Site not in allowed list:', settings.allowedSites);
                 }
 
                 return isAllowed;
             }
-
-            console.log('❌ No allowed sites configured');
             return false;
         } catch (error) {
-            console.error('❌ Error checking site permission:', error);
             return false; // Default to disabled on error
         }
     }
@@ -202,10 +157,8 @@ class FarislyAI {
             const response = await chrome.runtime.sendMessage({ type: 'GET_SETTINGS' });
             if (response.success) {
                 this.settings = response.settings;
-                console.log('⚙️  Settings loaded:', this.settings);
             }
         } catch (error) {
-            console.error('Error loading settings:', error);
         }
     }
 
@@ -289,7 +242,6 @@ class FarislyAI {
             this.icon.style.boxShadow = '0 12px 32px rgba(102, 126, 234, 0.6), 0 6px 16px rgba(0, 0, 0, 0.4)';
             this.closeIconBtn.style.display = 'flex';
             this.closeIconBtn.style.pointerEvents = 'auto';
-            console.log('👋 Hover enter - close button shown');
         });
 
         this.iconContainer.addEventListener('pointerleave', () => {
@@ -298,7 +250,6 @@ class FarislyAI {
             this.icon.style.boxShadow = '0 8px 24px rgba(102, 126, 234, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3)';
             this.closeIconBtn.style.display = 'none';
             this.closeIconBtn.style.pointerEvents = 'none';
-            console.log('👋 Hover leave - close button hidden');
         });
 
         // Close icon button - use pointerdown for instant response
@@ -310,8 +261,6 @@ class FarislyAI {
 
         // Simple click handler - no dragging complexity
         this.setupSimpleIconClick();
-
-        console.log('✨ Icon created');
     }
 
     /**
@@ -319,19 +268,13 @@ class FarislyAI {
      */
     setupSimpleIconClick() {
         this.icon.addEventListener('click', (e) => {
-            console.log('👆 Icon clicked!', { target: e.target });
 
             // Don't toggle if clicking close button
             if (e.target === this.closeIconBtn) {
-                console.log('❌ Click was on close button - ignoring');
                 return;
             }
-
-            console.log('✅ Opening/closing panel');
             this.togglePanel();
         });
-
-        console.log('✅ Simple click handler attached to icon');
     }
 
     /**
@@ -346,9 +289,7 @@ class FarislyAI {
         const panelHeight = this.panel.offsetHeight;
 
         // DEBUG: Log dimensions to catch zero-size issues
-        console.log('📏 Panel dimensions:', { panelWidth, panelHeight });
         if (panelWidth === 0 || panelHeight === 0) {
-            console.error('⚠️ CRITICAL: Panel dimensions are 0! Display property might be none.');
         }
 
         // Get viewport dimensions
@@ -435,13 +376,11 @@ class FarislyAI {
         if (panelWidth > viewportWidth - (minMargin * 2)) {
             // Panel is wider than viewport - center it horizontally
             finalX = minMargin;
-            console.warn('⚠️ Panel width exceeds viewport, centering horizontally');
         }
 
         if (panelHeight > viewportHeight - (minMargin * 2)) {
             // Panel is taller than viewport - position at top
             finalY = minMargin;
-            console.warn('⚠️ Panel height exceeds viewport, positioning at top');
         }
 
         // Apply calculated position with !important to override any CSS
@@ -459,14 +398,7 @@ class FarislyAI {
             actualRect.bottom <= viewportHeight;
 
         if (!isWithinBounds) {
-            console.warn('⚠️ Panel still outside viewport after adjustment', {
-                strategy: positionStrategy,
-                position: { x: finalX, y: finalY },
-                panelRect: actualRect,
-                viewport: { width: viewportWidth, height: viewportHeight }
-            });
         } else {
-            console.log(`✅ Panel positioned: ${positionStrategy} at (${finalX}, ${finalY})`);
         }
     }
 
@@ -628,8 +560,6 @@ class FarislyAI {
         if (this.isAuthenticated) {
             this.showTab('compose');
         }
-
-        console.log('📋 Panel created (hidden initially)');
     }
 
     /**
@@ -716,7 +646,6 @@ class FarislyAI {
 
             if (signInBtn) {
                 signInBtn.addEventListener('click', () => {
-                    console.log('🔐 Sign in button clicked - opening dashboard in new tab');
                     // Open dashboard in new tab - DON'T navigate current page
                     chrome.runtime.sendMessage({ type: 'OPEN_DASHBOARD' });
 
@@ -745,7 +674,6 @@ class FarislyAI {
 
             if (syncBtn) {
                 syncBtn.addEventListener('click', async () => {
-                    console.log('🔄 Sync with Dashboard button clicked');
 
                     // Get reference to button text and SVG
                     const btnText = syncBtn.querySelector('#sync-btn-text');
@@ -781,8 +709,6 @@ class FarislyAI {
                             )
                         ]);
 
-                        console.log('🔄 Sync result:', result);
-
                         if (result && result.success) {
                             // Success - show success state
                             btnText.textContent = 'Synced Successfully!';
@@ -790,8 +716,6 @@ class FarislyAI {
                             syncBtn.style.background = 'rgba(16, 185, 129, 0.2)';
                             syncBtn.style.borderColor = 'rgba(16, 185, 129, 0.4)';
                             syncBtn.style.color = '#10b981';
-
-                            console.log('✅ Auth synced successfully - updating UI');
 
                             // Update internal state
                             this.isAuthenticated = true;
@@ -803,7 +727,6 @@ class FarislyAI {
                             // Show success message for 1.5 seconds, then transform the panel
                             setTimeout(async () => {
                                 // Initialize features now that user is authenticated
-                                console.log('🔄 Initializing authenticated features...');
 
                                 // Load settings
                                 await this.loadSettings();
@@ -834,8 +757,6 @@ class FarislyAI {
                                     this.setupTextSelectionDetection();
                                     this.eventListenersSetup = true;
                                 }
-
-                                console.log('✨ Panel transformed to authenticated view with all features enabled');
                             }, 1500);
                         } else {
                             // Failed - show helpful message (NO redirect, just inform)
@@ -846,7 +767,6 @@ class FarislyAI {
                             syncBtn.style.color = '#eab308';
 
                             const errorMsg = result?.message || 'Not authenticated on dashboard';
-                            console.log('⚠️ Sync failed:', errorMsg);
 
                             // Just reset button - DON'T redirect to dashboard
                             // User can use "Sign In to Dashboard" button above if they want
@@ -861,7 +781,6 @@ class FarislyAI {
                             }, 3000);
                         }
                     } catch (error) {
-                        console.error('❌ Error during sync:', error);
 
                         // Error state - likely timeout or network issue
                         btnText.textContent = error.message === 'Sync timeout' ? 'Timeout - Please try again' : 'Error - Try again';
@@ -910,7 +829,6 @@ class FarislyAI {
                 if (this.isVisible && this.panel) {
                     const iconRect = this.iconContainer.getBoundingClientRect();
                     this.updatePanelPosition(iconRect.left, iconRect.top);
-                    console.log('🔄 Window resized - panel repositioned');
                 }
             }, 150);
         });
@@ -942,7 +860,6 @@ class FarislyAI {
                 this.loadSettings();
             } else if (request.type === 'QUICK_REPLIES_UPDATED') {
                 // Real-time update from server
-                console.log('🔄 Quick Replies updated in real-time');
                 if (request.data?.quickReplies) {
                     this.settings.quickReplies = request.data.quickReplies;
                     this.quickRepliesManager.updateReplies(request.data.quickReplies);
@@ -957,7 +874,6 @@ class FarislyAI {
                 }
             } else if (request.type === 'AUTH_UPDATED') {
                 // Authentication state changed - refresh current tab
-                console.log('🔄 Auth updated:', request.data);
                 const currentTab = this.currentTab;
 
                 // Refresh the current tab's content
@@ -975,13 +891,8 @@ class FarislyAI {
             } else if (request.type === 'CONFIG_UPDATED') {
                 // Use the settings passed directly in the message (no async fetch needed!)
                 const startTime = performance.now();
-                console.log('🔄 [INSTANT SYNC] Config updated, checking new settings...');
 
                 const newSettings = request.data;
-                console.log('📦 New settings received:', {
-                    enableOnAllSites: newSettings.enableOnAllSites,
-                    allowedSites: newSettings.allowedSites
-                });
 
                 // Check if site is allowed with the NEW settings (synchronous, no waiting!)
                 const currentUrl = window.location.href;
@@ -990,30 +901,23 @@ class FarislyAI {
                 let isAllowed = false;
                 if (newSettings.enableOnAllSites) {
                     isAllowed = true;
-                    console.log('✅ Extension enabled on all sites');
                 } else if (newSettings.allowedSites && Array.isArray(newSettings.allowedSites)) {
                     isAllowed = newSettings.allowedSites.some(site =>
                         currentUrl.toLowerCase().includes(site.toLowerCase()) ||
                         currentDomain.toLowerCase().includes(site.toLowerCase())
                     );
-                    console.log(isAllowed ? '✅ Site found in allowed list' : '❌ Site not in allowed list');
                 }
 
                 const checkTime = performance.now();
-                console.log(`⏱️  Permission check took ${(checkTime - startTime).toFixed(2)}ms`);
 
                 if (!isAllowed && this.isEnabled) {
                     // Site is no longer allowed, disable extension INSTANTLY
-                    console.log('⛔ [INSTANT SYNC] Site no longer allowed, disabling extension');
                     this.disable();
                     const disableTime = performance.now();
-                    console.log(`⏱️  TOTAL disable time: ${(disableTime - startTime).toFixed(2)}ms ⚡`);
                 } else if (isAllowed && !this.isEnabled) {
                     // Site is now allowed, enable dynamically INSTANTLY
-                    console.log('✅ [INSTANT SYNC] Site now allowed, enabling extension dynamically');
                     await this.enableDynamically();
                     const enableTime = performance.now();
-                    console.log(`⏱️  TOTAL enable time: ${(enableTime - startTime).toFixed(2)}ms ⚡`);
                 }
             } else if (request.type === 'DISABLE_EXTENSION') {
                 this.disable();
@@ -1045,8 +949,6 @@ class FarislyAI {
                     this.selectionEnd = activeElement.selectionEnd;
                     this.selectedElement = activeElement;
                 }
-
-                console.log('📝 Text selected:', text.substring(0, 50) + '...');
 
                 // Show quick action menu
                 this.showQuickActionMenu(selection);
@@ -1359,7 +1261,6 @@ class FarislyAI {
                     this.showToast(response.message || 'Grammar check failed', 'error');
                 }
             } catch (error) {
-                console.error('Error:', error);
                 this.showToast('Error checking grammar', 'error');
             }
 
@@ -1399,7 +1300,6 @@ class FarislyAI {
                 this.showToast(response.message || 'AI processing failed', 'error');
             }
         } catch (error) {
-            console.error('Error processing text:', error);
             this.showToast('Error processing text', 'error');
         }
     }
@@ -1425,8 +1325,6 @@ class FarislyAI {
 
             // Trigger input event
             element.dispatchEvent(new Event('input', { bubbles: true }));
-
-            console.log('✅ Text replaced in input/textarea at original position');
             return;
         }
 
@@ -1452,19 +1350,14 @@ class FarislyAI {
                     // Focus the element
                     this.selectedElement.focus();
                 }
-
-                console.log('✅ Text replaced at original selection range');
                 return;
             } catch (error) {
-                console.error('Error using stored range:', error);
             }
         }
 
         // Fallback to current selection if stored selection is not available
-        console.warn('⚠️ No stored selection found, using current selection as fallback');
         const selection = window.getSelection();
         if (!selection.rangeCount) {
-            console.error('❌ No selection available');
             return;
         }
 
@@ -1487,16 +1380,13 @@ class FarislyAI {
      */
     togglePanel() {
         if (!this.panel) {
-            console.error('❌ Panel does not exist!');
             return;
         }
 
         // Simple toggle
         this.isVisible = !this.isVisible;
-        console.log('🔄 Toggling panel. New state:', this.isVisible ? 'OPEN' : 'CLOSED');
 
         if (this.isVisible) {
-            console.log('📂 Opening panel...');
 
             // CRITICAL FIX: Make panel visible (but transparent) FIRST so dimensions are calculated
             // This fixes the first-click positioning issue where offsetWidth/Height return 0
@@ -1523,13 +1413,9 @@ class FarislyAI {
                 // Unlock after fade-in completes
                 setTimeout(() => {
                     this.isAnimating = false;
-                    console.log('🔓 Animation lock released (open)');
                 }, 300);
             });
-
-            console.log('✅ Panel opened with correct height for tab:', this.currentTab);
         } else {
-            console.log('📁 Closing panel...');
             this.panel.style.opacity = '0';
 
             setTimeout(() => {
@@ -1539,8 +1425,6 @@ class FarislyAI {
 
                 // Unlock after fade-out completes
                 this.isAnimating = false;
-                console.log('🔓 Animation lock released (close)');
-                console.log('✅ Panel closed');
             }, 300);
         }
     }
@@ -1611,8 +1495,6 @@ class FarislyAI {
 
             // Apply the height (transition is in CSS)
             this.panel.style.height = `${finalHeight}px`;
-
-            console.log(`📐 Panel height adjusted for ${tabName}: ${finalHeight}px (content: ${contentHeight}px, header: ${headerHeight}px, tabNav: ${tabNavHeight}px)`);
         };
 
         if (immediate) {
@@ -1786,7 +1668,6 @@ class FarislyAI {
                 this.showToast(response.message || 'Processing failed', 'error');
             }
         } catch (error) {
-            console.error('Error:', error);
             this.showToast('Error processing text', 'error');
         } finally {
             btn.disabled = false;
@@ -2100,21 +1981,16 @@ class FarislyAI {
      */
     async loadQuickReplies() {
         try {
-            console.log('📥 Requesting quick replies from background...');
 
             const response = await chrome.runtime.sendMessage({
                 type: 'GET_SAVED_REPLIES'
             });
 
-            console.log('📦 Quick replies response:', response);
-
             if (response && response.success && response.replies) {
                 this.settings.quickReplies = response.replies;
                 this.quickRepliesManager.updateReplies(response.replies);
-                console.log(`✅ Loaded ${response.replies.length} quick replies`);
                 return { success: true, needsAuth: false };
             } else if (response && !response.success) {
-                console.warn('⚠️ Failed to load quick replies:', response.message);
                 this.settings.quickReplies = [];
                 this.quickRepliesManager.updateReplies([]);
                 return {
@@ -2123,13 +1999,11 @@ class FarislyAI {
                     message: response.message
                 };
             } else {
-                console.warn('⚠️ Invalid response from background');
                 this.settings.quickReplies = [];
                 this.quickRepliesManager.updateReplies([]);
                 return { success: false, needsAuth: false };
             }
         } catch (error) {
-            console.error('❌ Error loading quick replies:', error);
             this.settings.quickReplies = [];
             this.quickRepliesManager.updateReplies([]);
             return { success: false, needsAuth: false };
@@ -2269,7 +2143,6 @@ class FarislyAI {
 
         // Auto-Detect button handler
         content.querySelector('#auto-detect-btn').addEventListener('click', () => {
-            console.log('🔍 Manual auto-detect triggered');
             const freshDetection = this.conversationDetector.detectConversation();
             const freshFormatted = this.conversationDetector.formatConversation(freshDetection);
 
@@ -2329,7 +2202,6 @@ class FarislyAI {
                     this.showToast(response.message || 'Generation failed', 'error');
                 }
             } catch (error) {
-                console.error('Error:', error);
                 this.showToast('Error generating reply', 'error');
             } finally {
                 btn.disabled = false;
@@ -2344,7 +2216,6 @@ class FarislyAI {
                 if (generatedReply) {
                     // Try to use detected input field first
                     if (detectedInputField && document.contains(detectedInputField)) {
-                        console.log('📤 Inserting reply into detected field');
                         this.quickRepliesManager.insertText(generatedReply, detectedInputField);
                         this.showToast('✓ Reply inserted!', 'success');
                         this.togglePanel();
@@ -2371,7 +2242,6 @@ class FarislyAI {
                         await navigator.clipboard.writeText(generatedReply);
                         this.showToast('✓ Copied to clipboard!', 'success');
                     } catch (error) {
-                        console.error('Copy failed:', error);
                         this.showToast('Failed to copy', 'error');
                     }
                 }
@@ -2427,40 +2297,32 @@ class FarislyAI {
      * Called when site becomes allowed after initial check
      */
     async enableDynamically() {
-        console.log('🚀 Enabling extension dynamically...');
 
         // Set enabled flag
         this.isEnabled = true;
 
         // Initialize Quick Replies Manager if not already done
         if (!this.quickRepliesManager) {
-            console.log('Initializing Quick Replies Manager...');
             this.quickRepliesManager = new QuickRepliesManager();
         }
 
         // Initialize Grammar Checker if not already done
         if (!this.grammarChecker) {
-            console.log('Initializing Grammar Checker...');
             this.grammarChecker = new GrammarChecker();
         }
 
         // Load settings
-        console.log('Loading settings...');
         await this.loadSettings();
 
         // Enable grammar checker if API key is available
-        console.log('📝 Checking for OpenAI API key...', this.settings?.openaiKey ? '✅ Found' : '❌ Not found');
         if (this.settings?.openaiKey) {
-            console.log('✅ Enabling grammar checker with API key');
             this.grammarChecker.enable(this.settings.openaiKey);
             this.startMonitoringFields();
         } else {
-            console.log('⚠️ Grammar checker NOT enabled - no API key found in settings');
         }
 
         // Create icon if it doesn't exist
         if (!this.iconContainer) {
-            console.log('Creating icon...');
             this.createIcon();
 
             // Fade in animation for smooth UX
@@ -2483,7 +2345,6 @@ class FarislyAI {
 
         // Create panel if it doesn't exist
         if (!this.panel) {
-            console.log('Creating panel...');
             this.createPanel();
 
             // Fade in animation for smooth UX
@@ -2506,13 +2367,10 @@ class FarislyAI {
 
         // Set up event listeners if not already done
         if (!this.eventListenersSetup) {
-            console.log('Setting up event listeners...');
             this.setupEventListeners();
             this.setupTextSelectionDetection();
             this.eventListenersSetup = true;
         }
-
-        console.log('✅ Extension enabled dynamically without page reload!');
 
         // Show a subtle notification
         this.showToast('Extension enabled on this site', 'success');
@@ -2523,8 +2381,6 @@ class FarislyAI {
      */
     startMonitoringFields() {
         if (!this.grammarChecker) return;
-
-        console.log('👁️ Starting field monitoring for grammar checking...');
 
         // Monitor existing fields
         const fields = document.querySelectorAll('textarea, input[type="text"], [contenteditable="true"]');
@@ -2575,7 +2431,6 @@ class FarislyAI {
      * Gracefully removes UI without page reload
      */
     disable() {
-        console.log('🔌 Disabling extension dynamically...');
 
         // Disable grammar checker
         if (this.grammarChecker) {
@@ -2625,8 +2480,6 @@ class FarislyAI {
         // Reset state flags
         this.isEnabled = false;
         this.eventListenersSetup = false;
-
-        console.log('✅ Extension disabled dynamically without page reload!');
 
         // Show a subtle notification
         this.showToast('Extension disabled on this site', 'info');

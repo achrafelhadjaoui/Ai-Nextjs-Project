@@ -65,7 +65,6 @@ export const authOptions = {
             isVerified: user.isVerified,
           };
         } catch (error: any) {
-          console.error("Credentials auth error:", error);
           throw new Error(error.message || "Authentication failed");
         }
       }
@@ -74,11 +73,6 @@ export const authOptions = {
   callbacks: {
     async signIn({ user, account, profile }) {
       try {
-        console.log("🔐 SignIn callback:", {
-          email: user.email,
-          provider: account?.provider
-        });
-
         // Handle Google OAuth
         if (account?.provider === "google") {
           await connectDB();
@@ -97,6 +91,7 @@ export const authOptions = {
               await existingUser.save();
             }
           } else {
+            // New Google OAuth user - set onboardingCompleted to false
             await User.create({
               name: user.name,
               email: user.email,
@@ -104,13 +99,13 @@ export const authOptions = {
               image: profile?.picture,
               role: "user",
               isVerified: true,
+              onboardingCompleted: false, // Force onboarding for new users
             });
           }
         }
 
         return true;
       } catch (error) {
-        console.error("SignIn callback error:", error);
         return false;
       }
     },
@@ -135,19 +130,12 @@ export const authOptions = {
             token.isVerified = dbUser.isVerified;
             token.name = dbUser.name;
             token.image = dbUser.image;
-
-            console.log("🔄 JWT callback - Fresh user data:", {
-              email: token.email,
-              role: token.role,
-              userId: token.userId
-            });
+            token.onboardingCompleted = dbUser.onboardingCompleted ?? false; // Include onboarding status
           } else {
             // User was deleted from database - invalidate their session
-            console.warn("⚠️ User deleted from database, invalidating session:", token.email);
             return null; // Return null to invalidate the token
           }
         } catch (error) {
-          console.error("❌ Error fetching user in JWT callback:", error);
         }
       }
 
@@ -167,14 +155,9 @@ export const authOptions = {
         session.user.name = token.name as string;
         session.user.email = token.email as string;
         session.user.image = token.image as string;
-        
-        console.log("📋 Session callback - User session:", {
-          email: session.user.email,
-          role: session.user.role,
-          id: session.user.id
-        });
+        session.user.onboardingCompleted = token.onboardingCompleted as boolean;
       }
-      
+
       return session;
     },
   },

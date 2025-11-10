@@ -860,7 +860,6 @@ export default function PanelPage() {
           const parsedSettings = JSON.parse(saved);
           localSettings = { ...defaultSettings, ...parsedSettings };
         } catch (error) {
-          console.error('Error parsing saved settings:', error);
         }
       }
 
@@ -876,11 +875,9 @@ export default function PanelPage() {
               allowedSites: profileData.data.extensionSettings.allowedSites ?? []
               // openaiKey removed - now managed by admin
             };
-            console.log('✅ Loaded extension settings from user profile');
           }
         }
       } catch (error) {
-        console.error('Error loading extension settings from profile:', error);
       }
 
       // Load Quick Replies from database
@@ -901,11 +898,9 @@ export default function PanelPage() {
               ...localSettings,
               quickReplies
             };
-            console.log(`✅ Loaded ${quickReplies.length} Quick Replies from database`);
           }
         }
       } catch (error) {
-        console.error('Error loading Quick Replies:', error);
       }
 
       setSettings(localSettings);
@@ -918,8 +913,6 @@ export default function PanelPage() {
   const handleSettingChange = (key: string, value: any) => {
     setSettings(prev => ({ ...prev, [key]: value }));
   };
-
-  console.log("Current settings state: ", settings);
 
   // Track changes to enable/disable save button
   useEffect(() => {
@@ -967,9 +960,7 @@ export default function PanelPage() {
       });
 
       if (!profileResponse.ok) {
-        console.error('Failed to save extension settings to profile');
       } else {
-        console.log('✅ Extension settings saved to user profile');
 
         // Trigger immediate config sync in extension
         try {
@@ -980,7 +971,6 @@ export default function PanelPage() {
               (window as any).chrome.runtime.sendMessage({ type: 'SYNC_EXTENSION_CONFIG' }, (response: any) => {
                 if ((window as any).chrome.runtime.lastError) {
                   const error = (window as any).chrome.runtime.lastError.message;
-                  console.log('Extension sync attempt failed:', error);
 
                   // Retry up to 2 times with increasing delays
                   if (retryCount < 2) {
@@ -991,13 +981,11 @@ export default function PanelPage() {
                     toast.info('Extension will sync automatically within 2 seconds (real-time)');
                   }
                 } else if (response && response.success) {
-                  console.log('✅ Extension config synced immediately');
                   if (!syncSuccessful) {
                     syncSuccessful = true;
                     toast.success('Extension settings synced immediately!');
                   }
                 } else {
-                  console.warn('Extension sync returned error:', response?.message);
                   toast.info('Extension will sync automatically within 2 seconds (real-time)');
                 }
               });
@@ -1008,12 +996,10 @@ export default function PanelPage() {
             toast.info('Settings saved. Install the browser extension to use them.');
           }
         } catch (err) {
-          console.log('Chrome extension API not available');
           toast.info('Settings saved. Install the browser extension to use them.');
         }
       }
     } catch (error) {
-      console.error('Error saving extension settings to profile:', error);
     }
 
     // Save to extension storage
@@ -1034,9 +1020,7 @@ export default function PanelPage() {
             .join('\n')
         })
       });
-      console.log('Settings saved to extension:', settings);
     } catch (error) {
-      console.error('Error saving to extension:', error);
     }
 
     // Update state to reflect saved settings
@@ -1124,7 +1108,6 @@ export default function PanelPage() {
           toast.error(data.message || 'Failed to save Quick Reply');
         }
       } catch (error) {
-        console.error('Error saving Quick Reply:', error);
         toast.error('Failed to save Quick Reply');
       }
     }
@@ -1170,7 +1153,6 @@ export default function PanelPage() {
         toast.error(data.message || 'Failed to update Quick Reply');
       }
     } catch (error) {
-      console.error('Error updating Quick Reply:', error);
       toast.error('Failed to update Quick Reply');
     }
   };
@@ -1210,7 +1192,6 @@ export default function PanelPage() {
         toast.error('Failed to save order');
       }
     } catch (error) {
-      console.error('Error reordering Quick Replies:', error);
       toast.error('Failed to save order');
     }
   };
@@ -1591,7 +1572,6 @@ export default function PanelPage() {
                             toast.error(data.message || 'Failed to delete Quick Reply');
                           }
                         } catch (error) {
-                          console.error('Error deleting Quick Reply:', error);
                           toast.error('Failed to delete Quick Reply');
                         }
                       }}

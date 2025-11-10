@@ -24,15 +24,6 @@ export async function middleware(request: NextRequest) {
 
   const isAuthenticated = !!token;
 
-  // Debug logging in development
-  if (process.env.NODE_ENV === "development") {
-    console.log("🔒 Middleware check:", {
-      pathname,
-      isAuthenticated,
-      role: token?.role,
-      email: token?.email
-    });
-  }
 
   // Define route types
   const isAuthPage = pathname.startsWith("/auth");
@@ -49,7 +40,6 @@ export async function middleware(request: NextRequest) {
 
   // 1. Protected routes - require authentication
   if (isProtectedPage && !isAuthenticated) {
-    console.log("⛔ Redirecting to login - not authenticated");
     const loginUrl = new URL("/auth/login", request.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
@@ -57,24 +47,34 @@ export async function middleware(request: NextRequest) {
 
   // 2. Auth pages - redirect if already logged in
   if (isAuthPage && isAuthenticated && !pathname.includes("/error")) {
-    console.log("✅ Already authenticated - redirecting based on role");
     // Redirect to appropriate dashboard based on role
     const redirectPath = token.role === "admin" ? "/admin/dashboard" : "/dashboard";
     return NextResponse.redirect(new URL(redirectPath, request.url));
   }
 
-  // 3. Admin routes - check role
-  if (isAdminPage && isAuthenticated) {
-    if (token.role !== "admin") {
-      console.log("⛔ Access denied - not admin. Role:", token.role);
+  // 3. Onboarding check - redirect to onboarding if not completed (skip for admins)
+  const isOnboarding = pathname === "/onboarding";
+  if (isAuthenticated && token.role !== "admin") {
+    // If user hasn't completed onboarding and trying to access protected pages
+    if (token.onboardingCompleted === false && !isOnboarding) {
+      return NextResponse.redirect(new URL("/onboarding", request.url));
+    }
+
+    // If user already completed onboarding, don't let them access onboarding page
+    if (token.onboardingCompleted === true && isOnboarding) {
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }
-    console.log("✅ Admin access granted");
   }
 
-  // 4. Redirect admin users from /dashboard to /admin/dashboard
+  // 4. Admin routes - check role
+  if (isAdminPage && isAuthenticated) {
+    if (token.role !== "admin") {
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
+  }
+
+  // 5. Redirect admin users from /dashboard to /admin/dashboard
   if (isUserDashboard && isAuthenticated && token.role === "admin") {
-    console.log("🔄 Admin accessing user dashboard - redirecting to admin dashboard");
     return NextResponse.redirect(new URL("/admin/dashboard", request.url));
   }
 

@@ -1,5 +1,4 @@
 // Debug script to test if content script is loading
-console.log('Debug script loaded - content script is working');
 
 // Simple test to create a visible element
 const testDiv = document.createElement('div');

@@ -22,7 +22,6 @@
       window.FARISLY_CONFIG = {
         API_URL: API_URL
       };
-      console.log('[Farisly Config] Loaded successfully:', API_URL);
     }
 
     // Export for service worker (self context)
@@ -33,7 +32,6 @@
     }
   } catch (error) {
     // Fallback: Even if something fails, don't break subsequent scripts
-    console.error('[Farisly Config] Error loading config:', error);
     if (typeof window !== 'undefined') {
       window.FARISLY_CONFIG = {
         API_URL: 'http://localhost:3001'

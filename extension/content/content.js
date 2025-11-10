@@ -1,13 +1,12 @@
 // Enhanced content script for Farisly Ai extension
-console.log('Farisly Ai content script loaded');
-
-// Test if the script is working
-console.log('Content script is executing...');
-console.log('Document ready state:', document.readyState);
-console.log('Document body exists:', !!document.body);
 
 // Get API URL from config (loaded from config.js via manifest)
 const API_URL = window.FARISLY_CONFIG?.API_URL || 'http://localhost:3001';
+
+// Load notification system
+const notificationScript = document.createElement('script');
+notificationScript.src = chrome.runtime.getURL('utils/notification.js');
+document.head.appendChild(notificationScript);
 
 class FarislyAI {
     constructor() {
@@ -19,33 +18,21 @@ class FarislyAI {
         this.savedReplies = [];
         this.aiInstructions = '';
         this.isLoading = false;
-        
+
         this.init().catch(error => {
-            console.error('Error initializing Farisly AI:', error);
         });
     }
 
     async init() {
-        console.log('Starting Farisly AI initialization...');
         this.createFloatingIcon();
-        console.log('Floating icon created');
         this.createOptionsPanel();
-        console.log('Options panel created');
         this.setupEventListeners();
-        console.log('Event listeners setup');
-        
-        // Load settings in background, don't wait for it
-        this.loadSettings().then(() => {
-            console.log('Settings loaded successfully');
-        }).catch((error) => {
-            console.error('Settings loading failed:', error);
+
+        this.loadSettings().catch((error) => {
         });
-        
-        console.log('Farisly AI initialization completed');
     }
 
     createFloatingIcon() {
-        console.log('Creating floating icon...');
         // Create the main floating icon
         this.icon = document.createElement('div');
         this.icon.id = 'farisly-ai-icon';
@@ -69,9 +56,6 @@ class FarislyAI {
             transition: all 0.3s ease;
             user-select: none;
         `;
-        
-        console.log('Icon created:', this.icon);
-        console.log('Icon styles applied');
 
         // Create minimize button (will be positioned in the panel)
         this.minimizeBtn = document.createElement('div');
@@ -312,23 +296,15 @@ class FarislyAI {
 
         document.body.appendChild(this.icon);
         document.body.appendChild(this.optionsPanel);
-        
-        console.log('Panel appended to DOM, panel element:', this.optionsPanel);
-        console.log('Panel display style:', this.optionsPanel.style.display);
-        
+
         // Add minimize button to the panel
         const minimizeContainer = this.optionsPanel.querySelector('#minimize-btn-container');
         if (minimizeContainer) {
             minimizeContainer.appendChild(this.minimizeBtn);
-            console.log('Minimize button added to panel');
-        } else {
-            console.error('Minimize button container not found!');
         }
     }
 
     createOptionsPanel() {
-        console.log('Creating options panel...');
-        
         // Create the options panel
         this.optionsPanel = document.createElement('div');
         this.optionsPanel.id = 'farisly-ai-options';
@@ -562,24 +538,17 @@ class FarislyAI {
         `;
 
         document.body.appendChild(this.optionsPanel);
-        
-        console.log('Panel appended to DOM, panel element:', this.optionsPanel);
-        console.log('Panel display style:', this.optionsPanel.style.display);
-        
+
         // Add minimize button to the panel
         const minimizeContainer = this.optionsPanel.querySelector('#minimize-btn-container');
         if (minimizeContainer) {
             minimizeContainer.appendChild(this.minimizeBtn);
-            console.log('Minimize button added to panel');
-        } else {
-            console.error('Minimize button container not found!');
         }
     }
 
     setupEventListeners() {
         // Icon click to toggle options
         this.icon.addEventListener('click', (e) => {
-            console.log('Icon clicked!');
             e.stopPropagation();
             this.toggleOptions();
         });
@@ -680,34 +649,23 @@ class FarislyAI {
         const composeBtn = document.getElementById('compose-btn');
         const quickRepliesBtn = document.getElementById('quick-replies-btn');
         const aiReplyBtn = document.getElementById('ai-reply-btn');
-        
-        console.log('Tab buttons found:', { composeBtn, quickRepliesBtn, aiReplyBtn });
-        
+
         if (composeBtn) {
             composeBtn.addEventListener('click', () => {
-                console.log('Compose tab clicked');
                 this.switchTab('compose');
             });
-        } else {
-            console.error('Compose button not found!');
         }
 
         if (quickRepliesBtn) {
             quickRepliesBtn.addEventListener('click', () => {
-                console.log('Quick Replies tab clicked');
                 this.switchTab('quick-replies');
             });
-        } else {
-            console.error('Quick Replies button not found!');
         }
 
         if (aiReplyBtn) {
             aiReplyBtn.addEventListener('click', () => {
-                console.log('AI Reply tab clicked');
                 this.switchTab('ai-reply');
             });
-        } else {
-            console.error('AI Reply button not found!');
         }
 
         // Compose options
@@ -749,8 +707,6 @@ class FarislyAI {
             generateAIReplyBtn.addEventListener('click', () => {
                 this.generateAIReply();
             });
-        } else {
-            console.error('Generate AI Reply button not found!');
         }
 
         // Remove click outside behavior - app stays open until minimize button is clicked
@@ -764,16 +720,13 @@ class FarislyAI {
     }
 
     toggleOptions() {
-        console.log('toggleOptions called, isMinimized:', this.isMinimized, 'isVisible:', this.isVisible);
-        
         if (this.isMinimized) {
             this.toggleMinimize();
             return;
         }
-        
+
         this.isVisible = !this.isVisible;
-        console.log('Setting panel display to:', this.isVisible ? 'block' : 'none');
-        
+
         if (this.optionsPanel) {
             if (this.isVisible) {
                 this.optionsPanel.style.display = 'block';
@@ -789,9 +742,6 @@ class FarislyAI {
                     }
                 }, 300);
             }
-            console.log('Panel display updated, isVisible:', this.isVisible);
-        } else {
-            console.error('Options panel not found!');
         }
         
         if (this.isVisible) {
@@ -885,26 +835,19 @@ class FarislyAI {
     }
 
     async switchTab(tabName) {
-        console.log('switchTab called with:', tabName);
-        
         // Update tab buttons
         const tabButtons = document.querySelectorAll('.tab-btn');
-        console.log('Found tab buttons:', tabButtons.length);
-        
+
         tabButtons.forEach(btn => {
             btn.classList.remove('active');
             btn.style.background = '#333';
         });
-        
+
         const activeBtn = document.getElementById(`${tabName}-btn`);
-        console.log('Active button found:', activeBtn);
-        
+
         if (activeBtn) {
             activeBtn.classList.add('active');
             activeBtn.style.background = '#6366f1';
-            console.log('Active button styled');
-        } else {
-            console.error(`Button with id '${tabName}-btn' not found!`);
         }
 
         // Update content sections
@@ -924,7 +867,6 @@ class FarislyAI {
                 await this.loadSettings();
                 this.loadQuickReplies();
             } catch (error) {
-                console.error('Error loading quick replies:', error);
                 this.loadQuickReplies(); // Load with existing data
             }
         }
@@ -933,18 +875,13 @@ class FarislyAI {
     loadQuickReplies() {
         const quickRepliesList = document.getElementById('quick-replies-list');
         if (!quickRepliesList) {
-            console.log('Quick replies list element not found');
             return;
         }
 
-        console.log('Loading quick replies with data:', this.savedReplies);
-
         // Sort saved replies by title (same as panel)
-        const sortedReplies = [...this.savedReplies].sort((a, b) => 
+        const sortedReplies = [...this.savedReplies].sort((a, b) =>
             a.title.toLowerCase().localeCompare(b.title.toLowerCase())
         );
-
-        console.log('Sorted replies:', sortedReplies);
 
         quickRepliesList.innerHTML = sortedReplies.map((reply, index) => `
             <button class="quick-reply-item" data-index="${this.savedReplies.indexOf(reply)}" style="
@@ -985,12 +922,12 @@ class FarislyAI {
     async generateAIReply() {
         const input = this.findBestTextInput();
         if (!input) {
-            alert('Please click on a text input first');
+            window.showNotification.warning('Please click on a text input first');
             return;
         }
 
         if (!this.aiInstructions) {
-            alert('No AI instructions found. Please set them in the panel settings.');
+            window.showNotification.error('No AI instructions found. Please set them in the panel settings.');
             return;
         }
 
@@ -1022,8 +959,7 @@ class FarislyAI {
                 contextInput.value = '';
             }
         } catch (error) {
-            console.error('AI Reply error:', error);
-            alert('Error generating AI reply. Please check your API key and try again.');
+            window.showNotification.error('Error generating AI reply. Please check your API key and try again.');
         } finally {
             if (aiReplyBtn) {
                 this.hideLoading(aiReplyBtn);
@@ -1059,7 +995,6 @@ class FarislyAI {
             const response = await this.callOpenAI(prompt, currentText);
             this.insertText(response, textInput);
         } catch (error) {
-            console.error('Text processing error:', error);
             alert('Error processing text. Please check your API key and try again.');
         } finally {
             if (clickedButton) {
@@ -1162,20 +1097,14 @@ class FarislyAI {
 
     async loadSettings() {
         try {
-            console.log('Loading settings from panel...');
-
             // Fetch from panel API to get the latest settings
             const response = await fetch(`${API_URL}/api/settings`);
             const data = await response.json();
 
-            console.log('Raw data from panel API:', data);
-            
             // Use the settings from the panel
             this.savedReplies = data.savedReplies || [];
             this.aiInstructions = data.aiInstructions || '';
-            
-            console.log('Processed settings:', { savedReplies: this.savedReplies, aiInstructions: this.aiInstructions });
-            
+
             // Update background script with latest settings
             chrome.runtime.sendMessage({
                 action: 'updateSettings',
@@ -1184,10 +1113,7 @@ class FarislyAI {
                     aiInstructions: this.aiInstructions
                 }
             });
-            
-            console.log('Successfully loaded settings from panel:', { savedReplies: this.savedReplies, aiInstructions: this.aiInstructions });
         } catch (error) {
-            console.error('Could not load settings from panel:', error);
             // Use default settings if panel is not available
             this.savedReplies = [
                 {
@@ -1200,7 +1126,6 @@ class FarislyAI {
                 }
             ];
             this.aiInstructions = "You are a helpful AI assistant. When replying to messages, be professional, concise, and helpful.";
-            console.log('Using default settings:', { savedReplies: this.savedReplies });
         }
     }
 }
@@ -1212,16 +1137,13 @@ try {
             try {
                 new FarislyAI();
             } catch (error) {
-                console.error('Error initializing Farisly AI:', error);
             }
         });
     } else {
         try {
             new FarislyAI();
         } catch (error) {
-            console.error('Error initializing Farisly AI:', error);
         }
     }
 } catch (error) {
-    console.error('Error setting up Farisly AI:', error);
 }
